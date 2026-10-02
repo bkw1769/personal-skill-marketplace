@@ -1,0 +1,8 @@
+.DS_Store
+._*
+Thumbs.db
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "personal-tools",
+  "version": "0.1.0",
+  "description": "Personal development skills for project initialization.",
+  "author": {
+    "name": "bkw1769"
+  },
+  "repository": "https://github.com/bkw1769/personal-skill-marketplace",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "개인 개발 스킬",
+        "shortDescription": "개인 base 규칙으로 프로젝트를 초기 설정합니다",
+        "longDescription": "개인 프로젝트 초기 설정과 재사용 가능한 개발 스킬 모음입니다.",
+        "developerName": "bkw1769",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "defaultPrompt": [
+          "개인 프로젝트 초기 설정 스킬로 새 프로젝트 뼈대를 만들어줘."
+        ]
+      }
+    }
+  }
+}
