@@ -55,4 +55,5 @@ No photorealism, no 3D, no cut-paper collage, no digital gradients, no polished 
 | Drift toward clean commercial cartoon | repeat `rough naive reference drawings, not polished commercial cartoons` in Constraints |
 | Color swatches or title merge with tall subjects (seen on the horse sheet) | `keep the title and swatches in a clear top band; no subject may enter that band` |
 | Paired characters overlap and cannot be cut apart (seen on Troy citizens) | `every figure stands apart with clear paper between them, even in pairs` |
+| Hair tufts, helmet plumes and horse ears reach into the row above or the title band, so crop boxes cut them (seen on the Troy cast sheet) | `leave clear paper above the highest point of every figure: hair, plumes, ears and raised hands` |
 | Faces gain detailed eyes or lashes | `eyes are simple dots or tiny ovals, no highlights, no lashes` |

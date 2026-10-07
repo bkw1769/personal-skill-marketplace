@@ -16,17 +16,23 @@ Turns a generated or scanned sheet (several figures on paper) into one transpare
 ## Workflow
 
 1. **Look at the sheet** (open the image) and list the pieces worth cutting: each full-body pose, each face, each prop, and any hand-lettered title or labels the video may reuse.
-2. **Write `crops.json` next to the sheets** (format in `references/crops-format.md`). Give generous rectangles that contain the whole figure plus some paper on every side; the cutter trims to the drawing itself, so too-big is cheap and too-small cuts off hair, feet or the last stroke of a label. Names are kebab-case because they become file names.
+2. **Write `crops.json` next to the sheets** (format in `references/crops-format.md`). Give generous rectangles that contain the whole figure plus paper on every side: start the box above the highest point (hair tufts, helmet plumes, ears, raised hands are the parts that get cut) and outside the widest point (capes, shields, flowing hair). The cutter trims to the drawing itself, so too-big is cheap and too-small cuts. Names are kebab-case because they become file names.
 3. **Draw the boxes and cut:**
 
    ```bash
    node <skill-dir>/scripts/cut-sprites.mjs path/to/crops.json --out path/to/sprites --boxes
    ```
 
-   - `_boxes-<sheet>.png`: every rectangle drawn in red on its sheet. Check that no box clips a figure and no box swallows half of a neighbour.
-   - `_contact.png`: all sprites on a checkerboard in `sprites.json` order. Check every cell: clean edges, no paper halo, no missing limbs, no fragments of neighbours, no stray paint dots.
+   - **Automatic headroom:** when solid drawing runs into a side of a rectangle (3+ ink pixels on the border line), that side grows 8 px at a time (up to 160 px) until the drawing is clear. It stops early at the sheet edge, or when the next step would swallow a whole neighbouring figure. The console lists every grown crop (`grew ody: top +16px`) and every crop that is still cut, with the reason.
+   - `_boxes-<sheet>.png`: red = the rectangle as written, green = the rectangle after growing. Check that no box clips a figure and no green box reaches into a neighbour.
+   - `_contact.png`: all sprites on a checkerboard in `sprites.json` order; green frame = grown, red frame = still cut. Check every cell: complete heads and hands, clean edges, no paper halo, no fragments of neighbours, no stray paint dots.
+   - Keep the fix: `--update-crops` writes the grown rectangles back into crops.json, so the next run and any other tool reading crops.json use the corrected boxes.
+   - `--strict` exits with an error while any sprite is still cut (use it in scripts); `--no-grow` reproduces the rectangles exactly as written.
    - Iterate on a few names only with `--only girl,girl-front`.
-4. **Fix with options, not by hand-editing pixels** (details in `references/crops-format.md`):
+4. **Fix what growth could not, with options or coordinates, not by hand-editing pixels** (details in `references/crops-format.md`):
+   - Still cut at `sheet edge`: the drawing leaves the sheet; regenerate the sheet with more margin (art-prompts headroom rule).
+   - Still cut at `neighbour`: two figures are too close; widen by hand towards the free side or regenerate with more space.
+   - Still cut at `max`: a long part (spear, banner) sticks out far; widen by hand or raise `growMax` for that crop.
    - Paint swatches or specks next to a prop → `"largest": true`.
    - Hand lettering → `"text": true` (no flood fill; alpha from ink darkness).
    - Pale washes disappearing → lower `"tol"` (default 24); paper left behind → raise it.
@@ -60,5 +66,8 @@ Turns a generated or scanned sheet (several figures on paper) into one transpare
 4. Connected blobs are labeled; specks smaller than about 0.025% of the crop, border-touching blobs smaller than 30% of the main figure, and (with `largest`) any blob under 5% of the main figure are removed.
 5. Pixels within 2 px of paper get partial alpha by colour distance, and the paper colour is un-mixed from them to avoid a light halo.
 6. Trim to the drawing plus `pad` px (default 2).
+7. Headroom check: count solid pixels (alpha ≥ 0.5) on each border line of the rectangle; 3 or more means the drawing continues outside, so grow that side and repeat. A step is rejected when the solid area jumps by more than half (a whole neighbour came inside); neighbours only partly inside are already removed by step 4.
+
+`sprites.json` records the rectangle actually used in `crop`, and for grown crops also `requested` and `grown`; still-cut crops carry `clipped` and `blocked_by`.
 
 A worked example (34 crops over three Troy sheets, including faces, props and labels) is in `references/example-troy-crops.json`.

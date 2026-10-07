@@ -17,16 +17,16 @@
     "ody": {
       "sheet": "cast",
       "x": 418,
-      "y": 80,
-      "w": 205,
-      "h": 428
+      "y": 64,
+      "w": 221,
+      "h": 444
     },
     "paris": {
       "sheet": "cast",
-      "x": 812,
-      "y": 112,
-      "w": 196,
-      "h": 395
+      "x": 804,
+      "y": 104,
+      "w": 204,
+      "h": 403
     },
     "helen": {
       "sheet": "cast",
@@ -38,39 +38,39 @@
     "soldier-tall": {
       "sheet": "cast",
       "x": 22,
-      "y": 583,
+      "y": 559,
       "w": 148,
-      "h": 370
+      "h": 394
     },
     "soldier-short": {
       "sheet": "cast",
       "x": 178,
-      "y": 655,
+      "y": 647,
       "w": 172,
-      "h": 297
+      "h": 305
     },
     "citizens": {
       "sheet": "cast",
       "x": 386,
-      "y": 636,
+      "y": 628,
       "w": 292,
-      "h": 316
+      "h": 324
     },
     "horse-cast": {
       "sheet": "cast",
       "x": 702,
-      "y": 558,
+      "y": 534,
       "w": 395,
-      "h": 398,
+      "h": 422,
       "options": {
         "largest": true
       }
     },
     "girl-front": {
       "sheet": "expr",
-      "x": 82,
+      "x": 74,
       "y": 122,
-      "w": 160,
+      "w": 168,
       "h": 354
     },
     "girl-think": {
@@ -89,16 +89,16 @@
     },
     "head-curious": {
       "sheet": "expr",
-      "x": 752,
+      "x": 744,
       "y": 205,
-      "w": 182,
+      "w": 198,
       "h": 212
     },
     "head-worry": {
       "sheet": "expr",
       "x": 942,
       "y": 205,
-      "w": 184,
+      "w": 192,
       "h": 212
     },
     "head-surprise": {
@@ -118,9 +118,9 @@
     "ody-front": {
       "sheet": "expr",
       "x": 66,
-      "y": 583,
-      "w": 148,
-      "h": 372
+      "y": 575,
+      "w": 172,
+      "h": 380
     },
     "ody-think": {
       "sheet": "expr",
@@ -131,10 +131,10 @@
     },
     "ody-plan": {
       "sheet": "expr",
-      "x": 536,
-      "y": 573,
-      "w": 218,
-      "h": 382
+      "x": 528,
+      "y": 565,
+      "w": 226,
+      "h": 390
     },
     "ody-head-think": {
       "sheet": "expr",
@@ -145,9 +145,9 @@
     },
     "ody-head-idea": {
       "sheet": "expr",
-      "x": 966,
+      "x": 958,
       "y": 603,
-      "w": 178,
+      "w": 186,
       "h": 292
     },
     "ody-head-shh": {
@@ -169,7 +169,7 @@
       "x": 168,
       "y": 26,
       "w": 568,
-      "h": 452,
+      "h": 460,
       "options": {
         "largest": true
       }
@@ -178,7 +178,7 @@
       "sheet": "horse",
       "x": 958,
       "y": 78,
-      "w": 380,
+      "w": 396,
       "h": 424,
       "options": {
         "largest": true
@@ -186,9 +186,9 @@
     },
     "horse-inside": {
       "sheet": "horse",
-      "x": 113,
+      "x": 105,
       "y": 508,
-      "w": 634,
+      "w": 642,
       "h": 448,
       "options": {
         "largest": true
@@ -249,7 +249,7 @@
       "x": 1212,
       "y": 510,
       "w": 128,
-      "h": 38,
+      "h": 46,
       "options": {
         "text": true
       }

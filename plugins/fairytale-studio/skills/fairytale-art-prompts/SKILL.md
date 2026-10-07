@@ -47,7 +47,7 @@ If the requested style or era has no file yet, create it first from the skeleton
 - Style holds: wobbly pen line, transparent wash with blooms, visible paper, dot eyes. Reject glossy, vector, anime or 3D drift.
 - Era holds: no anachronisms from the era module's banned list.
 - Captions legible and exactly as listed; no extra text.
-- Cut-out ready: figures separated with clear paper between them, nothing touching the title band or captions, complete head-to-toe (the video pipeline flood-fills the paper around each figure, so touching groups cannot be separated).
+- Cut-out ready: figures separated with clear paper between them, clear paper above the highest point of each figure (hair, plumes, ears, raised hands), nothing touching the title band or captions, complete head-to-toe (the video pipeline flood-fills the paper around each figure, so touching groups cannot be separated).
 - Audience-safe: no blood, injury, frightening faces or realistic weapons.
 
 ## Adding a style or era

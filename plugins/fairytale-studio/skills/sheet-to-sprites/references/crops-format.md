@@ -30,9 +30,12 @@
 | `tol` | 24 | Colour distance (0-441) still counted as paper. Lower it if pale washes (light skin, lilac dress) get eaten; raise it if paper texture or shadows remain. |
 | `holeMin` | max(90, 0.12% of crop) | Minimum size of an enclosed paper island that is made transparent. Lower it to clear small gaps between fingers or wheel spokes; raise it if a pale area inside the figure turns transparent. |
 | `pad` | 2 | Transparent margin kept around the trimmed sprite. |
+| `grow` | true | Set `false` to use the rectangle exactly as written (no automatic headroom). |
+| `growMax` | 160 | Most pixels each side may grow for this crop. |
 
 ## Lessons from the first sheets
 
+- The first Troy crop table cut the tops of Odysseus's hair, both helmet plumes and the horse's ears: boxes drawn at the visible "top of head" miss tufts and plumes. Automatic growth fixed 16 of 34 crops (8-24 px each); start boxes higher anyway.
 - A prop crop picked up the palette dots printed above it → `largest: true`.
 - A name label lost its last syllable → label boxes need extra room on the right; lettering drifts.
 - Two citizens drawn touching could not be separated → keep them as one sprite or regenerate the sheet with a gap.

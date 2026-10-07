@@ -1,6 +1,6 @@
 {
   "name": "fairytale-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Skills for producing illustrated storybook videos: art prompts, asset catalog, storyboard, sprite cutting, canvas video and output checks.",
   "author": {
     "name": "bkw1769"

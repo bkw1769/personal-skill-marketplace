@@ -130,8 +130,19 @@ export function extractSprite(src, opt = {}) {
     for (let i = 0; i < N; i++) alpha[i] = bg[i] ? 0 : near[i] ? clamp01((dist[i] - 8) / 42) : 1;
   }
   let minX = w, minY = h, maxX = -1, maxY = -1;
+  // Solid drawing (alpha >= 0.5) on each border row/column of the crop: the figure continues outside it.
+  const edges = { top: 0, bottom: 0, left: 0, right: 0 };
+  let opaque = 0;
   for (let i = 0; i < N; i++) {
     const a = alpha[i];
+    if (a >= 0.5) {
+      opaque++;
+      const x = i % w, y = (i / w) | 0;
+      if (y === 0) edges.top++;
+      if (y === h - 1) edges.bottom++;
+      if (x === 0) edges.left++;
+      if (x === w - 1) edges.right++;
+    }
     if (a > 0 && a < 1) {
       // Un-mix the paper colour from semi-transparent edge pixels so they do not halo.
       for (let k = 0; k < 3; k++) d[i * 4 + k] = Math.round(Math.min(255, Math.max(0, paper[k] + (d[i * 4 + k] - paper[k]) / Math.max(a, 0.25))));
@@ -145,12 +156,73 @@ export function extractSprite(src, opt = {}) {
       if (y > maxY) maxY = y;
     }
   }
-  if (maxX < 0) return { image: { width: w, height: h, data: d }, offset: { x: 0, y: 0 }, paper, empty: true };
+  if (maxX < 0) return { image: { width: w, height: h, data: d }, offset: { x: 0, y: 0 }, paper, empty: true, edges, opaque };
   const pad = opt.pad ?? 2;
   minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
   maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
   const image = crop({ width: w, height: h, data: d }, { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 });
-  return { image, offset: { x: minX, y: minY }, paper, empty: false };
+  return { image, offset: { x: minX, y: minY }, paper, empty: false, edges, opaque };
+}
+
+export const SIDES = ['top', 'bottom', 'left', 'right'];
+
+/**
+ * @typedef {Object} GrowOptions
+ * @property {boolean} [grow]    Enlarge the crop on sides where the drawing is cut (default true).
+ * @property {number}  [step]    Pixels added per side per round (default 8).
+ * @property {number}  [max]     Most pixels a side may grow (default 160).
+ * @property {number}  [minEdge] Solid pixels on a border line that count as "cut" (default 3).
+ */
+
+/**
+ * Cut one sprite, enlarging the rectangle where the drawing runs into its edge (hair, helmet
+ * plumes, ears and hands are the usual victims). A side stops growing when the drawing no longer
+ * reaches it, the sheet ends, `max` is used up, or one more step would swallow a neighbouring
+ * figure (the solid area jumps by more than half).
+ * @param {Image} sheet
+ * @param {{x: number, y: number, w: number, h: number}} rect
+ * @param {ExtractOptions} [opt]
+ * @param {GrowOptions} [g]
+ * @returns {ReturnType<typeof extractSprite> & {rect: {x: number, y: number, w: number, h: number}, grown: Record<string, number>, clipped: string[], blockedBy: Record<string, string>}}
+ */
+export function cutSprite(sheet, rect, opt = {}, g = {}) {
+  const step = g.step ?? 8, max = g.max ?? 160, minEdge = g.minEdge ?? 3;
+  const x0 = Math.max(0, rect.x), y0 = Math.max(0, rect.y);
+  let cur = { x: x0, y: y0, w: Math.min(sheet.width, rect.x + rect.w) - x0, h: Math.min(sheet.height, rect.y + rect.h) - y0 };
+  let res = extractSprite(crop(sheet, cur), opt);
+  const grown = { top: 0, bottom: 0, left: 0, right: 0 };
+  /** @type {Record<string, string>} */
+  const blockedBy = {};
+  let single = false;   // after a merge while growing several sides, grow one side at a time
+  while (g.grow !== false) {
+    const open = SIDES.filter((s) => res.edges[s] >= minEdge && !blockedBy[s]);
+    const sides = single ? open.slice(0, 1) : open;
+    const next = { ...cur };
+    const add = {};
+    for (const s of sides) {
+      const room = s === 'top' ? cur.y : s === 'left' ? cur.x : s === 'bottom' ? sheet.height - cur.y - cur.h : sheet.width - cur.x - cur.w;
+      const d = Math.min(step, room, max - grown[s]);
+      if (d <= 0) { blockedBy[s] = room <= 0 ? 'sheet edge' : 'max'; continue; }
+      add[s] = d;
+      if (s === 'top') { next.y -= d; next.h += d; }
+      if (s === 'bottom') next.h += d;
+      if (s === 'left') { next.x -= d; next.w += d; }
+      if (s === 'right') next.w += d;
+    }
+    const moved = Object.keys(add);
+    if (!moved.length) break;
+    const nres = extractSprite(crop(sheet, next), opt);
+    if (nres.opaque > res.opaque * 1.5 + 200) {
+      if (moved.length > 1) single = true;
+      else blockedBy[moved[0]] = 'neighbour';
+      continue;
+    }
+    for (const s of moved) grown[s] += add[s];
+    cur = next;
+    res = nres;
+  }
+  const clipped = SIDES.filter((s) => res.edges[s] >= minEdge);
+  return { ...res, rect: cur, grown, clipped, blockedBy };
 }
 
 /**
@@ -181,9 +253,10 @@ export function drawBoxes(sheet, boxes, rgb = [230, 30, 60]) {
  * @param {Image[]} sprites
  * @param {number} [cell] Cell size in px.
  * @param {number} [cols]
+ * @param {(number[] | null)[]} [marks] Optional frame colour per sprite (e.g. red for "still cut").
  * @returns {Image}
  */
-export function contactSheet(sprites, cell = 200, cols = 6) {
+export function contactSheet(sprites, cell = 200, cols = 6, marks = []) {
   const n = Math.max(1, sprites.length);
   const c = Math.min(cols, n), r = Math.ceil(n / c);
   const width = c * cell, height = r * cell;
@@ -217,6 +290,18 @@ export function contactSheet(sprites, cell = 200, cols = 6) {
         data[o] = Math.round(data[o] * (1 - a) + (rr / aa) * a);
         data[o + 1] = Math.round(data[o + 1] * (1 - a) + (gg / aa) * a);
         data[o + 2] = Math.round(data[o + 2] * (1 - a) + (bb / aa) * a);
+      }
+    }
+    const m = marks[k];
+    if (m) {
+      const cx = (k % c) * cell, cy = Math.floor(k / c) * cell;
+      for (let t = 0; t < cell; t++) {
+        for (let b = 0; b < 4; b++) {
+          for (const [x, y] of [[cx + t, cy + b], [cx + t, cy + cell - 1 - b], [cx + b, cy + t], [cx + cell - 1 - b, cy + t]]) {
+            const o = (y * width + x) * 4;
+            data[o] = m[0]; data[o + 1] = m[1]; data[o + 2] = m[2];
+          }
+        }
       }
     }
   });

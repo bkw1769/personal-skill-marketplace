@@ -5,7 +5,7 @@ Each template gives the composition block and caption pattern. `<...>` marks slo
 Rules shared by every sheet, because the sheets feed an automatic cut-out step and need to read as artist model sheets:
 
 ```text
-Large LANDSCAPE artist's model sheet on off-white watercolor paper, spacious, generous whitespace, no boxes, cards, borders or design-app UI. A small neat handwritten Korean title in a clear top band; no subject enters that band. Every figure is complete head-to-toe and stands apart with clear paper between it and its neighbours, even within a pair. Each caption sits just below its figure without touching it. Exactly the captions listed, no other text. All Korean captions accurate and legible.
+Large LANDSCAPE artist's model sheet on off-white watercolor paper, spacious, generous whitespace, no boxes, cards, borders or design-app UI. A small neat handwritten Korean title in a clear top band; no subject enters that band. Every figure is complete head-to-toe and stands apart with clear paper between it and its neighbours, even within a pair. Leave clear paper above the highest point of every figure (hair tufts, helmet plumes, ears, raised hands) and on both sides of the widest point (capes, shields, flowing hair). Each caption sits just below its figure without touching it. Exactly the captions listed, no other text. All Korean captions accurate and legible.
 ```
 
 ## 1. Cast lineup (anchor sheet)

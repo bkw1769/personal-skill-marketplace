@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'plugins/fairytale-studio/skills/sheet-to-sprites/scripts');
 const { decodePng, encodePng, paeth } = await import(path.join(DIR, 'png.mjs'));
-const { median, crop, extractSprite, drawBoxes, contactSheet } = await import(path.join(DIR, 'extract.mjs'));
+const { median, crop, extractSprite, cutSprite, drawBoxes, contactSheet, SIDES } = await import(path.join(DIR, 'extract.mjs'));
 const { main, parseArgs, normalizeCrop } = await import(path.join(DIR, 'cut-sprites.mjs'));
 
 const SIG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -180,6 +180,74 @@ describe('extract', () => {
     assert.equal(res.image.width, 10);
   });
 
+  test('extractSprite counts solid pixels on each crop edge', () => {
+    const s = sheet(60, 60);
+    fill(s, 10, 0, 30, 40, [40, 40, 40]);           // runs off the top of the crop
+    const r = extractSprite(s);
+    assert.equal(r.edges.top, 20);
+    assert.deepEqual([r.edges.bottom, r.edges.left, r.edges.right], [0, 0, 0]);
+    assert.equal(r.opaque, 800);
+    assert.deepEqual(extractSprite(sheet(10, 10)).edges, { top: 0, bottom: 0, left: 0, right: 0 });
+    const corner = sheet(60, 60);
+    fill(corner, 0, 30, 30, 60, [40, 40, 40]);     // runs off the bottom-left corner
+    const c = extractSprite(corner).edges;
+    assert.deepEqual([c.top, c.bottom, c.left, c.right], [0, 30, 30, 0]);
+  });
+
+  test('cutSprite grows a side the drawing runs into, then stops', () => {
+    const s = sheet(200, 200);
+    fill(s, 80, 30, 120, 150, [60, 40, 30]);        // figure from y=30 to 150
+    const r = cutSprite(s, { x: 60, y: 50, w: 80, h: 120 });   // top cut at y=50
+    assert.deepEqual(r.clipped, []);
+    assert.equal(r.grown.top, 24);                  // 50 -> 26: first rectangle clear of y=30
+    assert.deepEqual(r.rect, { x: 60, y: 26, w: 80, h: 144 });
+    assert.deepEqual(SIDES, ['top', 'bottom', 'left', 'right']);
+    const off = cutSprite(s, { x: 60, y: 50, w: 80, h: 120 }, {}, { grow: false });
+    assert.deepEqual(off.clipped, ['top']);
+    assert.deepEqual(off.rect, { x: 60, y: 50, w: 80, h: 120 });
+  });
+
+  test('cutSprite clips the request to the sheet and reports sheet edge and max limits', () => {
+    const s = sheet(100, 100);
+    fill(s, 30, 0, 60, 70, [60, 40, 30]);           // touches the sheet's top edge
+    const r = cutSprite(s, { x: 20, y: -10, w: 60, h: 90 });
+    assert.deepEqual(r.rect, { x: 20, y: 0, w: 60, h: 80 });
+    assert.deepEqual(r.clipped, ['top']);
+    assert.equal(r.blockedBy.top, 'sheet edge');
+    const t = sheet(200, 200);
+    fill(t, 80, 10, 120, 150, [60, 40, 30]);
+    const m = cutSprite(t, { x: 60, y: 60, w: 80, h: 110 }, {}, { max: 16, step: 10 });
+    assert.equal(m.grown.top, 16);
+    assert.deepEqual(m.clipped, ['top']);
+    assert.equal(m.blockedBy.top, 'max');
+  });
+
+  test('cutSprite ignores neighbours that stay cut by the border, stops before swallowing one', () => {
+    // A neighbour only partly inside the grown box is removed as a border fragment: growth just goes on.
+    const p = sheet(300, 200);
+    fill(p, 40, 40, 100, 160, [60, 40, 30]);
+    fill(p, 104, 20, 260, 180, [30, 60, 90]);
+    const partial = cutSprite(p, { x: 20, y: 20, w: 80, h: 160 });
+    assert.deepEqual(partial.clipped, []);
+    assert.equal(partial.image.width, 64);
+    // A whole neighbour would land inside after one step: the solid area jumps, so that side stops.
+    const s = sheet(300, 220);
+    fill(s, 60, 100, 100, 110, [60, 40, 30]);       // small figure touching the right edge (x=99)
+    fill(s, 102, 30, 106, 170, [30, 60, 90]);       // thin neighbour fully inside after +8
+    const r = cutSprite(s, { x: 20, y: 20, w: 80, h: 160 });
+    assert.deepEqual(r.clipped, ['right']);
+    assert.equal(r.blockedBy.right, 'neighbour');
+    assert.equal(r.rect.w, 80);
+    // Two sides growing at once and one swallows a neighbour: retry one side at a time.
+    const t = sheet(300, 300);
+    fill(t, 150, 40, 160, 100, [60, 40, 30]);       // cut at top (crop y=60) and right (crop ends x=159)
+    fill(t, 162, 40, 166, 215, [30, 60, 90]);       // neighbour fully inside once the right side grows
+    const two = cutSprite(t, { x: 80, y: 60, w: 80, h: 160 });
+    assert.equal(two.grown.top, 24);
+    assert.equal(two.blockedBy.right, 'neighbour');
+    assert.deepEqual(two.clipped, ['right']);
+  });
+
   test('drawBoxes outlines rectangles and ignores off-sheet pixels', () => {
     const s = sheet(20, 20);
     const out = drawBoxes(s, [{ x: 2, y: 2, w: 10, h: 10 }, { x: 15, y: 15, w: 10, h: 10 }]);
@@ -197,6 +265,9 @@ describe('extract', () => {
     assert.equal(cs.height, 100);
     assert.deepEqual([...cs.data.subarray((50 * 200 + 50) * 4, (50 * 200 + 50) * 4 + 4)], [255, 255, 255, 255]);
     assert.deepEqual([...cs.data.subarray((49 * 200 + 149) * 4, (49 * 200 + 149) * 4 + 3)], [10, 10, 10]);
+    const marked = contactSheet([small, small], 20, 2, [[255, 0, 0], null]);
+    assert.deepEqual([...marked.data.subarray(0, 3)], [255, 0, 0]);
+    assert.notDeepEqual([...marked.data.subarray(20 * 4, 20 * 4 + 3)], [255, 0, 0]);
     const empty = contactSheet([]);
     assert.equal(empty.width, 200);
     assert.equal(contactSheet([small, small, small], 10, 2).height, 20);
@@ -214,11 +285,12 @@ describe('cut-sprites CLI', () => {
     assert.throws(() => normalizeCrop('g', ['a', 0, 1.5, 1, 1], sheets), /y must be/);
     assert.throws(() => normalizeCrop('g', ['a', 0, 0, 0, 1], sheets), /must be positive/);
     assert.throws(() => normalizeCrop('g', ['a', 0, 0, 1, 1, { blur: 1 }], sheets), /unknown option "blur"/);
+    assert.deepEqual(normalizeCrop('g', ['a', 0, 0, 1, 1, { grow: false, growMax: 40 }], sheets).options, { grow: false, growMax: 40 });
   });
 
   test('parseArgs', () => {
-    assert.deepEqual(parseArgs(['c.json', '--out', 'o', '--only', 'a,,b', '--boxes']), { only: ['a', 'b'], boxes: true, cropsFile: 'c.json', out: 'o' });
-    assert.deepEqual(parseArgs([]), { only: [], boxes: false, cropsFile: undefined, out: undefined });
+    assert.deepEqual(parseArgs(['c.json', '--out', 'o', '--only', 'a,,b', '--boxes', '--no-grow', '--update-crops', '--strict']), { only: ['a', 'b'], boxes: true, grow: false, updateCrops: true, strict: true, cropsFile: 'c.json', out: 'o' });
+    assert.deepEqual(parseArgs([]), { only: [], boxes: false, grow: true, updateCrops: false, strict: false, cropsFile: undefined, out: undefined });
   });
 
   function project() {
@@ -265,6 +337,48 @@ describe('cut-sprites CLI', () => {
     r = io();
     assert.equal(main(['only-crops.json'], r.io), 1);
     assert.match(r.err[0], /Usage/);
+  });
+
+  test('grows cut crops, reports them, writes them back with --update-crops, --strict fails on leftovers', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cut-grow-'));
+    const s = sheet(300, 200);
+    fill(s, 40, 20, 80, 150, [60, 40, 30]);          // A: cut at top by its crop
+    fill(s, 140, 0, 180, 150, [30, 60, 90]);         // B: touches the sheet edge, cannot be fixed
+    fill(s, 220, 20, 260, 150, [90, 60, 30]);        // C: cut at top, growth switched off
+    fs.writeFileSync(path.join(dir, 'a.png'), encodePng(s));
+    const crops = { sheets: { a: 'a.png' }, crops: {
+      a: ['a', 20, 40, 80, 130],
+      b: { sheet: 'a', x: 120, y: 0, w: 80, h: 170 },
+      c: { sheet: 'a', x: 200, y: 40, w: 80, h: 130, options: { grow: false } },
+      d: { sheet: 'a', x: 20, y: 160, w: 60, h: 30 },
+    } };
+    const file = path.join(dir, 'crops.json');
+    fs.writeFileSync(file, JSON.stringify(crops));
+    let r = io();
+    assert.equal(main([file, '--out', path.join(dir, 'o'), '--boxes'], r.io), 0);
+    assert.deepEqual(r.out[0], 'grew a: top +24px');
+    assert.ok(r.err.some((e) => /b is still cut at top \(sheet edge\)/.test(e)));
+    assert.ok(r.err.some((e) => /c is still cut at top \(growth off\)/.test(e)));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, 'o', 'sprites.json'), 'utf8'));
+    assert.deepEqual(m.sprites[0].requested, { x: 20, y: 40, w: 80, h: 130 });
+    assert.deepEqual(m.sprites[0].crop, { x: 20, y: 16, w: 80, h: 154 });
+    assert.deepEqual(m.sprites[0].grown, { top: 24 });
+    assert.deepEqual(m.sprites[1].clipped, ['top']);
+    assert.equal(m.sprites[1].requested, undefined);
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).crops.a[2], 40);   // unchanged without --update-crops
+    r = io();
+    assert.equal(main([file, '--out', path.join(dir, 'o2'), '--no-grow', '--strict'], r.io), 1);
+    r = io();
+    assert.equal(main([file, '--out', path.join(dir, 'o3'), '--update-crops'], r.io), 0);
+    assert.match(r.out.at(-2), /Updated 1 rectangle\(s\)/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')).crops.a, ['a', 20, 16, 80, 154]);
+    const obj = { sheets: { a: 'a.png' }, crops: { a: { sheet: 'a', x: 20, y: 40, w: 80, h: 130 } } };
+    fs.writeFileSync(file, JSON.stringify(obj));
+    assert.equal(main([file, '--out', path.join(dir, 'o4'), '--update-crops', '--strict'], io().io), 0);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')).crops.a, { sheet: 'a', x: 20, y: 16, w: 80, h: 154 });
+    r = io();
+    assert.equal(main([file, '--out', path.join(dir, 'o5'), '--update-crops'], r.io), 0);
+    assert.doesNotMatch(r.out.join('\n'), /Updated/);
   });
 
   test('runs as a script', () => {
