@@ -1,0 +1,3 @@
+interface:
+  display_name: "동화 스토리보드"
+  short_description: "시놉시스를 장면·자막·말풍선·효과음 타이밍이 있는 스토리보드 JSON으로 만듭니다"

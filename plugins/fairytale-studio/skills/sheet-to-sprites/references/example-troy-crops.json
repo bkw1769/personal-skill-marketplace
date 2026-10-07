@@ -1,0 +1,288 @@
+{
+  "schema": "sprite-crops/1",
+  "note": "Coordinates in sheet pixels (1536x1024). Ported from prototypes/troy-video/js/sprites.js CROPS.",
+  "sheets": {
+    "cast": "troy-cast-v1.png",
+    "expr": "troy-expressions-v1.png",
+    "horse": "troy-horse-v1.png"
+  },
+  "crops": {
+    "girl": {
+      "sheet": "cast",
+      "x": 105,
+      "y": 140,
+      "w": 205,
+      "h": 368
+    },
+    "ody": {
+      "sheet": "cast",
+      "x": 418,
+      "y": 80,
+      "w": 205,
+      "h": 428
+    },
+    "paris": {
+      "sheet": "cast",
+      "x": 812,
+      "y": 112,
+      "w": 196,
+      "h": 395
+    },
+    "helen": {
+      "sheet": "cast",
+      "x": 1162,
+      "y": 78,
+      "w": 232,
+      "h": 438
+    },
+    "soldier-tall": {
+      "sheet": "cast",
+      "x": 22,
+      "y": 583,
+      "w": 148,
+      "h": 370
+    },
+    "soldier-short": {
+      "sheet": "cast",
+      "x": 178,
+      "y": 655,
+      "w": 172,
+      "h": 297
+    },
+    "citizens": {
+      "sheet": "cast",
+      "x": 386,
+      "y": 636,
+      "w": 292,
+      "h": 316
+    },
+    "horse-cast": {
+      "sheet": "cast",
+      "x": 702,
+      "y": 558,
+      "w": 395,
+      "h": 398,
+      "options": {
+        "largest": true
+      }
+    },
+    "girl-front": {
+      "sheet": "expr",
+      "x": 82,
+      "y": 122,
+      "w": 160,
+      "h": 354
+    },
+    "girl-think": {
+      "sheet": "expr",
+      "x": 302,
+      "y": 122,
+      "w": 156,
+      "h": 354
+    },
+    "girl-warn": {
+      "sheet": "expr",
+      "x": 510,
+      "y": 116,
+      "w": 204,
+      "h": 360
+    },
+    "head-curious": {
+      "sheet": "expr",
+      "x": 752,
+      "y": 205,
+      "w": 182,
+      "h": 212
+    },
+    "head-worry": {
+      "sheet": "expr",
+      "x": 942,
+      "y": 205,
+      "w": 184,
+      "h": 212
+    },
+    "head-surprise": {
+      "sheet": "expr",
+      "x": 1126,
+      "y": 180,
+      "w": 200,
+      "h": 237
+    },
+    "head-hope": {
+      "sheet": "expr",
+      "x": 1320,
+      "y": 205,
+      "w": 196,
+      "h": 212
+    },
+    "ody-front": {
+      "sheet": "expr",
+      "x": 66,
+      "y": 583,
+      "w": 148,
+      "h": 372
+    },
+    "ody-think": {
+      "sheet": "expr",
+      "x": 270,
+      "y": 583,
+      "w": 208,
+      "h": 372
+    },
+    "ody-plan": {
+      "sheet": "expr",
+      "x": 536,
+      "y": 573,
+      "w": 218,
+      "h": 382
+    },
+    "ody-head-think": {
+      "sheet": "expr",
+      "x": 760,
+      "y": 655,
+      "w": 198,
+      "h": 242
+    },
+    "ody-head-idea": {
+      "sheet": "expr",
+      "x": 966,
+      "y": 603,
+      "w": 178,
+      "h": 292
+    },
+    "ody-head-shh": {
+      "sheet": "expr",
+      "x": 1146,
+      "y": 640,
+      "w": 188,
+      "h": 257
+    },
+    "ody-head-smile": {
+      "sheet": "expr",
+      "x": 1326,
+      "y": 655,
+      "w": 192,
+      "h": 242
+    },
+    "horse-side": {
+      "sheet": "horse",
+      "x": 168,
+      "y": 26,
+      "w": 568,
+      "h": 452,
+      "options": {
+        "largest": true
+      }
+    },
+    "horse-angle": {
+      "sheet": "horse",
+      "x": 958,
+      "y": 78,
+      "w": 380,
+      "h": 424,
+      "options": {
+        "largest": true
+      }
+    },
+    "horse-inside": {
+      "sheet": "horse",
+      "x": 113,
+      "y": 508,
+      "w": 634,
+      "h": 448,
+      "options": {
+        "largest": true
+      }
+    },
+    "title-text": {
+      "sheet": "cast",
+      "x": 520,
+      "y": 10,
+      "w": 320,
+      "h": 46,
+      "options": {
+        "text": true
+      }
+    },
+    "swatches": {
+      "sheet": "cast",
+      "x": 603,
+      "y": 52,
+      "w": 374,
+      "h": 50,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-girl": {
+      "sheet": "cast",
+      "x": 158,
+      "y": 506,
+      "w": 80,
+      "h": 36,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-ody": {
+      "sheet": "cast",
+      "x": 460,
+      "y": 506,
+      "w": 154,
+      "h": 36,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-paris": {
+      "sheet": "cast",
+      "x": 860,
+      "y": 506,
+      "w": 96,
+      "h": 36,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-helen": {
+      "sheet": "cast",
+      "x": 1212,
+      "y": 510,
+      "w": 128,
+      "h": 38,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-soldier": {
+      "sheet": "cast",
+      "x": 108,
+      "y": 950,
+      "w": 168,
+      "h": 40,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-citizen": {
+      "sheet": "cast",
+      "x": 460,
+      "y": 950,
+      "w": 164,
+      "h": 40,
+      "options": {
+        "text": true
+      }
+    },
+    "lbl-horse": {
+      "sheet": "cast",
+      "x": 856,
+      "y": 950,
+      "w": 88,
+      "h": 40,
+      "options": {
+        "text": true
+      }
+    }
+  }
+}

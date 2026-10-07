@@ -1,0 +1,12 @@
+{
+  "name": "personal-skill-marketplace",
+  "private": true,
+  "type": "module",
+  "description": "Tests for scripts bundled inside the marketplace skills. Node built-ins only.",
+  "engines": {
+    "node": ">=22.8"
+  },
+  "scripts": {
+    "test": "node --test --experimental-test-coverage --test-coverage-include='plugins/**/scripts/**/*.mjs' --test-coverage-exclude='plugins/**/test/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 'tests/*.test.mjs' 'plugins/**/test/*.test.mjs'"
+  }
+}

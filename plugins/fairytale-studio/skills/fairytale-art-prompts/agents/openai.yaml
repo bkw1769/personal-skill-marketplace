@@ -1,0 +1,3 @@
+interface:
+  display_name: "동화 그림체 프롬프트"
+  short_description: "그림체×시대 모듈로 캐릭터·표정·소품·배경 시트 이미지 프롬프트를 조립합니다"

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "personal-tools",
-  "version": "0.1.0",
-  "description": "Personal development skills for project initialization.",
+  "version": "0.2.0",
+  "description": "Personal development skills for project initialization and documentation upkeep.",
   "author": {
     "name": "bkw1769"
   },
@@ -11,7 +11,7 @@
     "com.openai": {
       "interface": {
         "displayName": "개인 개발 스킬",
-        "shortDescription": "개인 base 규칙으로 프로젝트를 초기 설정합니다",
+        "shortDescription": "개인 base 규칙으로 프로젝트를 초기 설정하고 문서를 동기화합니다",
         "longDescription": "개인 프로젝트 초기 설정과 재사용 가능한 개발 스킬 모음입니다.",
         "developerName": "bkw1769",
         "category": "Developer Tools",
@@ -20,7 +20,8 @@
           "Write"
         ],
         "defaultPrompt": [
-          "개인 프로젝트 초기 설정 스킬로 새 프로젝트 뼈대를 만들어줘."
+          "개인 프로젝트 초기 설정 스킬로 새 프로젝트 뼈대를 만들어줘.",
+          "작업 끝났으니 프로젝트 문서 동기화해줘."
         ]
       }
     }

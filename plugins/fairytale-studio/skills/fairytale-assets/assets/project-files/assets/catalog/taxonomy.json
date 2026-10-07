@@ -1,0 +1,194 @@
+{
+  "schema": "fairytale-taxonomy/1",
+  "description": "Controlled vocabulary for asset labels. Every manifest item is validated against this file. Add a value here first, then use it.",
+  "id_pattern": "<kind>.<category>.<slug>  (lowercase a-z, 0-9, '-')",
+  "kinds": {
+    "style-ref": {
+      "folder": "art/style-refs",
+      "categories": [
+        "watercolor-ink"
+      ],
+      "note": "Reference images given to an image model to borrow a drawing style. Category = style slug."
+    },
+    "character": {
+      "folder": "art/characters",
+      "categories": [
+        "cast-lineup",
+        "expression-pose",
+        "turnaround",
+        "prop-structure",
+        "sprite"
+      ],
+      "note": "Story design sheets (cast, expressions, turnarounds, and prop-structure sheets made in the same set) and cut-out sprites. Category = sheet template from fairytale-art-prompts. Always tagged story:<slug>."
+    },
+    "background": {
+      "folder": "art/backgrounds",
+      "categories": [
+        "castle",
+        "town",
+        "village",
+        "forest",
+        "field",
+        "sea",
+        "sky",
+        "camp",
+        "interior",
+        "night"
+      ],
+      "note": "Full-frame or panning scenery. Category = location type."
+    },
+    "prop": {
+      "folder": "art/props",
+      "categories": [
+        "building",
+        "vehicle",
+        "nature",
+        "tool",
+        "decoration",
+        "effect"
+      ],
+      "note": "Objects placed in a scene (ship, tent, tree, star, puff of smoke)."
+    },
+    "music": {
+      "folder": "audio/music",
+      "categories": [
+        "theme",
+        "scene",
+        "lullaby",
+        "march",
+        "dance",
+        "classical"
+      ],
+      "note": "Background music longer than about 10 seconds."
+    },
+    "jingle": {
+      "folder": "audio/jingles",
+      "categories": [
+        "success",
+        "fail",
+        "reveal",
+        "transition",
+        "ending"
+      ],
+      "note": "Short musical stingers under about 10 seconds."
+    },
+    "sfx": {
+      "folder": "audio/sfx",
+      "categories": [
+        "cartoon",
+        "impact",
+        "nature",
+        "weather",
+        "animal",
+        "crowd",
+        "foley",
+        "magic",
+        "ui",
+        "body"
+      ],
+      "note": "One-shot sound effects. cartoon = boing/pop/slide whistle; foley = footsteps, doors, cloth; body = yawn, snore, heartbeat."
+    },
+    "ambience": {
+      "folder": "audio/ambience",
+      "categories": [
+        "nature",
+        "sea",
+        "night",
+        "town",
+        "indoor",
+        "weather"
+      ],
+      "note": "Loopable background beds."
+    },
+    "instrument": {
+      "folder": "audio/instruments",
+      "categories": [
+        "mallet",
+        "plucked",
+        "wind",
+        "keyboard",
+        "bell",
+        "percussion",
+        "toy",
+        "pad",
+        "bass"
+      ],
+      "note": "Playable instruments: multisample folders, soundfonts, or code synth voices."
+    }
+  },
+  "facets": {
+    "mood": [
+      "playful",
+      "calm",
+      "warm",
+      "tense",
+      "sad",
+      "triumphant",
+      "mysterious",
+      "sleepy",
+      "festive",
+      "spooky-mild",
+      "wonder"
+    ],
+    "era": [
+      "any",
+      "ancient-greece",
+      "medieval-europe",
+      "joseon",
+      "modern"
+    ],
+    "style": [
+      "watercolor-ink",
+      "procedural-synth",
+      "acoustic",
+      "orchestral",
+      "chiptune",
+      "cartoon",
+      "realistic"
+    ],
+    "use": [
+      "title",
+      "intro",
+      "ending",
+      "transition",
+      "comedy-beat",
+      "reveal",
+      "warning",
+      "celebration",
+      "walk",
+      "work",
+      "travel",
+      "battle-kid-safe",
+      "night",
+      "morning",
+      "thinking",
+      "idea",
+      "sleep",
+      "magic-moment",
+      "crowd-scene",
+      "sea-scene"
+    ],
+    "tempo": [
+      "slow",
+      "medium",
+      "fast"
+    ],
+    "loop": [
+      "yes",
+      "no"
+    ],
+    "story": "free: kebab-case story slug, e.g. story:troy",
+    "instrument": "free: kebab-case instrument name, e.g. instrument:glockenspiel",
+    "character": "free: kebab-case character slug, e.g. character:odysseus"
+  },
+  "statuses": {
+    "approved": "Checked by a person; safe to use in new work.",
+    "candidate": "Registered but not reviewed yet; listen/look before using.",
+    "reference-only": "May be shown to a model or a person as reference; never ship it inside an output.",
+    "rejected": "Kept for the record; do not use."
+  },
+  "scopes": {
+    "shared": "Reusable in any story.",
+    "story": "Belongs to one story (tag story:<slug>); reuse only for sequels or that story."
+  }
+}

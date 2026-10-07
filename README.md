@@ -1,12 +1,25 @@
 # Personal Skill Marketplace
 
-A private-ready Codex plugin marketplace for bkw1769. It currently contains `personal-tools`, with the `personal-project-init` skill and a self-contained copy of the personal base rules.
+A private-ready Codex plugin marketplace for bkw1769.
+
+| Plugin | Skill | What it does |
+|---|---|---|
+| `personal-tools` | `personal-project-init` | Scaffold a project with the personal base rules (AGENTS.md, docs, src, out). |
+| `personal-tools` | `docs-sync` | After a task, bring STRUCTURE / DECISIONS / MEMORY / README and links back in line with the files (bundled checker). |
+| `fairytale-studio` | `fairytale-art-prompts` | Assemble image prompts for character, expression, prop and location sheets from art-style x era modules. |
+| `fairytale-studio` | `fairytale-assets` | Labeled asset store for art and sound: manifests, controlled tags, license ledger of vetted libraries, searchable index (bundled tool + tests). |
+| `fairytale-studio` | `story-storyboard` | Synopsis to timed storyboard.json (scenes, captions, bubbles, music, sound cues) with a validator and Markdown view. |
+| `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, contact sheet). |
+| `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, dev server, recording) and an MP4 probe for checking the output. |
+
+The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-video.
 
 ## Local installation
 
 ```sh
 codex plugin marketplace add /Volumes/BAE_DATA/BAE_DATA/developer/personal-skill-marketplace
 codex plugin add personal-tools@bkw1769-personal
+codex plugin add fairytale-studio@bkw1769-personal
 ```
 
 Start a new chat after installation. Use the personal project initialization skill to create a project scaffold.
@@ -30,14 +43,27 @@ Authenticate with a GitHub account that can read the private repository, then:
 ```sh
 codex plugin marketplace add bkw1769/personal-skill-marketplace --ref main
 codex plugin add personal-tools@bkw1769-personal
+codex plugin add fairytale-studio@bkw1769-personal
 ```
+
+For Claude Code, copy a skill folder into a project's `.claude/skills/` (or `~/.claude/skills/`); the SKILL.md format is the same.
+
+## Tests
+
+Scripts bundled in skills are plain Node.js (22.8+, built-ins only) and have unit tests in `tests/` (plus bundled project tests under `plugins/**/test/`). The suite enforces 100% line, branch and function coverage:
+
+```sh
+npm test
+```
+
+Browser template code (`storybook-video/assets/template/`) is not unit-tested; it was checked end to end (scaffold, render, record, probe) with real storyboard and sprite data.
 
 ## Add or update skills
 
 Place each self-contained skill in `plugins/personal-tools/skills/<skill-name>/SKILL.md`, including its referenced assets and resources. Edit the packaged skill here; the original loose SSD copy is not synchronized automatically. Increment both manifest versions when releasing changes, commit, and push:
 
 ```sh
-git add plugins .agents README.md .gitignore
+git add plugins .agents tests package.json README.md .gitignore
 git commit -m "Update personal skills"
 git push origin main
 ```

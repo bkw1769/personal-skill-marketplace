@@ -1,0 +1,70 @@
+# Engine architecture
+
+## Contents
+
+- Files
+- One clock
+- Frame composition
+- Scene functions
+- Drawing helpers
+- Data the engine reads
+
+## Files
+
+| File | Owner | Role |
+|---|---|---|
+| `index.html` | engine | Canvas 1920x1080, start overlay, control bar (play, seek, narration, record, fullscreen). Fonts: Gaegu (captions), Nanum Pen Script (bubbles) from Google Fonts; falls back to system fonts after 4 s. |
+| `story.config.js` | author | `storyboard`, `sprites` URLs and `saveName` for recordings. |
+| `js/main.js` | engine | Loads config, storyboard, sprites; player (play/pause/seek, keyboard: Space, arrows), narration, MediaRecorder, review hooks. |
+| `js/stage.js` | engine | Scene lookup, paint-blot transitions, captions, quote, bubbles, paper grain, default animatic scene, narration lines, `bob()`. |
+| `js/audio.js` | engine | `Synth` (Web Audio instruments and effects), score helpers `seq/chords/arps/perc`, `autoScore()`, `cuesToEvents()`. |
+| `js/paint.js` | engine | Generic watercolor painters and pre-painted canvases (`BG.clouds/sun/moon/ships/tents/grain`). |
+| `js/sprites.js` | engine | Loads sprites.json + PNGs into `S`, draws with `spr()`. |
+| `js/util.js` | engine | Maths and easing, seeded random, `ink` (wobbly pen), `wash` (watercolor fill), `blob`, `ellipsePts`, `rectPts`, `handText`, palette `C`, `INK`, `PAPER`, `W`, `H`. |
+| `js/scenes.js` | author | `SCENES = { <scene id>: (ctx, T, info) => {...} }` plus `sfxWord`. |
+| `js/score.js` | author | Optional `buildScore(sb)` replacing the auto score. |
+
+## One clock
+
+While playing, time is `audioContext.currentTime - anchor`. Every frame is drawn from that `T`, and sound events are scheduled 0.4 s ahead on the same AudioContext time, so picture and sound cannot drift. Seeking rebuilds the sound session from the new `T`. Recording captures the canvas stream (30 fps request) and the synth output together.
+
+## Frame composition (stage.renderFrame)
+
+1. Find the scene containing `T`.
+2. During the first 0.9 s of a scene (unless its `transition` is `cut`), draw the previous scene, draw the new scene into a buffer, and reveal it through a growing paint-blot mask.
+3. Bubbles, narration captions, the quote caption.
+4. Paper grain multiplied over everything (ties procedural painting and sprite art together).
+
+## Scene functions
+
+```js
+SCENES['bonk'] = (ctx, T, info) => {
+  // info: { scene, index, local, length, progress, cast, storyboard }
+  paper(ctx);
+  sky(ctx, C.sky, '#f6efd9', 0.8, 760);
+  ground(ctx, 860, C.sand);
+  const hit = 2.4;                                  // seconds into the scene
+  const x = info.local < hit ? lerp(-200, 900, easeIn(seg(info.local, 0, hit))) : 900 - 220 * easeOut(seg(info.local, hit, hit + 0.6));
+  spr(ctx, 'soldier-short', x, 960, 300, { sq: info.local > hit && info.local < hit + 0.15 ? 0.15 : 0 });
+  sfxWord(ctx, '통!', 980, 560, T, info.scene.start + hit);
+};
+```
+
+- Use `T` (absolute) or `info.local` (scene time), never a frame counter, so seeking and recording give identical frames.
+- Anything that should line up with a sound uses the same number as the storyboard cue (`info.scene.start + 2.4` here and a `cue` at that time).
+- Keep heavy painting out of the per-frame path: paint static backgrounds once into an offscreen canvas (`makeCanvas`) at start-up, then `drawImage` it.
+- `ctx` is already saved/restored around each scene; leave `globalAlpha` and transforms as you found them inside helpers.
+
+## Drawing helpers
+
+- Pen: `ink(ctx, points, {w, seed, amp, color, alpha, closed, double})`. Use `seed: boil(k)` for lines that should shimmer 8 times a second like hand-drawn animation.
+- Paint: `wash(ctx, points, color, {alpha, seed, amp, layers, edge})`, `blob(ctx, cx, cy, rx, ry, color, opts)`.
+- Shapes: `rectPts`, `ellipsePts`, `inkEllipse`.
+- Text: `handText(ctx, text, x, y, {size, font, weight, color, reveal, outline})`.
+- Painters (paint.js): `paper`, `sky`, `clouds`, `sun`, `moon`, `ground`, `waves`, `gull`, `house`, `cypress`, `heart`, `star`, `note`, `bulb`, `puff`, `plank`, `torch`, `nightOverlay`, `starsField`, and `BG.ships[i]`, `BG.tents[i]` canvases.
+- Sprites: `spr(ctx, name, x, y, height, {rot, flip, sq, alpha, filter, pivot: 'center', boil: false, clipBottom})`.
+- Motion: `seg`, `lerp`, `smooth`, `easeIn/Out/InOut`, `backOut`, `bounceOut`, `env(T, t0, t1, fadeIn, fadeOut)`, `bob(T, period, amp)`.
+
+## Data the engine reads
+
+From storyboard.json: `title`, `duration`, `language`, `cast[].sprites`, `scenes[]` (id, start, end, characters, music, transition), `captions[]` (`kind: quote` is drawn large in the centre), `bubbles[]` (optional `x`, `y`, `tail: [x, y]`, `size`, `kind: think`; without x/y a bubble sits above its speaker's slot), `cues[]`. Everything else is ignored, so the storyboard can carry notes freely.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "시안 스프라이트 추출"
+  short_description: "손그림 시안 시트에서 캐릭터·소품·글씨를 투명 PNG로 잘라냅니다"
