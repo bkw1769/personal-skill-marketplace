@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/personal-tools/skills/docs-sync/scripts/check-docs.mjs');
-const { expandBraces, parseStructure, listTop, listMarkdown, localLinks, checkDocs, main, DEFAULT_IGNORE, REQUIRED_DOCS } = await import(SCRIPT);
+const { expandBraces, parseStructure, listTop, listMarkdown, localLinks, checkDocs, gitignored, main, DEFAULT_IGNORE, REQUIRED_DOCS } = await import(SCRIPT);
 
 const io = () => { const out = [], err = []; return { out, err, io: { out: (s) => out.push(s), err: (s) => err.push(s) } }; };
 function write(root, rel, text = '') {
@@ -100,6 +100,29 @@ describe('parsing helpers', () => {
     assert.ok(mds.includes('docs/sub dir/x.md'));
     assert.ok(!mds.some((m) => m.startsWith('node_modules')));
     assert.deepEqual(REQUIRED_DOCS.slice(0, 2), ['README.md', 'AGENTS.md']);
+  });
+});
+
+describe('gitignore rules', () => {
+  test('gitignored splits any-depth names from anchored paths and skips globs, negations, comments', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-gi-'));
+    assert.deepEqual(gitignored(root), { names: [], paths: [] });
+    write(root, '.gitignore', '# comment\n\n!keep.md\ncache/\n.venv\nbuild/*\n/top\nassets/_vendor/*\n*.log\ndocs/[ab]/\n');
+    assert.deepEqual(gitignored(root), { names: ['cache', '.venv'], paths: ['build', 'top', 'assets/_vendor'] });
+  });
+
+  test('checkDocs skips gitignored folders when listing and scanning Markdown', () => {
+    const root = project();
+    write(root, '.gitignore', 'cache/\nbuild/*\nweb/js/\napi/\n');
+    write(root, 'cache/pkg/README.md', '[bad](../../nowhere.md)');
+    write(root, 'docs/cache/x.md', '[bad](nowhere.md)');
+    write(root, 'build/out/README.md', '[bad](nowhere.md)');
+    write(root, 'build/package.json', '{}');
+    const { errors, warnings } = checkDocs(root);
+    assert.ok(!errors.some((e) => /cache|build/.test(e)), errors.join('\n'));
+    assert.ok(!warnings.some((w) => /"cache\/"|"build\/"|build\/ has|api\//.test(w)), warnings.join('\n'));
+    assert.ok(listTop(root, [], ['web/js']).every((p) => p !== 'web/js/'));
+    assert.ok(!listMarkdown(root, [], ['docs/sub dir']).some((m) => m.startsWith('docs/sub dir')));
   });
 });
 

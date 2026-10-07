@@ -5,6 +5,7 @@
 //   - relative Markdown links resolve, absolute paths named in docs still exist,
 //   - the documents the personal AGENTS rules require are present,
 //   - folders that look like sub-repos have a README.md.
+// Folders excluded by simple rules in the root .gitignore (caches, venvs, outputs) are skipped.
 //   node check-docs.mjs [project-root] [--structure docs/STRUCTURE.md] [--ignore name,name] [--json]
 import fs from 'node:fs';
 import path from 'node:path';
@@ -68,19 +69,43 @@ export function parseStructure(md) {
 }
 
 /**
+ * Simple ignore rules from the root .gitignore: names without a slash apply at any depth
+ * ("node_modules/", ".venv/"); single anchored paths apply from the root ("out/*", "/build",
+ * "assets/_vendor/*"). Glob patterns and negations are left alone.
+ * @param {string} root
+ * @returns {{names: string[], paths: string[]}}
+ */
+export function gitignored(root) {
+  const names = [];
+  const paths = [];
+  const file = path.join(root, '.gitignore');
+  if (!fs.existsSync(file)) return { names, paths };
+  for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || line.startsWith('!')) continue;
+    const anchored = line.startsWith('/') || line.replace(/\/$/, '').includes('/');
+    const p = line.replace(/^\//, '').replace(/\/\*?$/, '');
+    if (/[*?[\]]/.test(p)) continue;
+    (anchored ? paths : names).push(p);
+  }
+  return { names, paths };
+}
+
+/**
  * Top-level files/folders and second-level folders of the project.
  * @param {string} root
- * @param {string[]} ignore
+ * @param {string[]} ignore Names skipped at any depth.
+ * @param {string[]} [skipPaths] Root-relative paths skipped.
  * @returns {string[]}
  */
-export function listTop(root, ignore) {
+export function listTop(root, ignore, skipPaths = []) {
   const out = [];
-  const skip = (/** @type {string} */ n) => ignore.includes(n);
+  const skip = (/** @type {string} */ rel, /** @type {string} */ n) => ignore.includes(n) || skipPaths.includes(rel);
   for (const e of fs.readdirSync(root, { withFileTypes: true })) {
-    if (skip(e.name)) continue;
+    if (skip(e.name, e.name)) continue;
     if (!e.isDirectory()) { out.push(e.name); continue; }
     out.push(`${e.name}/`);
-    for (const k of fs.readdirSync(path.join(root, e.name), { withFileTypes: true })) if (k.isDirectory() && !skip(k.name)) out.push(`${e.name}/${k.name}/`);
+    for (const k of fs.readdirSync(path.join(root, e.name), { withFileTypes: true })) if (k.isDirectory() && !skip(`${e.name}/${k.name}`, k.name)) out.push(`${e.name}/${k.name}/`);
   }
   return out.sort();
 }
@@ -88,15 +113,16 @@ export function listTop(root, ignore) {
 /**
  * Markdown files under root (ignored folders skipped).
  * @param {string} root
- * @param {string[]} ignore
+ * @param {string[]} ignore Names skipped at any depth.
+ * @param {string[]} [skipPaths] Root-relative paths skipped.
  * @returns {string[]} paths relative to root
  */
-export function listMarkdown(root, ignore) {
+export function listMarkdown(root, ignore, skipPaths = []) {
   const out = [];
   const walk = (/** @type {string} */ rel) => {
     for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
-      if (ignore.includes(e.name)) continue;
       const p = rel ? `${rel}/${e.name}` : e.name;
+      if (ignore.includes(e.name) || skipPaths.includes(p)) continue;
       if (e.isDirectory()) walk(p);
       else if (e.name.endsWith('.md')) out.push(p);
     }
@@ -128,7 +154,9 @@ export function localLinks(md) {
  * @returns {{errors: string[], warnings: string[]}}
  */
 export function checkDocs(root, opt = {}) {
-  const ignore = [...DEFAULT_IGNORE, ...(opt.ignore || [])];
+  const gi = gitignored(root);
+  const ignore = [...DEFAULT_IGNORE, ...gi.names, ...(opt.ignore || [])];
+  const skipPaths = gi.paths;
   const errors = [];
   const warnings = [];
   const exists = (/** @type {string} */ rel) => fs.existsSync(path.join(root, rel));
@@ -140,10 +168,10 @@ export function checkDocs(root, opt = {}) {
     const named = parseStructure(fs.readFileSync(path.join(root, structFile), 'utf8'));
     for (const p of named) if (!exists(p)) errors.push(`${structFile}: names "${p}" but it does not exist`);
     const covered = (/** @type {string} */ p) => named.some((n) => n === p || n === p.replace(/\/$/, '') || n.startsWith(p.endsWith('/') ? p : `${p}/`));
-    for (const p of listTop(root, ignore)) if (!covered(p)) warnings.push(`${structFile}: "${p}" exists but is not described`);
+    for (const p of listTop(root, ignore, skipPaths)) if (!covered(p)) warnings.push(`${structFile}: "${p}" exists but is not described`);
   } else errors.push(`missing ${structFile}; cannot compare the tree`);
 
-  for (const md of listMarkdown(root, ignore)) {
+  for (const md of listMarkdown(root, ignore, skipPaths)) {
     const text = fs.readFileSync(path.join(root, md), 'utf8');
     for (const target of localLinks(text)) {
       const abs = path.isAbsolute(target) ? target : path.resolve(root, path.dirname(md), target);
@@ -160,7 +188,7 @@ export function checkDocs(root, opt = {}) {
   }
 
   for (const e of fs.readdirSync(root, { withFileTypes: true })) {
-    if (!e.isDirectory() || ignore.includes(e.name)) continue;
+    if (!e.isDirectory() || ignore.includes(e.name) || skipPaths.includes(e.name)) continue;
     const marker = SUBREPO_MARKERS.find((f) => fs.existsSync(path.join(root, e.name, f)));
     if (marker && !fs.existsSync(path.join(root, e.name, 'README.md'))) warnings.push(`${e.name}/ has ${marker} but no README.md (sub-repos need one)`);
   }
