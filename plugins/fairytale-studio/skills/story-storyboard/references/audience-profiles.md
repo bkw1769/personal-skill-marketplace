@@ -1,6 +1,8 @@
 # Audience profiles
 
-Production parameters per age band, from a research survey made on 2026-10-08 (report "동화 대상 연령과 영상 제작법" in the fairytale project's `docs/research/reports/`). Grades: **[E]** peer-reviewed evidence, **[O]** official guidance (WHO, AAP, YouTube, Korean government), **[S]** observed on YouTube samples (2026-10-08), **[P]** practitioner rule of thumb, **[I]** inference from the above that still needs checking against real retention data. Korean: 1 character = 1 syllable.
+Production parameters per age band, from a research survey made on 2026-10-08 (report "동화 대상 연령과 영상 제작법" in the fairytale project's `docs/research/reports/`). Two units are used below. A **story beat** is a step of the plot, usually one setting or act ("Dori loses his axe"). A **scene** is one storyboard entry: one picture, held 5-20 s. A 5-minute story has about 5-7 beats and 15-35 scenes.
+
+Grades: **[E]** peer-reviewed evidence, **[O]** official guidance (WHO, AAP, YouTube, Korean government), **[S]** observed on YouTube samples (2026-10-08), **[P]** practitioner rule of thumb, **[I]** inference from the above that still needs checking against real retention data. Korean: 1 character = 1 syllable.
 
 ## Contents
 
@@ -17,7 +19,8 @@ Production parameters per age band, from a research survey made on 2026-10-08 (r
 - The boundaries match YouTube Kids content settings (Preschool ≤4, Younger 5-8, Older 9-12) [O], Korean picture-book sets sold as "4~7세" [S], and the jump in story comprehension between 4 and 5-6 [E].
 - Fear changes around age 7: younger children fear looks and transformations, older ones fear realistic threats. [E]
 - One story can ship as an A "soft version" and a B "full version" from the same art: change the cast size, villain staging, narration speed, captions and how the moral is told. [I]
-- Set `"audience": "3-5" | "6-8" | "9-10"` in storyboard.json. Without it the validator reads the lower bound of `audience_age`, else uses 6-8.
+- Set `"audience": "3-5" | "6-8" | "9-10"` in storyboard.json. With `"language": "en"` the validator checks words per minute instead of Korean syllables per second.
+- Foreign audiences: when a Korean tale is made in English, introduce Korean words one per scene with a picture (sansin, jige, hanbok) and keep the speeds above; do not speed up to fit more explanation. Without it the validator reads the lower bound of `audience_age`, else uses 6-8.
 
 ## Shared rules (all bands)
 
@@ -42,12 +45,12 @@ Production parameters per age band, from a research survey made on 2026-10-08 (r
 |---|---|---|
 | Single episode | 3-7 min, aim 4-6 | [S][I] |
 | Compilation | up to 20-30 min (5-6 stories); 60+ min bedtime sets as a separate audio product | [O][I] |
-| Narration speed | 3.5-4.5 syllables/s, aim 4.0 → `audience: 3-5` (max 4) | [I] |
+| Narration speed | Korean 3.5-4.5 syllables/s, aim 4.0 (max 4); English 100-120 words/min, aim 110 (max 120) | [I] Korean; [P] English (child-directed 120-124 wpm, read-aloud 100-125) |
 | TTS | render at 0.75-0.85× default speed, then measure syllables ÷ seconds | [I] |
 | Pauses | 0.5-0.8 s between sentences, 1.0-1.5 s at scene change, 2-4 s silence after a question | [I] |
 | Sentence | one clause, 8-15 syllables; turn description into dialogue | [I][P] |
 | Language | lots of 의성어·의태어; a refrain repeated 3+ times per episode | [E][I] |
-| Structure | 1 hero + 1-2 others, one problem, linear time, 3-5 scenes, three similar tries, no flashback or subplot | [E][I] |
+| Structure | 1 hero + 1-2 others, one problem, linear time, 3-5 story beats (settings/acts), three similar tries, no flashback or subplot | [E][I] |
 | Scenes | 8-20 s; one picture per narration sentence; hold = sentence + ~1 s; never cut mid-sentence | [I] |
 | Magic and transformation | rare, and announced by the narrator before it happens | [E][I] |
 | Feelings | the narrator names them ("곰이 슬펐어요") | [I] |
@@ -64,10 +67,10 @@ Production parameters per age band, from a research survey made on 2026-10-08 (r
 |---|---|---|
 | Single episode | 6-12 min, aim 7-10 (one picture book read aloud) | [S][E][P] |
 | Compilation | 30-60 min | [S][I] |
-| Narration speed | 4.5-5.0 syllables/s → `audience: 6-8` (max 5) | [I] |
+| Narration speed | Korean 4.5-5.0 syllables/s (max 5); English 120-135 words/min (max 135) | [I]; [P] English 5-7 years 128-130 wpm |
 | Pauses | 0.4-0.6 s between sentences, ~1 s at scene change, ~2 s after a question | [I] |
 | Sentence | 1-2 clauses, 15-25 syllables | [I] |
-| Structure | goal → try → fail → try again → result; 3-5 named characters with a clear villain; 6-10 scenes; simple foreshadowing (an object that matters later) | [E][I] |
+| Structure | goal → try → fail → try again → result; 3-5 named characters with a clear villain; 6-10 story beats; simple foreshadowing (an object that matters later) | [E][I] |
 | Feelings | shown through action and faces; let the child infer; simple tricks (a disguised wolf) are fine | [I] |
 | Questions | 2-3, mostly "why" and inference | [E][I] |
 | Captions | full narration captions, highlighted word by word in sync, kept until the sentence ends, max 2 lines: the most valuable caption investment for early readers | [E][I] |
@@ -81,7 +84,7 @@ Production parameters per age band, from a research survey made on 2026-10-08 (r
 | Parameter | Value | Grade |
 |---|---|---|
 | Single episode | 10-18 min, or long classics as 2-4 parts of 8-15 min; full compilations 30-90 min | [S][I] |
-| Narration speed | 5.0-5.5 syllables/s (stay below a news anchor's ~5.9) → `audience: 9-10` (max 5.5) | [I] |
+| Narration speed | Korean 5.0-5.5 syllables/s (stay below a news anchor's ~5.9; max 5.5); English 135-150 words/min (max 150; adult conversation is 160-180) | [I] |
 | Sentence | up to 30-40 syllables, connectives (그래서, 하지만) | [I] |
 | Structure | subplots, point-of-view changes, flashbacks, foreshadowing, ambiguous motives allowed; the moral can stay implicit or become a reflection question | [I] |
 | Questions | about one reflection question at the end | [E][I] |

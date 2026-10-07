@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'plugins/fairytale-studio/skills/story-storyboard');
 const SCRIPT = path.join(SKILL, 'scripts/storyboard.mjs');
-const { validate, render, main, readChars, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE } = await import(SCRIPT);
+const { validate, render, main, readChars, countWords, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE } = await import(SCRIPT);
 
 const base = () => ({
   schema: SCHEMA,
@@ -132,6 +132,17 @@ describe('audience bands', () => {
     assert.equal(w({}, { audience: '3-5' }), 1);
   });
 
+  test('English text is measured in words per minute with band limits', () => {
+    assert.equal(countWords('  Is this   your axe?\n No. '), 5);
+    const en = (text, end, patch = {}, opt) => run({ language: 'en-US', captions: [{ start: 0, end, text }], ...patch }, opt).warnings;
+    const ten = 'one two three four five six seven eight nine ten';
+    assert.deepEqual(en(ten, 4.5), []);                        // 133 wpm, 6-8 limit 135
+    assert.match(en(ten, 4.5, { audience: '3-5' })[0], /10 words in 4.5s reads at 133 wpm \(max 120\); give it 5.0s or shorten it/);
+    assert.deepEqual(en(ten, 4.5, { audience: '3-5' }, { maxWpm: 140 }), []);
+    assert.deepEqual(en(ten, 4.1, { audience: '9-10' }), []);  // 146 wpm, limit 150
+    assert.equal(run({ language: 'ko', captions: [{ start: 0, end: 1, text: ten }] }).warnings.length, 1);   // Korean rule counts characters
+  });
+
   test('episode length outside the band range is a warning; unknown --audience is an error', () => {
     const scenes = (d) => [{ id: 'a', start: 0, end: d }];
     const dur = (d, audience) => validate({ schema: SCHEMA, title: 'T', duration: d, scenes: scenes(d), audience }).warnings.filter((x) => x.startsWith('duration '));
@@ -217,7 +228,7 @@ describe('cli', () => {
     const res = spawnSync(process.execPath, [SCRIPT, 'validate', path.join(SKILL, 'references/example-troy-storyboard.json')], { encoding: 'utf8' });
     assert.equal(res.status, 0);
     assert.match(res.stdout, /0 error\(s\), 9 warning\(s\) for 만 6~8세/);
-    const young = spawnSync(process.execPath, [SCRIPT, 'validate', path.join(SKILL, 'references/example-troy-storyboard.json'), '--audience', '3-5'], { encoding: 'utf8' });
+    const young = spawnSync(process.execPath, [SCRIPT, 'validate', path.join(SKILL, 'references/example-troy-storyboard.json'), '--audience', '3-5', '--max-wpm', '110'], { encoding: 'utf8' });
     assert.match(young.stdout, /for 만 3~5세/);
   });
 });

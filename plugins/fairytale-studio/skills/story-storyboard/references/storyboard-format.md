@@ -37,7 +37,8 @@ All times are seconds from the start of the video (numbers, decimals allowed).
 |---|---|---|
 | `schema`, `title`, `duration` | yes | Format tag, story title, total length in seconds. |
 | `audience` | recommended | Age band `3-5`, `6-8` or `9-10`; sets the validator's reading speed, episode length and scene length (see `audience-profiles.md`). Without it the lower bound of `audience_age` decides; default `6-8`. |
-| `language`, `audience_age`, `frame`, `style`, `era` | no | Context for the video template and the art/asset skills (`style`/`era` match the fairytale-art-prompts module names). |
+| `language` | recommended | `ko` (default) or `en`; `en...` switches the reading-speed check from syllables per second to words per minute. |
+| `audience_age`, `frame`, `style`, `era` | no | Context for the video template and the art/asset skills (`style`/`era` match the fairytale-art-prompts module names). |
 | `synopsis` | no | The input beats, kept for traceability. |
 | `cast[].id` | recommended | Kebab-case id used by `scenes[].characters` and `bubbles[].speaker`. When `cast` is present, unknown ids are errors. `sprites` lists sprite names from sprites.json that show this character. |
 | `scenes[]` | yes | Must tile `0..duration` with no gaps or overlaps (tolerance 0.05 s). `transition`: `cut` or `blot` (paint-bleed wipe) or a template-specific name. `music.mood` uses the asset taxonomy moods when possible (playful, calm, warm, tense, sad, mysterious, sleepy, festive, wonder). |
@@ -49,4 +50,4 @@ All times are seconds from the start of the video (numbers, decimals allowed).
 Validator rules (`scripts/storyboard.mjs validate`):
 
 - Errors: wrong schema, missing title/duration, no scenes, missing or duplicate scene ids, start ≥ end, times outside the video, scene gaps or overlaps, first scene not at 0, last scene not at `duration`, overlapping captions, empty text, bubble without speaker, unknown speaker/character, cue time out of range, cue without sound.
-- Warnings: text that needs more than `chars / max-cps` seconds (band default 4 / 5 / 5.5 characters per second, whitespace not counted; `--max-cps` overrides), more than two lines, episode duration outside the band's single-story range (3-5: 3-7 min, 6-8: 6-12 min, 9-10: 10-18 min), scenes shorter than the band minimum (8 / 5 / 4 s, last scene exempt).
+- Warnings: text that needs more than `chars / max-cps` seconds (Korean; band default 4 / 5 / 5.5 characters per second, whitespace not counted; `--max-cps` overrides) or `words / max-wpm` minutes (English; band default 120 / 135 / 150 words per minute; `--max-wpm` overrides), more than two lines, episode duration outside the band's single-story range (3-5: 3-7 min, 6-8: 6-12 min, 9-10: 10-18 min), scenes shorter than the band minimum (8 / 5 / 4 s, last scene exempt).

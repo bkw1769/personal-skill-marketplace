@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Validate a storyboard.json and render it as a readable Markdown table.
-//   node storyboard.mjs validate <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n]
+//   node storyboard.mjs validate <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n]
 //   node storyboard.mjs render   <storyboard.json> [--out storyboard.md]
 // Reading-speed, episode-length and scene-length checks follow the audience band
-// (see references/audience-profiles.md).
+// (see references/audience-profiles.md). Korean text is measured in syllables per second,
+// English ("language": "en...") in words per minute.
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -11,16 +12,26 @@ export const SCHEMA = 'storyboard/1';
 export const EPS = 0.05;
 
 /**
- * Audience bands. maxCps = narration/caption syllables per second (Korean: 1 character = 1 syllable),
+ * Audience bands. maxCps = Korean narration/caption syllables per second (1 character = 1 syllable),
+ * maxWpm = English words per minute,
  * episode = recommended single-story length in seconds, minScene = shortest comfortable scene.
  * Values come from docs research (2026-10-08); most are inferences to recalibrate with retention data.
  */
 export const AUDIENCE = {
-  '3-5': { label: '만 3~5세', maxCps: 4, episode: [180, 420], minScene: 8 },
-  '6-8': { label: '만 6~8세', maxCps: 5, episode: [360, 720], minScene: 5 },
-  '9-10': { label: '만 9~10세', maxCps: 5.5, episode: [600, 1080], minScene: 4 },
+  '3-5': { label: '만 3~5세', maxCps: 4, maxWpm: 120, episode: [180, 420], minScene: 8 },
+  '6-8': { label: '만 6~8세', maxCps: 5, maxWpm: 135, episode: [360, 720], minScene: 5 },
+  '9-10': { label: '만 9~10세', maxCps: 5.5, maxWpm: 150, episode: [600, 1080], minScene: 4 },
 };
 export const DEFAULT_AUDIENCE = '6-8';
+
+/**
+ * Words a viewer hears or reads (whitespace-separated tokens).
+ * @param {string} text
+ * @returns {number}
+ */
+export function countWords(text) {
+  return text.split(/\s+/).filter(Boolean).length;
+}
 
 /**
  * Audience band of a storyboard: explicit `audience`, else the lower bound of `audience_age`
@@ -59,13 +70,15 @@ export function fmt(t) {
 /**
  * Check a storyboard. Errors break playback or sync; warnings are craft problems (reading speed, layout).
  * @param {any} sb
- * @param {{maxCps?: number, maxLines?: number, audience?: string}} [opt]
+ * @param {{maxCps?: number, maxWpm?: number, maxLines?: number, audience?: string}} [opt]
  * @returns {{errors: string[], warnings: string[], audience: string}}
  */
 export function validate(sb, opt = {}) {
   const audience = opt.audience && opt.audience in AUDIENCE ? opt.audience : bandFor(sb);
   const band = AUDIENCE[audience];
   const maxCps = opt.maxCps ?? band.maxCps;
+  const maxWpm = opt.maxWpm ?? band.maxWpm;
+  const english = /^en/i.test(String(sb.language || ''));
   const maxLines = opt.maxLines ?? 2;
   const errors = [];
   const warnings = [];
@@ -93,8 +106,14 @@ export function validate(sb, opt = {}) {
       return;
     }
     const secs = x.end - x.start;
-    const need = readChars(x.text) / maxCps;
-    if (need > secs + EPS) warnings.push(`${where}: ${readChars(x.text)} chars in ${secs.toFixed(1)}s reads at ${(readChars(x.text) / secs).toFixed(1)}/s; give it ${need.toFixed(1)}s or shorten it`);
+    if (english) {
+      const words = countWords(x.text);
+      const need = (words / maxWpm) * 60;
+      if (need > secs + EPS) warnings.push(`${where}: ${words} words in ${secs.toFixed(1)}s reads at ${Math.round((words / secs) * 60)} wpm (max ${maxWpm}); give it ${need.toFixed(1)}s or shorten it`);
+    } else {
+      const need = readChars(x.text) / maxCps;
+      if (need > secs + EPS) warnings.push(`${where}: ${readChars(x.text)} chars in ${secs.toFixed(1)}s reads at ${(readChars(x.text) / secs).toFixed(1)}/s; give it ${need.toFixed(1)}s or shorten it`);
+    }
     const lines = x.text.split('\n');
     if (lines.length > maxLines) warnings.push(`${where}: ${lines.length} lines (max ${maxLines})`);
   };
@@ -192,7 +211,7 @@ export function main(argv, io) {
   const o = {};
   for (let i = 0; i < rest.length; i += 2) o[rest[i].replace(/^--/, '')] = rest[i + 1];
   if (!['validate', 'render'].includes(cmd) || !file) {
-    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--out file.md]');
+    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n] [--out file.md]');
     return 1;
   }
   let sb;
@@ -202,7 +221,11 @@ export function main(argv, io) {
     io.err(`error: cannot read ${file}: ${/** @type {Error} */ (e).message}`);
     return 1;
   }
-  const { errors, warnings, audience } = validate(sb, { maxCps: o['max-cps'] ? Number(o['max-cps']) : undefined, audience: o.audience });
+  const { errors, warnings, audience } = validate(sb, {
+    maxCps: o['max-cps'] ? Number(o['max-cps']) : undefined,
+    maxWpm: o['max-wpm'] ? Number(o['max-wpm']) : undefined,
+    audience: o.audience,
+  });
   errors.forEach((e) => io.err(`error: ${e}`));
   warnings.forEach((w) => io.err(`warning: ${w}`));
   if (cmd === 'validate') {

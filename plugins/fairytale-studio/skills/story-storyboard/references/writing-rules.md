@@ -20,6 +20,7 @@ Learned while turning a four-beat synopsis into the 3-minute Troy storybook, and
 
 - Reading speed is set per band: about 4 syllables per second for 3-5, 5 for 6-8, 5.5 for 9-10 (whitespace not counted). The old single rule of 7 per second was faster than a news anchor (~5.9) and too fast for every band. TTS narration takes about the same time, so the rule also keeps voice and caption in step.
 - At most two lines; break at a natural pause. Prefer two short sentences to one long one: one clause of 8-15 syllables for 3-5, 15-25 for 6-8.
+- English narration: about 110 words per minute for 3-5 (max 120), 120-135 for 6-8, short sentences of 5-10 words for 3-5; onomatopoeia works the same (*chop, chop!*, *splash!*).
 - Narration in the style of 동화구연: turn description into dialogue, use onomatopoeia and mimetic words (의성어·의태어), keep a rhythm that is pleasant to read aloud.
 - Leave air between consecutive captions (band pauses in `audience-profiles.md`); after a question to the viewer leave 2-4 s of silence for 3-5, about 2 s for 6-8, then let a character show the answer.
 - Questions: 2-4 per episode for 3-5 (naming, predicting), 2-3 for 6-8 (why, inference), one reflection question for 9-10. Before the ending ask "왜 그랬을까?" and then confirm the moral in one sentence.
@@ -30,7 +31,7 @@ Learned while turning a four-beat synopsis into the 3-minute Troy storybook, and
 ## Scenes
 
 - Scene length by band: 8-20 s for 3-5 (one picture per narration sentence, held a second after it ends), 5-15 s for 6-8. The validator warns below 8 s / 5 s / 4 s. Never cut in the middle of a sentence.
-- Cast and scenes by band: 3-5 = one hero and 1-2 others, 3-5 scenes, one problem, no flashback; 6-8 = 3-5 named characters, 6-10 scenes, goal-try-fail-retry-result with simple foreshadowing.
+- Cast and story beats by band (a beat is a plot step or setting, made of several scenes): 3-5 = one hero and 1-2 others, 3-5 beats, one problem, no flashback; 6-8 = 3-5 named characters, 6-10 beats, goal-try-fail-retry-result with simple foreshadowing.
 - Story clarity matters more than cut count: young children watch longer what they can follow, and fantastical, hard-to-follow content hurts 4-year-olds' attention even when it is short.
 - Change scenes on a story beat, not in the middle of a sentence.
 - Use `cut` for a sudden mood change (war starts, the party ignores the warning) and `blot` (paint bleed) as the default soft transition.
