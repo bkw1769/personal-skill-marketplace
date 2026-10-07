@@ -183,9 +183,9 @@ export function render(sb) {
   const names = new Map((sb.cast || []).map((/** @type {any} */ c) => [c.id, c.name || c.id]));
   (sb.scenes || []).forEach((s, i) => {
     const words = [
-      ...(sb.captions || []).filter((c) => inScene(s, c.start)).map((c) => c.text),
-      ...(sb.bubbles || []).filter((b) => inScene(s, b.start)).map((b) => `${names.get(b.speaker) || b.speaker}: "${b.text}"`),
-    ].map((t) => t.replace(/\n/g, ' ')).join('<br>');
+      ...(sb.captions || []).filter((c) => inScene(s, c.start)).map((c) => ({ t: c.start, text: c.text })),
+      ...(sb.bubbles || []).filter((b) => inScene(s, b.start)).map((b) => ({ t: b.start, text: `${names.get(b.speaker) || b.speaker}: "${b.text}"` })),
+    ].sort((a, b) => a.t - b.t).map((w) => w.text.replace(/\n/g, ' ')).join('<br>');
     const cues = (sb.cues || []).filter((c) => inScene(s, c.t));
     const kinds = [...new Set(cues.map((c) => c.sound))].join(', ');
     const music = s.music ? [s.music.mood, s.music.tempo && `${s.music.tempo} bpm`, s.music.instruments && s.music.instruments.join('/')].filter(Boolean).join(' ') : '';

@@ -176,6 +176,11 @@ describe('render', () => {
     assert.match(md, /\| 2 \| 0:10.0-0:20.0 \| \*\*b\*\*  \|  \| 소녀: "좋아!" \| 1 cues \(boing\) \|/);
     assert.match(md, /- fact_checks: fixed a name/);
   });
+  test('words on screen are listed in time order across captions and bubbles', () => {
+    const md = render({ ...base(), captions: [{ start: 3, end: 5, text: 'later narration' }], bubbles: [{ start: 1, end: 2, speaker: 'girl', text: 'first line' }] });
+    assert.match(md, /소녀: "first line"<br>later narration/);
+  });
+
   test('minimal storyboard without cast, captions, bubbles, cues or notes', () => {
     const md = render({ title: 'M', duration: 5, scenes: [{ id: 'x', start: 0, end: 5, music: { mood: 'sad' } }] });
     assert.doesNotMatch(md, /## Cast/);
