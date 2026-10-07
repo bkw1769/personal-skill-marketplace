@@ -7,6 +7,7 @@ All times are seconds from the start of the video (numbers, decimals allowed).
   "schema": "storyboard/1",
   "title": "트로이의 거대한 목마",
   "language": "ko",
+  "audience": "6-8",
   "audience_age": "6-10",
   "duration": 180.5,
   "frame": { "width": 1920, "height": 1080 },
@@ -35,6 +36,7 @@ All times are seconds from the start of the video (numbers, decimals allowed).
 | Field | Required | Meaning |
 |---|---|---|
 | `schema`, `title`, `duration` | yes | Format tag, story title, total length in seconds. |
+| `audience` | recommended | Age band `3-5`, `6-8` or `9-10`; sets the validator's reading speed, episode length and scene length (see `audience-profiles.md`). Without it the lower bound of `audience_age` decides; default `6-8`. |
 | `language`, `audience_age`, `frame`, `style`, `era` | no | Context for the video template and the art/asset skills (`style`/`era` match the fairytale-art-prompts module names). |
 | `synopsis` | no | The input beats, kept for traceability. |
 | `cast[].id` | recommended | Kebab-case id used by `scenes[].characters` and `bubbles[].speaker`. When `cast` is present, unknown ids are errors. `sprites` lists sprite names from sprites.json that show this character. |
@@ -47,4 +49,4 @@ All times are seconds from the start of the video (numbers, decimals allowed).
 Validator rules (`scripts/storyboard.mjs validate`):
 
 - Errors: wrong schema, missing title/duration, no scenes, missing or duplicate scene ids, start ≥ end, times outside the video, scene gaps or overlaps, first scene not at 0, last scene not at `duration`, overlapping captions, empty text, bubble without speaker, unknown speaker/character, cue time out of range, cue without sound.
-- Warnings: text that needs more than `chars / max-cps` seconds (default 7 chars per second, whitespace not counted), more than two lines.
+- Warnings: text that needs more than `chars / max-cps` seconds (band default 4 / 5 / 5.5 characters per second, whitespace not counted; `--max-cps` overrides), more than two lines, episode duration outside the band's single-story range (3-5: 3-7 min, 6-8: 6-12 min, 9-10: 10-18 min), scenes shorter than the band minimum (8 / 5 / 4 s, last scene exempt).

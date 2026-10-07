@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'plugins/fairytale-studio/skills/story-storyboard');
 const SCRIPT = path.join(SKILL, 'scripts/storyboard.mjs');
-const { validate, render, main, readChars, fmt, SCHEMA } = await import(SCRIPT);
+const { validate, render, main, readChars, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE } = await import(SCRIPT);
 
 const base = () => ({
   schema: SCHEMA,
@@ -24,7 +24,11 @@ const base = () => ({
   bubbles: [{ start: 12, end: 15, speaker: 'girl', text: '좋아!' }],
   cues: [{ t: 2, sound: 'boing' }, { t: 2.5, sound: 'pop' }, { t: 12, sound: 'boing' }],
 });
-const run = (patch, opt) => validate({ ...base(), ...patch }, opt);
+// The 20 s fixture is far below every episode-length band; those warnings are tested separately.
+const run = (patch, opt) => {
+  const r = validate({ ...base(), ...patch }, opt);
+  return { ...r, warnings: r.warnings.filter((w) => !w.startsWith('duration ')) };
+};
 const io = () => { const out = [], err = []; return { out, err, io: { out: (s) => out.push(s), err: (s) => err.push(s) } }; };
 
 describe('helpers', () => {
@@ -37,7 +41,7 @@ describe('helpers', () => {
 
 describe('validate', () => {
   test('a clean storyboard has no findings', () => {
-    assert.deepEqual(run({}), { errors: [], warnings: [] });
+    assert.deepEqual(run({}), { errors: [], warnings: [], audience: '6-8' });
   });
 
   test('header errors', () => {
@@ -76,7 +80,7 @@ describe('validate', () => {
     assert.match(r([{ start: 1, end: 5, text: 'a' }, { start: 4, end: 6, text: 'b' }]).errors[0], /caption 2 \(0:04.0\): overlaps the previous caption/);
     const fast = r([{ start: 1, end: 2, text: '가나다라마바사아자차' }]);
     assert.deepEqual(fast.errors, []);
-    assert.match(fast.warnings[0], /10 chars in 1.0s reads at 10.0\/s; give it 1.4s or shorten it/);
+    assert.match(fast.warnings[0], /10 chars in 1.0s reads at 10.0\/s; give it 2.0s or shorten it/);
     assert.equal(r([{ start: 1, end: 2, text: '가나다라마바사아자차' }], { maxCps: 12 }).warnings.length, 0);
     assert.match(r([{ start: 0, end: 10, text: 'a\nb\nc' }]).warnings[0], /3 lines \(max 2\)/);
     assert.equal(r([{ start: 0, end: 10, text: 'a\nb\nc' }], { maxLines: 3 }).warnings.length, 0);
@@ -102,14 +106,59 @@ describe('validate', () => {
     const sb = JSON.parse(fs.readFileSync(path.join(SKILL, 'references/example-troy-storyboard.json'), 'utf8'));
     const r = validate(sb);
     assert.deepEqual(r.errors, []);
-    assert.equal(r.warnings.length, 1);
+    assert.equal(r.audience, '6-8');                  // audience_age "6-10" -> 6-8 band
+    assert.equal(r.warnings.length, 9);               // 3:00 is short for 6-8, and 8 captions read faster than 5/s
+  });
+});
+
+describe('audience bands', () => {
+  test('bandFor: explicit audience, audience_age lower bound, default', () => {
+    assert.equal(DEFAULT_AUDIENCE, '6-8');
+    assert.deepEqual(Object.keys(AUDIENCE), ['3-5', '6-8', '9-10']);
+    assert.equal(bandFor({ audience: '9-10', audience_age: '3-4' }), '9-10');
+    assert.equal(bandFor({ audience: 'toddlers', audience_age: '4-6' }), '3-5');
+    assert.equal(bandFor({ audience_age: '6-10' }), '6-8');
+    assert.equal(bandFor({ audience_age: '9-12' }), '9-10');
+    assert.equal(bandFor({ audience_age: 'all ages' }), '6-8');
+    assert.equal(bandFor({}), '6-8');
+  });
+
+  test('reading speed limit follows the band unless maxCps is given', () => {
+    const cap = [{ start: 1, end: 3, text: '가나다라마바사아자차' }];   // 5 chars/s
+    const w = (patch, opt) => run({ captions: cap, ...patch }, opt).warnings.length;
+    assert.equal(w({ audience: '3-5' }), 1);
+    assert.equal(w({ audience: '6-8' }), 0);
+    assert.equal(w({ audience: '3-5' }, { maxCps: 6 }), 0);
+    assert.equal(w({}, { audience: '3-5' }), 1);
+  });
+
+  test('episode length outside the band range is a warning; unknown --audience is an error', () => {
+    const scenes = (d) => [{ id: 'a', start: 0, end: d }];
+    const dur = (d, audience) => validate({ schema: SCHEMA, title: 'T', duration: d, scenes: scenes(d), audience }).warnings.filter((x) => x.startsWith('duration '));
+    assert.match(dur(100, '3-5')[0], /duration 1:40.0 is outside the 만 3~5세 single-episode range 3:00.0-7:00.0/);
+    assert.deepEqual(dur(300, '3-5'), []);
+    assert.match(dur(800, '6-8')[0], /6:00.0-12:00.0/);
+    assert.deepEqual(dur(800, '9-10'), []);
+    const bad = validate({ schema: SCHEMA, title: 'T', duration: 300, scenes: scenes(300) }, { audience: 'baby' });
+    assert.match(bad.errors[0], /unknown audience "baby" \(use 3-5, 6-8, 9-10\)/);
+    assert.equal(bad.audience, '6-8');
+  });
+
+  test('scenes shorter than the band minimum warn, except the closing scene', () => {
+    const sb = { schema: SCHEMA, title: 'T', duration: 240, audience: '3-5', scenes: [
+      { id: 'a', start: 0, end: 6 }, { id: 'b', start: 6, end: 236 }, { id: 'end', start: 236, end: 240 },
+    ] };
+    const w = validate(sb).warnings;
+    assert.equal(w.length, 1);
+    assert.match(w[0], /scene a: 6.0s is short for 만 3~5세 \(min 8s; do not cut mid-sentence\)/);
+    assert.equal(validate({ ...sb, audience: '6-8' }).warnings.filter((x) => x.startsWith('scene')).length, 0);
   });
 });
 
 describe('render', () => {
   test('cast, scenes with words and sounds, notes', () => {
     const md = render({ ...base(), audience_age: '6-10', notes: { fact_checks: ['fixed a name'] } });
-    assert.match(md, /^# T\n\nDuration: 0:20.0 · Audience: 6-10\n/);
+    assert.match(md, /^# T\n\nDuration: 0:20.0 · Audience: 만 6~8세 \(6-10\)\n/);
     assert.match(md, /\| girl \| 소녀 \|  \|/);
     assert.match(md, /\| ody \|  \|  \|/);
     assert.match(md, /\| 1 \| 0:00.0-0:10.0 \| \*\*하나\*\* \(숲\) \| walks \| 안녕하세요 \| music: calm 80 bpm harp<br>2 cues \(boing, pop\) \|/);
@@ -132,7 +181,7 @@ describe('cli', () => {
     fs.writeFileSync(path.join(d, 'ok.json'), JSON.stringify(base()));
     let r = io();
     assert.equal(main(['validate', path.join(d, 'ok.json')], r.io), 0);
-    assert.equal(r.out[0], '0 error(s), 0 warning(s); 2 scenes, 1 captions, 1 bubbles, 3 cues.');
+    assert.equal(r.out[0], '0 error(s), 1 warning(s) for 만 6~8세; 2 scenes, 1 captions, 1 bubbles, 3 cues.');
     fs.writeFileSync(path.join(d, 'warn.json'), JSON.stringify({ ...base(), captions: [{ start: 1, end: 2, text: '가나다라마바사아' }] }));
     r = io();
     assert.equal(main(['validate', path.join(d, 'warn.json'), '--max-cps', '7'], r.io), 0);
@@ -167,6 +216,8 @@ describe('cli', () => {
   test('runs as a script', () => {
     const res = spawnSync(process.execPath, [SCRIPT, 'validate', path.join(SKILL, 'references/example-troy-storyboard.json')], { encoding: 'utf8' });
     assert.equal(res.status, 0);
-    assert.match(res.stdout, /0 error\(s\), 1 warning\(s\)/);
+    assert.match(res.stdout, /0 error\(s\), 9 warning\(s\) for 만 6~8세/);
+    const young = spawnSync(process.execPath, [SCRIPT, 'validate', path.join(SKILL, 'references/example-troy-storyboard.json'), '--audience', '3-5'], { encoding: 'utf8' });
+    assert.match(young.stdout, /for 만 3~5세/);
   });
 });

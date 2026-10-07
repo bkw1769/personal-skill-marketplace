@@ -1,12 +1,40 @@
 #!/usr/bin/env node
 // Validate a storyboard.json and render it as a readable Markdown table.
-//   node storyboard.mjs validate <storyboard.json> [--max-cps 7]
+//   node storyboard.mjs validate <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n]
 //   node storyboard.mjs render   <storyboard.json> [--out storyboard.md]
+// Reading-speed, episode-length and scene-length checks follow the audience band
+// (see references/audience-profiles.md).
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export const SCHEMA = 'storyboard/1';
 export const EPS = 0.05;
+
+/**
+ * Audience bands. maxCps = narration/caption syllables per second (Korean: 1 character = 1 syllable),
+ * episode = recommended single-story length in seconds, minScene = shortest comfortable scene.
+ * Values come from docs research (2026-10-08); most are inferences to recalibrate with retention data.
+ */
+export const AUDIENCE = {
+  '3-5': { label: '만 3~5세', maxCps: 4, episode: [180, 420], minScene: 8 },
+  '6-8': { label: '만 6~8세', maxCps: 5, episode: [360, 720], minScene: 5 },
+  '9-10': { label: '만 9~10세', maxCps: 5.5, episode: [600, 1080], minScene: 4 },
+};
+export const DEFAULT_AUDIENCE = '6-8';
+
+/**
+ * Audience band of a storyboard: explicit `audience`, else the lower bound of `audience_age`
+ * ("6-10" -> 6-8), else the default band.
+ * @param {any} sb
+ * @returns {string}
+ */
+export function bandFor(sb) {
+  if (sb.audience in AUDIENCE) return sb.audience;
+  const m = /^(\d+)/.exec(String(sb.audience_age || ''));
+  if (!m) return DEFAULT_AUDIENCE;
+  const low = Number(m[1]);
+  return low <= 5 ? '3-5' : low <= 8 ? '6-8' : '9-10';
+}
 
 /**
  * Visible characters a viewer has to read (whitespace excluded).
@@ -31,11 +59,13 @@ export function fmt(t) {
 /**
  * Check a storyboard. Errors break playback or sync; warnings are craft problems (reading speed, layout).
  * @param {any} sb
- * @param {{maxCps?: number, maxLines?: number}} [opt]
- * @returns {{errors: string[], warnings: string[]}}
+ * @param {{maxCps?: number, maxLines?: number, audience?: string}} [opt]
+ * @returns {{errors: string[], warnings: string[], audience: string}}
  */
 export function validate(sb, opt = {}) {
-  const maxCps = opt.maxCps ?? 7;
+  const audience = opt.audience && opt.audience in AUDIENCE ? opt.audience : bandFor(sb);
+  const band = AUDIENCE[audience];
+  const maxCps = opt.maxCps ?? band.maxCps;
   const maxLines = opt.maxLines ?? 2;
   const errors = [];
   const warnings = [];
@@ -43,6 +73,8 @@ export function validate(sb, opt = {}) {
   if (!sb.title) errors.push('title is required');
   const dur = sb.duration;
   if (!(typeof dur === 'number' && dur > 0)) errors.push('duration must be a positive number of seconds');
+  else if (dur < band.episode[0] || dur > band.episode[1]) warnings.push(`duration ${fmt(dur)} is outside the ${band.label} single-episode range ${fmt(band.episode[0])}-${fmt(band.episode[1])} (split, extend, or set "audience")`);
+  if (opt.audience && !(opt.audience in AUDIENCE)) errors.push(`unknown audience "${opt.audience}" (use ${Object.keys(AUDIENCE).join(', ')})`);
   const castIds = new Set((sb.cast || []).map((c) => c.id));
   const hasCast = castIds.size > 0;
 
@@ -76,6 +108,7 @@ export function validate(sb, opt = {}) {
     else if (sceneIds.has(s.id)) errors.push(`${where}: duplicate id`);
     sceneIds.add(s.id);
     if (!span(where, s)) return;
+    if (s.end - s.start < band.minScene - EPS && i < scenes.length - 1) warnings.push(`${where}: ${(s.end - s.start).toFixed(1)}s is short for ${band.label} (min ${band.minScene}s; do not cut mid-sentence)`);
     const prev = scenes[i - 1];
     if (i === 0 && Math.abs(s.start) > EPS) errors.push(`${where}: first scene must start at 0:00.0`);
     if (prev && typeof prev.end === 'number') {
@@ -109,7 +142,7 @@ export function validate(sb, opt = {}) {
     if (typeof c.t !== 'number' || c.t < 0 || c.t > dur + EPS) errors.push(`${where}: t must be within 0-${fmt(dur)}`);
     if (!c.sound) errors.push(`${where}: sound is required`);
   });
-  return { errors, warnings };
+  return { errors, warnings, audience };
 }
 
 /**
@@ -119,7 +152,7 @@ export function validate(sb, opt = {}) {
  */
 export function render(sb) {
   const out = [`# ${sb.title}`, ''];
-  const meta = [['Duration', fmt(sb.duration)], ['Audience', sb.audience_age], ['Style', sb.style], ['Era', sb.era]].filter(([, v]) => v);
+  const meta = [['Duration', fmt(sb.duration)], ['Audience', `${AUDIENCE[bandFor(sb)].label}${sb.audience_age ? ` (${sb.audience_age})` : ''}`], ['Style', sb.style], ['Era', sb.era]].filter(([, v]) => v);
   out.push(meta.map(([k, v]) => `${k}: ${v}`).join(' · '), '');
   if ((sb.cast || []).length) {
     out.push('## Cast', '', '| ID | Name | Notes |', '|---|---|---|');
@@ -159,7 +192,7 @@ export function main(argv, io) {
   const o = {};
   for (let i = 0; i < rest.length; i += 2) o[rest[i].replace(/^--/, '')] = rest[i + 1];
   if (!['validate', 'render'].includes(cmd) || !file) {
-    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--max-cps 7] [--out file.md]');
+    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--out file.md]');
     return 1;
   }
   let sb;
@@ -169,11 +202,11 @@ export function main(argv, io) {
     io.err(`error: cannot read ${file}: ${/** @type {Error} */ (e).message}`);
     return 1;
   }
-  const { errors, warnings } = validate(sb, { maxCps: o['max-cps'] ? Number(o['max-cps']) : undefined });
+  const { errors, warnings, audience } = validate(sb, { maxCps: o['max-cps'] ? Number(o['max-cps']) : undefined, audience: o.audience });
   errors.forEach((e) => io.err(`error: ${e}`));
   warnings.forEach((w) => io.err(`warning: ${w}`));
   if (cmd === 'validate') {
-    io.out(`${errors.length} error(s), ${warnings.length} warning(s); ${(sb.scenes || []).length} scenes, ${(sb.captions || []).length} captions, ${(sb.bubbles || []).length} bubbles, ${(sb.cues || []).length} cues.`);
+    io.out(`${errors.length} error(s), ${warnings.length} warning(s) for ${AUDIENCE[audience].label}; ${(sb.scenes || []).length} scenes, ${(sb.captions || []).length} captions, ${(sb.bubbles || []).length} bubbles, ${(sb.cues || []).length} cues.`);
     return errors.length ? 1 : 0;
   }
   if (errors.length) return 1;

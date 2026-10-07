@@ -19,12 +19,13 @@ A prompt = **style module** (how it is drawn) + **era module** (what the world l
 | Identity | `references/consistency.md` | Character bible and reference chaining rules. |
 | Records | `references/record-format.md` | Output folder, `prompts.json`, README. |
 | Example | `references/examples/medieval-cast-hansel-gretel.md` | A fully assembled cast-lineup prompt. |
+| Audience | `references/audience.md` | Lines to add per age band (shapes, silhouettes, villain look, background simplicity). |
 
 If the requested style or era has no file yet, create it first from the skeleton in "Adding a style or era" below, then continue. Writing it as a file (rather than improvising inside one prompt) is what makes the next story cheap.
 
 ## Workflow
 
-1. **Pin the brief.** Story title, audience age (default 6–10), style, era, and which sheets are needed. Ask only for what is missing and cannot be inferred; the era usually follows from the story (Grimm/Perrault tales → medieval-europe).
+1. **Pin the brief.** Story title, audience band (`3-5`, `6-8` default, or `9-10`; see `references/audience.md` for the lines to add per band), style, era, and which sheets are needed. Ask only for what is missing and cannot be inferred; the era usually follows from the story (Grimm/Perrault tales → medieval-europe).
 2. **Write or load the character bible.** For a new story, fill `assets/character-bible-template.md` into the story's output folder as `character-bible.md` before any prompt. Each character gets a fixed identity sentence. For an existing story, load its bible and reuse it unchanged. See `references/consistency.md` for why the sentence must be repeated verbatim.
 3. **Generate in anchor order.** Cast lineup first: it becomes the identity and palette anchor that every later sheet attaches as a strict reference. Then expression/pose, turnaround, props, locations.
 4. **Assemble the prompt** in this block order, pasting module blocks verbatim (paraphrasing is how styles drift):
@@ -48,7 +49,7 @@ If the requested style or era has no file yet, create it first from the skeleton
 - Era holds: no anachronisms from the era module's banned list.
 - Captions legible and exactly as listed; no extra text.
 - Cut-out ready: figures separated with clear paper between them, clear paper above the highest point of each figure (hair, plumes, ears, raised hands), nothing touching the title band or captions, complete head-to-toe (the video pipeline flood-fills the paper around each figure, so touching groups cannot be separated).
-- Audience-safe: no blood, injury, frightening faces or realistic weapons.
+- Audience-safe: no blood, injury, frightening faces or realistic weapons; for 3-5, villains look silly rather than scary and every figure stands out clearly from the background (`references/audience.md`).
 
 ## Adding a style or era
 

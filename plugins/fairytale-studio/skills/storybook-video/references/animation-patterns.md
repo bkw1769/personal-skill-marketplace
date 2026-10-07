@@ -16,6 +16,18 @@
 | Crowd | Reuse two or three sprites with `flip` and small size/`k` variations; spread them across the visible width. |
 | Celebration | Confetti and bunting (simple rotated rectangles and washed triangles) driven by `T`. |
 
+## Audience rules (from the age research of 2026-10-08)
+
+The storyboard's `audience` band (`3-5`, `6-8`, `9-10`) decides how a scene should move; the numbers are in the story-storyboard skill's `references/audience-profiles.md`.
+
+- **Move what the narration names.** Animation that matches the sentence being read guides the eye and helps comprehension; everything else stays still or nearly still. Decorative sparkles, idle background motion and "tap here" style cues compete with the story.
+- **Clarity beats cut count.** Fantastical, hard-to-follow scenes lowered 4-year-olds' executive function even when short; editing pace alone mattered less. For 3-5: one picture per narration sentence, held about a second after it ends, 8-20 s per scene; for 6-8: 5-15 s. Never cut in the middle of a sentence.
+- **New words need stillness.** When a sentence introduces a new word, hold the picture 1-2 s and drop the music (children learned new words better from still pictures without music).
+- **Questions to the viewer.** After an on-screen question, freeze the action for the band's silence (2-4 s for 3-5, about 2 s for 6-8), then let a character show the answer.
+- **Fear by age.** For 3-5 never show a transformation on screen (cover it with the paint-blot transition), no teeth or claw close-ups, a safety cue before a threat, resolve it in the same scene. From 8, classic villains are fine; keep danger short and reassure right after.
+- **Captions.** 6-8: full narration captions with word-by-word highlighting in sync with the voice (early readers look at the text twice as often when words are highlighted). 3-5: optional, refrain only, large. 9-10: plain captions. Never more than two lines; captions match the narration exactly.
+- **Calm ending.** Show the moral as an action, ask one short question, confirm the moral in one sentence, then a calm close. No "keep watching" pushes: the channel is made for kids and screen-time guidance is about an hour a day for 2-5.
+
 ## Pitfalls already hit once
 
 - **Visible before entering.** Floating-point easing left a character at 0.0001 opacity on screen before its entrance. Clamp entrance curves so they are exactly 0 before `t0` and exactly 1 after `t1` (`seg` already clamps; custom curves must too).

@@ -35,11 +35,11 @@ Write one function per scene id in `js/scenes.js` (signature and helpers in `ref
 2. Characters with `spr(ctx, name, x, y, height, {rot, flip, sq})`, feet on the ground line; motion from `T` so seeking works.
 3. Effects: `sfxWord` ("쾅!"), stars, hearts, bulbs, puffs, night overlay.
 
-`references/animation-patterns.md` lists the motion recipes and the bugs already hit once (characters visible before their entrance, props larger than buildings, off-screen crowds).
+`references/animation-patterns.md` lists the motion recipes, the audience rules (move only what the narration names, scene length, questions, captions, fear by age) and the bugs already hit once (characters visible before their entrance, props larger than buildings, off-screen crowds). Check the storyboard's `audience` band first; a 3-5 version moves less, holds pictures longer and never shows a transformation.
 
 ## 4. Sound
 
-Start with the auto score; replace it scene by scene in `js/score.js` when the story deserves real music. Cue sound effects in the storyboard (`cues`) so the timing lives in one place. Names, arguments and mood recipes: `references/sound-design.md`. Any name the synth does not know is listed in the console as silent.
+Start with the auto score; replace it scene by scene in `js/score.js` when the story deserves real music. Keep music at least 15 dB under narration and instrumental only, and master to −14 LUFS (levels table in `references/sound-design.md`). Cue sound effects in the storyboard (`cues`) so the timing lives in one place. Names, arguments and mood recipes: `references/sound-design.md`. Any name the synth does not know is listed in the console as silent.
 
 ## 5. Record and verify
 

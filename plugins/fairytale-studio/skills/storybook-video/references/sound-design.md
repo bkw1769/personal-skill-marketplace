@@ -69,6 +69,22 @@ Any other name is silent and reported once in the console. To add a sound, add a
 | wonder / morning | 60-76 | C major (maj7 chords) | music box, harp, birds |
 | ending | 80-90 | home key | theme slowed on flute, harp, final bell chord |
 
+## Levels and mixing for children
+
+Children need speech clearly above everything else: toddlers learned words when speech was 10 dB above the background but not at 5 dB, and children need roughly +15 dB signal-to-noise where adults manage with +7-11 dB.
+
+| Rule | Value | Grade |
+|---|---|---|
+| Music and ambience under narration | at least 15 dB below the voice, target 15-20 dB; side-chain duck during every narration line | evidence |
+| Key sentences for 3-5 | music 20 dB+ down or off | inference |
+| Music type under speech | instrumental only; songs with words in the same language hurt comprehension most | evidence |
+| Sound effects | in the pauses between sentences, on the same frame as the action, never on top of a word | inference |
+| 3-5 | no screams, no sudden loud hits; keep effects soft and short | inference |
+| New vocabulary | drop the music for that sentence | evidence → inference |
+| Final master | −14 LUFS integrated, true peak ≤ −1 dBTP | practitioner |
+
+Animation, music and sound effects made storybooks more effective in a meta-analysis (43 studies) when they matched the story; interactive extras distracted. Use sound to mark events, not to decorate.
+
 ## Rules learned
 
 - One clock: never schedule with `setTimeout`; let the player pump events.
