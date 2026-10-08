@@ -18,6 +18,7 @@
 
 - `sheets`: short key → PNG path, relative to the folder of crops.json.
 - `crops`: name → rectangle in sheet pixels (origin top-left). Object form or compact array form `[sheet, x, y, w, h, options?]`. Order is kept in sprites.json and the contact sheet.
+- Element-kit sheets: `find-pieces.mjs` writes these entries for you (object form with `"options": {"largest": true}`), named in slot order.
 - Names: kebab-case (`girl-front`, `ody-head-idea`); they become `<name>.png`.
 - Rectangles may extend past the sheet edge; they are clipped.
 

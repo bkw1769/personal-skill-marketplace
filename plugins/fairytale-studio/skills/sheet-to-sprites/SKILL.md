@@ -1,6 +1,6 @@
 ---
 name: sheet-to-sprites
-description: Cut characters, faces, props and hand-lettered labels out of hand-drawn concept sheets (watercolor, pen, pencil on paper-colored backgrounds) into transparent PNG sprites with a crop table, a sprites.json manifest and a visual contact sheet, using a bundled Node script with no dependencies. Use this whenever the user wants to 시안에서 캐릭터 잘라줘, 배경 투명하게, 스프라이트로 분리, 누끼, 애니메이션용으로 캐릭터 분리, turn a character sheet or model sheet into separate images, remove the paper background from a drawing, or prepare sheet art for a storybook video or game, even if they never say "sprite".
+description: Cut characters, faces, props, hand-lettered labels and torn-paper background element kits (house, jar terrace, wall, tree, mountain pieces on a flat magenta backdrop, found and named automatically) out of hand-drawn concept sheets (watercolor, pen, pencil on paper-colored backgrounds) into transparent PNG sprites with a crop table, a sprites.json manifest and a visual contact sheet, using a bundled Node script with no dependencies. Use this whenever the user wants to 시안에서 캐릭터 잘라줘, 배경 투명하게, 스프라이트로 분리, 누끼, 애니메이션용으로 캐릭터 분리, 배경 요소 잘라줘, 요소 키트 분리, turn a character sheet or model sheet into separate images, remove the paper background from a drawing, or prepare sheet art for a storybook video or game, even if they never say "sprite".
 ---
 
 # Sheet to sprites
@@ -12,6 +12,20 @@ Turns a generated or scanned sheet (several figures on paper) into one transpare
 - Node.js 18+ (uses only built-ins; PNG decode/encode is bundled).
 - Sheet PNGs: 8-bit, non-interlaced (what image generators and most editors produce). Convert other formats first, e.g. `sips -s format png in.jpg --out in.png` on macOS.
 - Figures separated by clear paper. Touching figures cannot be split by colour; ask for a regenerated sheet with gaps instead of fighting it (this is why the art-prompt rules demand separated figures).
+
+## Element kits (torn-paper background pieces)
+
+Kit sheets from the `fairytale-art-prompts` element-kit template have one flat backdrop colour (magenta by default) and no text, so the rectangles can be found by code instead of by eye:
+
+```bash
+node <skill-dir>/scripts/find-pieces.mjs <kit.png> --crops <set>/crops.json --key <kit-key> --names cottage-dori,wall-straight,jangdokdae
+```
+
+- Backdrop colour = median of the sheet's outer pixel frame; anything farther than `--tol` (48) is a piece. Fibres and sparkles within `--gap` (6 px) of a piece join it; pieces under `--min-area` (0.3 % of the sheet) are dropped as specks; each rectangle gets `--margin` (14 px) of backdrop.
+- Names are given in the kit prompt's slot order and assigned in reading order (rows top to bottom, left to right). A count mismatch stops with the list of found rectangles: two pieces touch or one is missing; regenerate the sheet rather than drawing boxes by hand. Without `--names` pieces are numbered `<key>-1..n`.
+- Every crop gets `"largest": true`. Re-running for the same key replaces only that sheet's crops, so all kits of a story can share one crops.json.
+
+Then cut as below (step 3). Check in `_contact.png` that the white torn rim survives all around and no magenta fringe is left: pink halo → raise `tol` for that crop; rim eaten → lower it. Element sprites are anchored bottom-centre like characters.
 
 ## Workflow
 

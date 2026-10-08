@@ -1,8 +1,8 @@
 # Sheet templates
 
-Each template gives the composition block and caption pattern. `<...>` marks slots. Canvas: large landscape, 1536x1024 unless the tool offers more. Templates 1–3 are generalized from the approved Troy sheets; 4 and 5 are new.
+Each template gives the composition block and caption pattern. `<...>` marks slots. Canvas: large landscape, 1536x1024 unless the tool offers more. Templates 1–3 are generalized from the approved Troy sheets; 4 and 5 are new. Template 6, the element kit, lives in `element-kits.md` with its own backdrop rules (it is not on paper and has no text).
 
-Rules shared by every sheet, because the sheets feed an automatic cut-out step and need to read as artist model sheets:
+Rules shared by sheets 1-5, because the sheets feed an automatic cut-out step and need to read as artist model sheets:
 
 ```text
 Large LANDSCAPE artist's model sheet on off-white watercolor paper, spacious, generous whitespace, no boxes, cards, borders or design-app UI. A small neat handwritten Korean title in a clear top band; no subject enters that band. Every figure is complete head-to-toe and stands apart with clear paper between it and its neighbours, even within a pair. Leave clear paper above the highest point of every figure (hair tufts, helmet plumes, ears, raised hands) and on both sides of the widest point (capes, shields, flowing hair). Each caption sits just below its figure without touching it. Exactly the captions listed, no other text. All Korean captions accurate and legible.
@@ -60,9 +60,9 @@ Composition: one row of FIVE full-body views at identical scale on a shared fain
 
 If cut-out puppet layers are needed later, ask for a separate sheet: `"<name> · 부위 분리"` with head, torso, upper arms, forearms, hands, thighs, shins, feet drawn separately with clear gaps, same scale as the turnaround.
 
-## 5. Location sheet
+## 5. Location sheet (mood reference only)
 
-Backgrounds in the same style; vignettes on bare paper so they can be composited or traced.
+Mood and layout references in the same style, for the user to approve the look of each place. They are not production backgrounds: the backgrounds are pasted together from element kits (template 6, `element-kits.md`). After approval, list the elements each vignette shows; that list becomes the kit inventory.
 
 ```text
 Input images: <creature-4, nature, nature-2 role sentences>.
@@ -71,3 +71,7 @@ Composition: <3 or 4> separate vignettes with bare paper around each, no frames 
 ```
 
 Pull location lines from the era module's architecture table.
+
+## 6. Element kit
+
+Separate torn-paper pieces on a flat magenta backdrop, one sheet per layer, no text. Full template, naming, layers and cutting: `element-kits.md`.

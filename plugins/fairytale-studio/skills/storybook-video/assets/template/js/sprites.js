@@ -56,3 +56,40 @@ export function spr(ctx, name, x, y, h, o = {}) {
   ctx.drawImage(s.c, -s.w / 2, oy, s.w, s.h);
   ctx.restore();
 }
+
+/** Stable integer seed from a sprite name (load order is not stable, names are). */
+function nameSeed(name) {
+  let h = 7;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return h;
+}
+
+/**
+ * Paste a torn-paper collage piece (element-kit sprite) as if glued on the drawing paper.
+ * Anchored bottom-centre (or centre with pivot:'center'); h is the on-screen height.
+ * Options: tilt (degrees, default a fixed -1.5..+1.5 from the name), shadow (opacity, default 0.3, 0 = off),
+ * parallax (default 1) with camX (camera x; the piece moves by -camX * parallax), sway (radians of slow
+ * rocking about the base, for trees and reeds), alpha, flip, pivot. No boil: paper pieces stay still.
+ */
+export function paste(ctx, name, x, y, h, o = {}) {
+  const s = S[name];
+  if (!s) return;
+  const seed = nameSeed(name);
+  const tilt = (o.tilt !== undefined ? o.tilt : (hash(seed * 0.0137) - 0.5) * 3) * Math.PI / 180;
+  const sway = o.sway ? Math.sin(state.T * 1.3 + (seed % 7)) * o.sway : 0;
+  const shadow = o.shadow ?? 0.3;
+  const scale = h / s.h;
+  ctx.save();
+  ctx.translate(x - (o.camX || 0) * (o.parallax ?? 1), y);
+  ctx.rotate(tilt + sway);
+  if (o.alpha !== undefined) ctx.globalAlpha *= o.alpha;
+  if (shadow > 0) {
+    ctx.shadowColor = `rgba(70, 55, 40, ${shadow})`;
+    ctx.shadowBlur = Math.max(2, h * 0.012);
+    ctx.shadowOffsetX = h * 0.006;
+    ctx.shadowOffsetY = h * 0.008;
+  }
+  ctx.scale((o.flip ? -1 : 1) * scale, scale);
+  ctx.drawImage(s.c, -s.w / 2, o.pivot === 'center' ? -s.h / 2 : -s.h, s.w, s.h);
+  ctx.restore();
+}

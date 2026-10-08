@@ -26,5 +26,15 @@ Identity sentences are pasted verbatim into every prompt. Edit here first, never
 <shape sentence: overall form, materials, 3-4 distinctive features, colors>
 ```
 
+## Element kit (backgrounds, mandatory)
+
+Every background element is a separate torn-paper piece (see `references/element-kits.md`). One line per piece: kebab-case name, layer, sentence. Scenes are pasted together from these names.
+
+| Name | Layer | Element sentence |
+|---|---|---|
+| <cottage-hero> | mid | <thatched-roof cottage with ...> |
+
+Kit sheets: <kit key>: <names in slot order>, scale ref <piece = character height>.
+
 ## Change log
 - v1 <date>: initial designs.

@@ -63,6 +63,7 @@ SCENES['bonk'] = (ctx, T, info) => {
 - Text: `handText(ctx, text, x, y, {size, font, weight, color, reveal, outline})`.
 - Painters (paint.js): `paper`, `sky`, `clouds`, `sun`, `moon`, `ground`, `waves`, `gull`, `house`, `cypress`, `heart`, `star`, `note`, `bulb`, `puff`, `plank`, `torch`, `nightOverlay`, `starsField`, and `BG.ships[i]`, `BG.tents[i]` canvases.
 - Sprites: `spr(ctx, name, x, y, height, {rot, flip, sq, alpha, filter, pivot: 'center', boil: false, clipBottom})`.
+- Collage pieces: `paste(ctx, name, x, y, height, {tilt, shadow, parallax, camX, alpha, flip, sway, pivot})` draws a torn-paper element sprite as if glued on the paper: a fixed hand tilt (default from the name, -1.5 to +1.5 degrees; `tilt` in degrees overrides), a soft warm drop shadow down-right scaled to the piece (`shadow: 0` turns it off; default 0.3 opacity), horizontal parallax `x - camX * parallax`, and an optional `sway` (radians of slow rocking about the base, for trees and reeds). No boil: paper pieces stay still unless they sway. Layer order and parallax values: `fairytale-art-prompts` `references/element-kits.md`.
 - Motion: `seg`, `lerp`, `smooth`, `easeIn/Out/InOut`, `backOut`, `bounceOut`, `env(T, t0, t1, fadeIn, fadeOut)`, `bob(T, period, amp)`.
 
 ## Data the engine reads

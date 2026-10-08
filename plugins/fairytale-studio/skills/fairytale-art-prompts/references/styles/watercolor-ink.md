@@ -43,6 +43,8 @@ Eras may add one or two tilt colors (see the era file); keep the total small so 
 
 ## Negatives (paste into Constraints)
 
+Character, expression, turnaround, prop and location sheets use this line. Element-kit sheets replace it with the torn-paper collage negatives (`torn-paper-collage.md`), because there the paper piece is the point.
+
 ```text
 No photorealism, no 3D, no cut-paper collage, no digital gradients, no polished vector, no complex realistic shading, no glossy cartoon finish.
 ```

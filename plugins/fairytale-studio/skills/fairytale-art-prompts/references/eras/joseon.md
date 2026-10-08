@@ -50,6 +50,19 @@ Pick one line per character and adapt the colors to the character bible.
 | Market | straw mats with baskets of vegetables and rice cakes, fabric bolts, earthenware, a wooden handcart |
 | Interior | heated floor (ondol) room with a low table, sleeping mat, paper windows, oil lamp; a kitchen with an iron cauldron (gamasot) over a fire hole |
 
+## Element library (for element kits)
+
+Separate pieces for `references/element-kits.md`, by layer. Make 2-3 variants of anything that repeats.
+
+| Layer | Pieces (sentence seeds) |
+|---|---|
+| `sky` | soft round cloud pieces (2-3 variants), a pale sun disc, a crescent moon, a small flock of far birds as ink ticks |
+| `far` | layered pine-covered mountain range in pale blue-green (2 variants, wide), a single distant peak with mist bands, a far hill with a band of pines |
+| `mid` | thatched cottage (choga) with round straw roof and rope net, a poorer cottage with a patched roof, a tiled-roof house (giwa) with curved eaves, a small pavilion (jeongja), a big pine with an umbrella canopy (2-3 variants), a persimmon tree with orange fruit, a bamboo clump |
+| `near` | low mud-and-stone wall segment (straight and corner), brushwood gate (sarip-mun), jar terrace (jangdokdae) of brown earthenware jars on a stone platform, stone cairn (doltap), mossy rock cluster (2 variants), firewood stack, straw-rope fence, small round pond with a rock rim, flat sitting stone, a well with a wooden bucket |
+| `front` | reeds (2 variants), grass tufts, wild chrysanthemums, a pine branch entering from the top edge |
+| `fx` | kitchen-chimney smoke curl, water splash, concentric ripples, magic mist, sparkles |
+
 ## Props
 
 Jige (A-frame carrier), small axe, sickle, straw baskets, earthenware jars, gourd dipper (bagaji), oil lamp and hanging lantern, rice cakes (tteok) on a wooden plate, folding fan, lucky pouch (bokjumeoni), brass bowls, straw rain cape, wooden spoons and chopsticks, a spinning wheel and loom for weaving stories.

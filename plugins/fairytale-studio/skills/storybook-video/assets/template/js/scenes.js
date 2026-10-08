@@ -9,7 +9,7 @@
 // Draw everything the scene needs, back to front: paper, sky, scenery, characters, effects.
 // Captions, bubbles, the quote and paper grain are added on top by stage.js.
 import { W, C, seg, easeOut, backOut, lerp, handText, INK } from './util.js';
-import { spr, S } from './sprites.js';
+import { spr, paste, S } from './sprites.js';
 import { paper, sky, clouds, sun, ground, house, star } from './paint.js';
 import { bob } from './stage.js';
 

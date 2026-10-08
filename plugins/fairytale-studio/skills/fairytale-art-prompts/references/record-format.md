@@ -39,6 +39,8 @@ Same shape as the Troy record, plus `story`, `style` and `era`:
 }
 ```
 
+Element-kit sheets add three fields to their asset entry: `"sheet": "element-kit"`, `"layer": "near"`, `"pieces": ["cottage-dori", "wall-straight", ...]` (slot names in reading order, the same list passed to `find-pieces.mjs --names`) and `"scale_ref": "cottage door = Dori height"`.
+
 Store the prompt exactly as sent, including fix lines added on a retry. Get the hash and size with:
 
 ```bash

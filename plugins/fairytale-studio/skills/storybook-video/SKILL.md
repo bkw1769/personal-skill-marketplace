@@ -31,7 +31,7 @@ Review without playing: `?still&t=<seconds>` shows one frame; in the console `__
 
 Write one function per scene id in `js/scenes.js` (signature and helpers in `references/architecture.md`). Work scene by scene, checking each with `?still&t=`:
 
-1. Background back to front: `paper`, `sky`, `clouds`/`sun`/`moon`, `ground`, era scenery (houses, walls: write story-specific painters in scenes.js or a `story-paint.js`).
+1. Background back to front. Default for stories with element kits (torn-paper collage, mandatory in `fairytale-art-prompts`): `paper` as the drawing-paper ground, a pale `sky` wash, then paste the cut pieces layer by layer with `paste(ctx, name, x, y, height, {tilt, shadow, parallax, camX})` — `sky` → `far` → `mid` → `near`, characters, then `front` and `fx` pieces. Procedural painters (`clouds`, `ground`, `house`) are only for stories without kits.
 2. Characters with `spr(ctx, name, x, y, height, {rot, flip, sq})`, feet on the ground line; motion from `T` so seeking works.
 3. Effects: `sfxWord` ("쾅!"), stars, hearts, bulbs, puffs, night overlay.
 
