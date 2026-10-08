@@ -10,6 +10,8 @@
  * @property {number}  [tol]      Paper colour tolerance (default 24).
  * @property {number}  [holeMin]  Smallest enclosed paper area (px) treated as a hole.
  * @property {number}  [pad]      Transparent margin kept around the trimmed sprite (default 2).
+ * @property {number}  [soft]     Colour-distance range over which edge pixels fade from transparent to opaque
+ *                                (default 42, for ink on paper; about 220 for a flat chroma backdrop such as magenta).
  */
 
 const clamp01 = (/** @type {number} */ x) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -127,7 +129,8 @@ export function extractSprite(src, opt = {}) {
         }
       }
     }
-    for (let i = 0; i < N; i++) alpha[i] = bg[i] ? 0 : near[i] ? clamp01((dist[i] - 8) / 42) : 1;
+    const soft = opt.soft ?? 42;
+    for (let i = 0; i < N; i++) alpha[i] = bg[i] ? 0 : near[i] ? clamp01((dist[i] - 8) / soft) : 1;
   }
   let minX = w, minY = h, maxX = -1, maxY = -1;
   // Solid drawing (alpha >= 0.5) on each border row/column of the crop: the figure continues outside it.

@@ -14,35 +14,46 @@ import { median } from './extract.mjs';
 import { NAME } from './cut-sprites.mjs';
 
 /**
+ * Cutter options written for every kit piece: keep only the piece itself, treat the flat
+ * chroma backdrop generously, and fade the torn rim over the whole backdrop-to-paper colour
+ * range so the blend band is un-mixed instead of left as a pink fringe (measured on the
+ * golden-axe kits: edge pixels with a magenta cast fell from about 94 % to under 1 %).
+ */
+export const KIT_OPTIONS = Object.freeze({ largest: true, tol: 48, soft: 220 });
+
+/**
  * @typedef {{x: number, y: number, w: number, h: number, area: number}} Piece
  * @typedef {{tol?: number, gap?: number, minArea?: number, margin?: number, speck?: number}} FindOptions
  */
 
 /**
- * Merge boxes whose rectangles, grown by `gap` px, touch or overlap. Pixel areas add up.
- * @param {Piece[]} boxes
- * @param {number} gap
- * @returns {Piece[]}
+ * Grow a binary mask by r pixels in every direction (square window): a row pass, then a column pass.
+ * @param {Uint8Array} mask
+ * @param {number} w
+ * @param {number} h
+ * @param {number} r
+ * @returns {Uint8Array} a new mask
  */
-export function mergeBoxes(boxes, gap) {
-  const list = boxes.map((b) => ({ ...b }));
-  let merged = true;
-  while (merged) {
-    merged = false;
-    for (let i = 0; i < list.length && !merged; i++) {
-      for (let j = i + 1; j < list.length; j++) {
-        const a = list[i], b = list[j];
-        if (a.x - gap <= b.x + b.w && b.x - gap <= a.x + a.w && a.y - gap <= b.y + b.h && b.y - gap <= a.y + a.h) {
-          const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-          list[i] = { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y, area: a.area + b.area };
-          list.splice(j, 1);
-          merged = true;
-          break;
-        }
-      }
+export function dilate(mask, w, h, r) {
+  const rows = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let count = 0;
+    for (let x = -r; x < w; x++) {
+      if (x + r < w) count += mask[y * w + x + r];
+      if (x - r - 1 >= 0) count -= mask[y * w + x - r - 1];
+      if (x >= 0) rows[y * w + x] = count > 0 ? 1 : 0;
     }
   }
-  return list;
+  const out = new Uint8Array(w * h);
+  for (let x = 0; x < w; x++) {
+    let count = 0;
+    for (let y = -r; y < h; y++) {
+      if (y + r < h) count += rows[(y + r) * w + x];
+      if (y - r - 1 >= 0) count -= rows[(y - r - 1) * w + x];
+      if (y >= 0) out[y * w + x] = count > 0 ? 1 : 0;
+    }
+  }
+  return out;
 }
 
 /**
@@ -66,8 +77,10 @@ export function readingOrder(boxes) {
 /**
  * Find the pieces on a sheet. The backdrop colour is the median of the outermost pixel
  * frame; every pixel farther than `tol` from it is part of a piece. Components smaller
- * than `speck` px are noise; components within `gap` px of each other are one piece
- * (loose paper fibres, a cloud of sparkles); pieces under `minArea` of the sheet are dropped.
+ * than `speck` px are noise; pixels within `gap` px of each other belong to one piece
+ * (loose paper fibres, a cloud of sparkles), measured on the pixels themselves, not on
+ * bounding boxes, so irregular neighbours whose boxes overlap stay apart; pieces under
+ * `minArea` of the sheet are dropped.
  * Rectangles get `margin` px of backdrop on every side, clipped to the sheet.
  * @param {import('./png.mjs').Image} img
  * @param {FindOptions} [opt]
@@ -87,27 +100,31 @@ export function findPieces(img, opt = {}) {
     const r = d[i * 4] - backdrop[0], g = d[i * 4 + 1] - backdrop[1], b = d[i * 4 + 2] - backdrop[2];
     fg[i] = r * r + g * g + b * b > tol * tol ? 1 : 0;
   }
+  const near = dilate(fg, w, h, Math.round(gap / 2));
   const seen = new Uint8Array(N);
   const q = new Int32Array(N);
   /** @type {Piece[]} */
   const comps = [];
   for (let s = 0; s < N; s++) {
-    if (!fg[s] || seen[s]) continue;
-    let qh = 0, qt = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
+    if (!near[s] || seen[s]) continue;
+    let qh = 0, qt = 0, area = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
     seen[s] = 1; q[qt++] = s;
     while (qh < qt) {
       const i = q[qh++], x = i % w, y = (i / w) | 0;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
+      if (fg[i]) {
+        area++;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
       for (const n of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
-        if (n >= 0 && fg[n] && !seen[n]) { seen[n] = 1; q[qt++] = n; }
+        if (n >= 0 && near[n] && !seen[n]) { seen[n] = 1; q[qt++] = n; }
       }
     }
-    if (qt >= speck) comps.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, area: qt });
+    if (area >= speck) comps.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, area });
   }
-  const keep = mergeBoxes(comps, gap).filter((b) => b.area >= minArea * N);
+  const keep = comps.filter((b) => b.area >= minArea * N);
   const pieces = readingOrder(keep).map((b) => {
     const x = Math.max(0, b.x - margin), y = Math.max(0, b.y - margin);
     return { x, y, w: Math.min(w, b.x + b.w + margin) - x, h: Math.min(h, b.y + b.h + margin) - y, area: b.area };
@@ -173,7 +190,7 @@ export function main(argv, io) {
     if (clash.length) throw new Error(`name(s) already used by another sheet in ${args.crops}: ${clash.join(', ')}`);
     spec.sheets[args.key] = path.relative(path.dirname(path.resolve(args.crops)), path.resolve(args.sheet));
     spec.crops = Object.fromEntries(Object.entries(spec.crops).filter(([, e]) => sheetOf(e) !== args.key));
-    pieces.forEach((p, i) => { spec.crops[names[i]] = { sheet: args.key, x: p.x, y: p.y, w: p.w, h: p.h, options: { largest: true } }; });
+    pieces.forEach((p, i) => { spec.crops[names[i]] = { sheet: args.key, x: p.x, y: p.y, w: p.w, h: p.h, options: { ...KIT_OPTIONS } }; });
     fs.mkdirSync(path.dirname(path.resolve(args.crops)), { recursive: true });
     fs.writeFileSync(args.crops, JSON.stringify(spec, null, 2) + '\n');
     io.out(`Backdrop rgb(${backdrop.join(', ')}); ${pieces.length} piece(s) on "${args.key}" written to ${args.crops}:\n${pieces.map((p, i) => `  ${names[i]}: x=${p.x} y=${p.y} w=${p.w} h=${p.h}`).join('\n')}`);

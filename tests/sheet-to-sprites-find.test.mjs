@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'plugins/fairytale-studio/skills/sheet-to-sprites/scripts');
 const { encodePng } = await import(path.join(DIR, 'png.mjs'));
-const { findPieces, mergeBoxes, readingOrder, parseArgs, main } = await import(path.join(DIR, 'find-pieces.mjs'));
+const { findPieces, dilate, readingOrder, parseArgs, main } = await import(path.join(DIR, 'find-pieces.mjs'));
 
 const MAGENTA = [255, 0, 255];
 /** Flat backdrop image with filled rectangles [x, y, w, h, rgb]. */
@@ -26,14 +26,16 @@ const io = () => { const out = [], err = []; return { out, err, io: { out: (s) =
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'find-pieces-'));
 
 describe('find-pieces helpers', () => {
-  test('mergeBoxes joins boxes within the gap and sums their area, keeps far ones', () => {
-    const out = mergeBoxes([
-      { x: 0, y: 0, w: 10, h: 10, area: 100 },
-      { x: 50, y: 50, w: 5, h: 5, area: 25 },
-      { x: 13, y: 2, w: 4, h: 4, area: 16 },
-    ], 3);
-    assert.deepEqual(out, [{ x: 0, y: 0, w: 17, h: 10, area: 116 }, { x: 50, y: 50, w: 5, h: 5, area: 25 }]);
-    assert.equal(mergeBoxes([{ x: 0, y: 0, w: 10, h: 10, area: 1 }, { x: 14, y: 0, w: 4, h: 4, area: 1 }], 3).length, 2);
+  test('dilate grows a mask by r in every direction, clipped at the edges', () => {
+    const m = new Uint8Array(5 * 4); m[1 * 5 + 1] = 1; m[3 * 5 + 4] = 1;
+    const out = dilate(m, 5, 4, 1);
+    assert.deepEqual([...out], [
+      1, 1, 1, 0, 0,
+      1, 1, 1, 0, 0,
+      1, 1, 1, 1, 1,
+      0, 0, 0, 1, 1,
+    ]);
+    assert.deepEqual([...dilate(m, 5, 4, 0)], [...m]);
   });
 
   test('readingOrder groups rows by vertical centre, then sorts left to right', () => {
@@ -60,6 +62,15 @@ describe('findPieces', () => {
       { x: 85, y: 5, w: 60, h: 50, area: 2000 },
       { x: 155, y: 75, w: 45, h: 45, area: 1600 },
     ]);
+  });
+
+  test('L-shaped neighbours with overlapping bounding boxes stay separate', () => {
+    const img = sheet(120, 120, [
+      [10, 10, 80, 20, CREAM], [10, 30, 20, 70, CREAM],   // an L
+      [50, 50, 50, 50, CREAM],                            // sits inside the L's box, 20 px away
+    ]);
+    const { pieces } = findPieces(img, { margin: 0 });
+    assert.deepEqual(pieces.map((p) => [p.x, p.y, p.w, p.h]), [[10, 10, 80, 90], [50, 50, 50, 50]]);
   });
 
   test('defaults: tol keeps a colour close to the backdrop as backdrop', () => {
@@ -104,7 +115,7 @@ describe('find-pieces CLI', () => {
     let spec = JSON.parse(fs.readFileSync(crops, 'utf8'));
     assert.equal(spec.schema, 'sprite-crops/1');
     assert.equal(spec.sheets.kit, '../kit.png');
-    assert.deepEqual(spec.crops.house, { sheet: 'kit', x: 0, y: 0, w: 84, h: 84, options: { largest: true } });
+    assert.deepEqual(spec.crops.house, { sheet: 'kit', x: 0, y: 0, w: 84, h: 84, options: { largest: true, tol: 48, soft: 220 } });
     assert.deepEqual(Object.keys(spec.crops), ['house', 'tree']);
 
     spec.sheets.cast = 'cast.png';

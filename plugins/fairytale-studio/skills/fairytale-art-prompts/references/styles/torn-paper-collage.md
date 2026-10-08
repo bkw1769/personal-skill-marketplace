@@ -1,6 +1,6 @@
 # Finish: torn-paper collage (찢은 종이 콜라주)
 
-Status: drafted 2026-10-08 for 금도끼 은도끼; not yet proven by an approved kit. First intended use: the golden-axe element kits.
+Status: drafted 2026-10-08; first used on the four golden-axe kits (`out/character-designs/2026-10-08-golden-axe-v1/`, not yet approved). Result: all 30 pieces separated and cut cleanly on the magenta backdrop; rims were torn on three sheets and sticker-smooth on one.
 
 Look in one line: every background element is its own small watercolor-and-ink painting on a piece of watercolor paper, torn out by hand along its outline, and later pasted onto a drawing-paper ground with a thin shadow under the torn edge.
 
@@ -41,10 +41,11 @@ The composite supplies what the kit leaves out on purpose:
 
 ## Known failure modes and fixes
 
-| Symptom (expected) | Fix line to add |
+| Symptom | Fix line to add |
 |---|---|
+| Buildings arrive with their own yard, fence, wall, jars and flowers attached (seen on golden-axe village-mid) | `the building alone with only a thin strip of ground at its base: no wall, fence, jars, plants or yard around it; those are separate pieces` |
+| Rims came out as smooth die-cut sticker outlines on one of four sheets (seen on golden-axe village-mid) | put `torn by hand: irregular deckled edge with soft fibres, never a smooth sticker outline` both in the collage block position and at the end of Constraints |
 | Model paints a little ground, grass or shadow under each piece | `every piece is isolated on the magenta backdrop: no ground patch, grass strip, puddle or shadow under it` |
-| Rims are clean scissor cuts or sticker outlines | `torn by hand: irregular deckled edge with soft fibres, never a smooth sticker outline` |
 | Backdrop gets a gradient or paper texture | repeat the backdrop block at the end of Constraints |
 | Pieces crowd and touch | reduce the slot count (8 or fewer per sheet) and repeat `wide clear magenta gaps` |
 | Paint leaks onto the backdrop or the rim disappears | `a visible white paper margin all around every painted element` |

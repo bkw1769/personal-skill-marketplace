@@ -14,7 +14,7 @@ import { decodePng, encodePng } from './png.mjs';
 import { cutSprite, drawBoxes, contactSheet } from './extract.mjs';
 
 export const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const OPTION_KEYS = new Set(['text', 'largest', 'tol', 'holeMin', 'pad', 'grow', 'growMax']);
+const OPTION_KEYS = new Set(['text', 'largest', 'tol', 'holeMin', 'pad', 'soft', 'grow', 'growMax']);
 
 /**
  * @typedef {{sheet: string, x: number, y: number, w: number, h: number, options: Object}} Crop

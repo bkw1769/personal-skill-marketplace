@@ -23,7 +23,7 @@ node <skill-dir>/scripts/find-pieces.mjs <kit.png> --crops <set>/crops.json --ke
 
 - Backdrop colour = median of the sheet's outer pixel frame; anything farther than `--tol` (48) is a piece. Fibres and sparkles within `--gap` (6 px) of a piece join it; pieces under `--min-area` (0.3 % of the sheet) are dropped as specks; each rectangle gets `--margin` (14 px) of backdrop.
 - Names are given in the kit prompt's slot order and assigned in reading order (rows top to bottom, left to right). A count mismatch stops with the list of found rectangles: two pieces touch or one is missing; regenerate the sheet rather than drawing boxes by hand. Without `--names` pieces are numbered `<key>-1..n`.
-- Every crop gets `"largest": true`. Re-running for the same key replaces only that sheet's crops, so all kits of a story can share one crops.json.
+- Every crop gets the kit options `{"largest": true, "tol": 48, "soft": 220}`: `soft` widens the edge fade so the white-to-magenta blend band is un-mixed instead of staying as a pink fringe. Pieces closer than 6 px (rim fibres) merge; retry with `--gap 2` before regenerating. Re-running for the same key replaces only that sheet's crops, so all kits of a story can share one crops.json.
 
 Then cut as below (step 3). Check in `_contact.png` that the white torn rim survives all around and no magenta fringe is left: pink halo → raise `tol` for that crop; rim eaten → lower it. Element sprites are anchored bottom-centre like characters.
 
@@ -78,7 +78,7 @@ Then cut as below (step 3). Check in `_contact.png` that the white torn rim surv
 2. Flood fill from the border through pixels within `tol` of the paper colour.
 3. Enclosed paper regions of at least `holeMin` pixels become transparent too.
 4. Connected blobs are labeled; specks smaller than about 0.025% of the crop, border-touching blobs smaller than 30% of the main figure, and (with `largest`) any blob under 5% of the main figure are removed.
-5. Pixels within 2 px of paper get partial alpha by colour distance, and the paper colour is un-mixed from them to avoid a light halo.
+5. Pixels within 2 px of paper get partial alpha by colour distance (ramp width `soft`, default 42), and the paper colour is un-mixed from them to avoid a light halo.
 6. Trim to the drawing plus `pad` px (default 2).
 7. Headroom check: count solid pixels (alpha ≥ 0.5) on each border line of the rectangle; 3 or more means the drawing continues outside, so grow that side and repeat. A step is rejected when the solid area jumps by more than half (a whole neighbour came inside); neighbours only partly inside are already removed by step 4.
 

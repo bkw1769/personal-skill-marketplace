@@ -97,7 +97,7 @@ node <sheet-to-sprites>/scripts/find-pieces.mjs <kit.png> --crops <set>/crops.js
 node <sheet-to-sprites>/scripts/cut-sprites.mjs <set>/crops.json --out <set>/sprites --boxes
 ```
 
-`find-pieces` reads the flat backdrop colour from the sheet border, finds each piece, names them in reading order and writes crops with `"largest": true`. If the count does not match the names, the sheet has touching pieces or a missing piece: regenerate it (more gap, fewer pieces) rather than drawing boxes by hand. In the contact sheet check that the white torn rim is kept all around and no magenta fringe remains; raise `tol` for that crop if a pink halo is left, lower it if a pale rim gets eaten.
+`find-pieces` reads the flat backdrop colour from the sheet border, finds each piece, names them in reading order and writes crops with the kit cut options (`largest`, `tol: 48`, `soft: 220`). If it finds fewer pieces than names and the sheet shows a thin backdrop gap between them, retry with `--gap 2` (golden-axe village-near needed it: fibres of neighbouring rims came within 6 px); if the pieces really touch or one is missing, regenerate the sheet (more gap, fewer pieces) rather than drawing boxes by hand. In the contact sheet check that the white torn rim is kept all around and no magenta fringe remains. The kit options leave under 1 % of edge pixels with a magenta cast (default cutter options left about 94 %, because the white-to-magenta blend band counted as opaque); if a halo remains, adjust `soft` (fade range) before `tol`.
 
 ## Compositing
 

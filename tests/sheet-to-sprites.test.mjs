@@ -150,6 +150,20 @@ describe('extract', () => {
     assert.ok(res.image.data[(5 * res.image.width) * 4] < 215, 'colour pushed away from paper');
   });
 
+  test('soft widens the edge fade for a chroma backdrop and un-mixes the blend band', () => {
+    const img = { width: 40, height: 40, data: new Uint8Array(40 * 40 * 4) };
+    for (let i = 0; i < 1600; i++) img.data.set([255, 0, 255, 255], i * 4);
+    fill(img, 10, 10, 30, 30, [245, 238, 220]);     // cream paper piece
+    fill(img, 9, 10, 10, 30, [250, 119, 238]);       // half-way blend of cream and magenta
+    const hard = extractSprite(img, { pad: 0 });
+    assert.equal(alphaAt(hard.image, 0, 5), 255);    // default ramp: the pink band stays opaque
+    const soft = extractSprite(img, { pad: 0, soft: 220 });
+    const a = alphaAt(soft.image, 0, 5);
+    assert.ok(a > 80 && a < 180, `edge alpha ${a}`);
+    const g = soft.image.data[(5 * soft.image.width) * 4 + 1];
+    assert.ok(g > 200, `green restored to cream, got ${g}`);
+  });
+
   test('options: largest, holeMin, tol, text', () => {
     const s = sheet(100, 100);
     fill(s, 20, 20, 70, 70, [60, 40, 30]);
