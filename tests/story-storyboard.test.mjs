@@ -313,6 +313,16 @@ describe('retime', () => {
     assert.equal(changes.length, 3);
   });
 
+  test('captions held for reading time are cut where the next caption starts, across scenes', () => {
+    const sb = { schema: SCHEMA, title: 'X', language: 'en', audience: '3-5', duration: 16,
+      scenes: [{ id: 'a', start: 0, end: 8 }, { id: 'b', start: 8, end: 16 }],
+      captions: [{ start: 6, end: 7.9, text: 'one two three four five six seven eight' }, { start: 8, end: 9, text: 'Go.' }] };
+    const tl = { lines: [{ id: 'p', text: 'one two three four five six seven eight', start: 0, end: 1 }, { id: 'q', text: 'Go.', start: 2, end: 2.3 }] };
+    const r = retime(sb, tl, { tail: 0 }).storyboard;
+    assert.deepEqual(r.captions.map((c) => [c.start, c.end]), [[6, 7.95], [8, 8.5]]);
+    assert.deepEqual(validate(r).errors, []);
+  });
+
   test('a storyboard with only scenes keeps its timing', () => {
     const { storyboard: r, changes } = retime({ schema: SCHEMA, title: 'S', duration: 9, scenes: [{ id: 'a', start: 0, end: 9 }] }, { lines: [] });
     assert.deepEqual([r.duration, r.scenes[0].end, changes], [9, 9, []]);

@@ -323,7 +323,14 @@ export function retime(sb, timeline, opt = {}) {
     cursor = s.end;
   });
   for (const x of [...(out.cues || []), ...(out.bubbles || [])]) delete x._done;
-  if (out.captions) out.captions.sort((/** @type {any} */ a, /** @type {any} */ b) => a.start - b.start);
+  if (out.captions) {
+    out.captions.sort((/** @type {any} */ a, /** @type {any} */ b) => a.start - b.start);
+    // A caption held for reading time must not run into the next one, even across a scene boundary.
+    out.captions.forEach((/** @type {any} */ c, /** @type {number} */ i) => {
+      const next = out.captions[i + 1];
+      if (next && c.end > next.start - 0.05) c.end = round(Math.max(c.start + 0.1, next.start - 0.05));
+    });
+  }
   out.duration = round(cursor);
   return { storyboard: out, changes };
 }
