@@ -42,3 +42,5 @@
 - A name label lost its last syllable → label boxes need extra room on the right; lettering drifts.
 - Two citizens drawn touching could not be separated → keep them as one sprite or regenerate the sheet with a gap.
 - Coordinates are only trustworthy after looking at `_boxes-*.png`; estimate, cut, look, adjust.
+- White clothing (hanbok, robes, a magpie's belly) is paper-coloured, so enclosed white areas were cleared as holes and showed the background through the figure (golden-axe pose sheets). Set `"holeMin": 1000000` on such characters; the small paper islands between legs then stay paper-coloured, which is invisible on the drawing-paper ground of a collage scene.
+- A separate object next to a figure (an axe flying out of a hand) is dropped when it touches the crop border; widen the box so it sits fully inside.

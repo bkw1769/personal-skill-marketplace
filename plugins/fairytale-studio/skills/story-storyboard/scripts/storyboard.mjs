@@ -2,9 +2,11 @@
 // Validate a storyboard.json and render it as a readable Markdown table.
 //   node storyboard.mjs validate <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n]
 //   node storyboard.mjs render   <storyboard.json> [--out storyboard.md]
+//   node storyboard.mjs retime   <storyboard.json> --timeline <timeline.json> --out <storyboard.json> [--min-gap 0.3] [--tail 0.8] [--keep-length yes]
 // Reading-speed, episode-length and scene-length checks follow the audience band
 // (see references/audience-profiles.md). Korean text is measured in syllables per second,
-// English ("language": "en...") in words per minute.
+// English ("language": "en...") in words per minute. `retime` moves captions, bubbles, cues and scene
+// boundaries to the real length of recorded narration (timeline.json from the storybook-narration tts tool).
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -200,6 +202,136 @@ export function render(sb) {
 }
 
 /**
+ * Text reduced to letters and digits, lower case, for matching narration lines to captions.
+ * @param {string} text
+ * @returns {string}
+ */
+export function norm(text) {
+  return String(text).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+/**
+ * Spoken items of a storyboard in time order, as the narration converter reads them:
+ * every caption, and every bubble unless `narrate: false`.
+ * @param {any} sb
+ * @returns {any[]} the caption and bubble objects themselves
+ */
+export function spokenItems(sb) {
+  return [...(sb.captions || []), ...(sb.bubbles || []).filter((b) => b.narrate !== false)].sort((a, b) => a.start - b.start);
+}
+
+/**
+ * Match recorded lines to spoken items by text. One item may span several lines (the converter
+ * splits long captions) and one line may cover several items (it merges very short ones); a shared
+ * line is divided by text length.
+ * @param {any[]} items
+ * @param {{id: string, text: string, start: number, end: number}[]} lines
+ * @returns {{start: number, end: number, ids: string[]}[]} speech span per item in timeline seconds
+ */
+export function matchSpeech(items, lines) {
+  const spans = [];
+  let j = 0, used = 0;
+  for (const item of items) {
+    let rem = norm(item.text);
+    /** @type {{start: number, end: number, ids: string[]} | null} */
+    let span = null;
+    while (rem.length) {
+      if (j >= lines.length) throw new Error(`no recorded line left for "${item.text}"`);
+      const line = lines[j], full = norm(line.text);
+      const left = full.slice(used);
+      const at = (/** @type {number} */ k) => line.start + ((line.end - line.start) * k) / full.length;
+      const take = left.startsWith(rem) ? rem.length : rem.startsWith(left) ? left.length : -1;
+      if (take < 0) throw new Error(`recorded line ${line.id} "${line.text}" does not match "${item.text}"`);
+      if (!span) span = { start: at(used), end: 0, ids: [] };
+      if (!span.ids.includes(line.id)) span.ids.push(line.id);
+      used += take;
+      span.end = at(used);
+      rem = rem.slice(take);
+      if (used >= full.length) { j++; used = 0; }
+    }
+    spans.push(span || { start: 0, end: 0, ids: [] });
+  }
+  if (j < lines.length) throw new Error(`${lines.length - j} recorded line(s) left over, starting with ${lines[j].id}`);
+  return spans;
+}
+
+/**
+ * Re-time a storyboard to recorded narration (voice first, picture follows). Each scene keeps its
+ * lead-in before the first spoken item and the original pause after every item (so question pauses
+ * survive); captions stay up at least their reading time; a scene lasts as long as its speech plus a
+ * tail, never shorter than the audience band's minimum (or its old length with keepLength). Cues and
+ * unspoken bubbles keep their offset from the spoken item before them. Items get `voice_lines`.
+ * @param {any} sb
+ * @param {{lines: {id: string, text: string, start: number, end: number}[]}} timeline
+ * @param {{minGap?: number, tail?: number, keepLength?: boolean}} [opt]
+ * @returns {{storyboard: any, changes: string[]}}
+ */
+export function retime(sb, timeline, opt = {}) {
+  const minGap = opt.minGap ?? 0.3, tail = opt.tail ?? 0.8;
+  const out = JSON.parse(JSON.stringify(sb));
+  const band = AUDIENCE[bandFor(sb)];
+  const english = /^en/i.test(String(sb.language || ''));
+  const readNeed = (/** @type {string} */ t) => (english ? (countWords(t) / band.maxWpm) * 60 : readChars(t) / band.maxCps);
+  const items = spokenItems(out);
+  const speech = matchSpeech(items, timeline.lines);
+  const spokenSet = new Set(items);
+  const origStart = new Map(items.map((it) => [it, it.start]));
+  const origEnd = new Map(items.map((it) => [it, it.end]));
+  const inScene = (/** @type {any} */ s, /** @type {number} */ t, /** @type {boolean} */ last) => t >= s.start - EPS && (t < s.end - EPS || last);
+  const changes = [];
+  let cursor = 0;
+  out.scenes.forEach((/** @type {any} */ s, /** @type {number} */ si) => {
+    const last = si === out.scenes.length - 1;
+    const oldStart = s.start, oldLen = s.end - s.start;
+    const mine = items.filter((it) => inScene(s, origStart.get(it), last));
+    /** Old time -> new time, anchored on the last spoken item that started at or before it. */
+    const anchors = [{ old: oldStart, now: cursor }];
+    let t = cursor + (mine.length ? Math.max(0, origStart.get(mine[0]) - oldStart) : 0);
+    let speechEnd = cursor;
+    mine.forEach((it, k) => {
+      const sp = speech[items.indexOf(it)];
+      const len = sp.end - sp.start;
+      anchors.push({ old: origStart.get(it), now: t });
+      it.start = round(t);
+      it.end = round(t + Math.max(len, readNeed(it.text)));
+      it.voice_lines = sp.ids;
+      speechEnd = t + len;
+      const next = mine[k + 1];
+      const gap = next ? Math.max(minGap, origStart.get(next) - origEnd.get(it)) : 0;
+      t = speechEnd + gap;
+      if (next) it.end = round(Math.min(it.end, t - 0.05));
+    });
+    const keepTail = mine.length ? Math.max(tail, s.end - origEnd.get(mine[mine.length - 1])) : 0;
+    const need = mine.length ? speechEnd + keepTail - cursor : oldLen;
+    const len = Math.max(need, opt.keepLength ? oldLen : Math.min(oldLen, band.minScene));
+    const moveOld = (/** @type {number} */ x) => {
+      let a = anchors[0];
+      for (const b of anchors) if (b.old <= x + EPS) a = b;
+      return round(Math.min(a.now + (x - a.old), cursor + len - 0.05));
+    };
+    for (const c of out.cues || []) if (inScene({ start: oldStart, end: oldStart + oldLen }, c.t, last) && c._done !== true) { c.t = moveOld(c.t); c._done = true; }
+    for (const b of out.bubbles || []) {
+      if (spokenSet.has(b) || b._done || !inScene({ start: oldStart, end: oldStart + oldLen }, b.start, last)) continue;
+      const blen = b.end - b.start;
+      b.start = moveOld(b.start);
+      b.end = round(Math.min(b.start + blen, cursor + len));
+      b._done = true;
+    }
+    s.start = round(cursor);
+    s.end = round(cursor + len);
+    if (Math.abs(s.start - oldStart) > EPS || Math.abs(len - oldLen) > EPS) changes.push(`${s.id}: ${fmt(oldStart)} ${oldLen.toFixed(1)}s -> ${fmt(s.start)} ${len.toFixed(1)}s`);
+    cursor = s.end;
+  });
+  for (const x of [...(out.cues || []), ...(out.bubbles || [])]) delete x._done;
+  if (out.captions) out.captions.sort((/** @type {any} */ a, /** @type {any} */ b) => a.start - b.start);
+  out.duration = round(cursor);
+  return { storyboard: out, changes };
+}
+
+/** @param {number} x @returns {number} */
+const round = (x) => Math.round(x * 100) / 100;
+
+/**
  * CLI entry.
  * @param {string[]} argv
  * @param {{out: (s: string) => void, err: (s: string) => void}} io
@@ -210,8 +342,8 @@ export function main(argv, io) {
   /** @type {Record<string, string>} */
   const o = {};
   for (let i = 0; i < rest.length; i += 2) o[rest[i].replace(/^--/, '')] = rest[i + 1];
-  if (!['validate', 'render'].includes(cmd) || !file) {
-    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n] [--out file.md]');
+  if (!['validate', 'render', 'retime'].includes(cmd) || !file || (cmd === 'retime' && (!o.timeline || !o.out))) {
+    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n] [--out file.md]\n       node storyboard.mjs retime <storyboard.json> --timeline <timeline.json> --out <storyboard.json> [--min-gap 0.3] [--tail 0.8] [--keep-length yes]');
     return 1;
   }
   let sb;
@@ -220,6 +352,19 @@ export function main(argv, io) {
   } catch (e) {
     io.err(`error: cannot read ${file}: ${/** @type {Error} */ (e).message}`);
     return 1;
+  }
+  if (cmd === 'retime') {
+    try {
+      const timeline = JSON.parse(fs.readFileSync(o.timeline, 'utf8'));
+      const res = retime(sb, timeline, { minGap: o['min-gap'] ? Number(o['min-gap']) : undefined, tail: o.tail ? Number(o.tail) : undefined, keepLength: o['keep-length'] === 'yes' });
+      fs.writeFileSync(o.out, JSON.stringify(res.storyboard, null, 2) + '\n');
+      res.changes.forEach((c) => io.out(`  ${c}`));
+      io.out(`Retimed ${fmt(sb.duration)} -> ${fmt(res.storyboard.duration)}; ${res.changes.length} scene(s) moved or resized; wrote ${o.out}. Run validate next.`);
+      return 0;
+    } catch (e) {
+      io.err(`error: ${/** @type {Error} */ (e).message}`);
+      return 1;
+    }
   }
   const { errors, warnings, audience } = validate(sb, {
     maxCps: o['max-cps'] ? Number(o['max-cps']) : undefined,

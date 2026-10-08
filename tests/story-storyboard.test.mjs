@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'plugins/fairytale-studio/skills/story-storyboard');
 const SCRIPT = path.join(SKILL, 'scripts/storyboard.mjs');
-const { validate, render, main, readChars, countWords, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE } = await import(SCRIPT);
+const { validate, render, main, readChars, countWords, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE, norm, spokenItems, matchSpeech, retime } = await import(SCRIPT);
 
 const base = () => ({
   schema: SCHEMA,
@@ -235,5 +235,103 @@ describe('cli', () => {
     assert.match(res.stdout, /0 error\(s\), 9 warning\(s\) for 만 6~8세/);
     const young = spawnSync(process.execPath, [SCRIPT, 'validate', path.join(SKILL, 'references/example-troy-storyboard.json'), '--audience', '3-5', '--max-wpm', '110'], { encoding: 'utf8' });
     assert.match(young.stdout, /for 만 3~5세/);
+  });
+});
+
+describe('retime', () => {
+  const sbEn = () => ({
+    schema: SCHEMA, title: 'R', language: 'en', audience: '3-5', duration: 30,
+    cast: [{ id: 'girl' }],
+    scenes: [{ id: 'a', start: 0, end: 10 }, { id: 'b', start: 10, end: 20 }, { id: 'c', start: 20, end: 30 }],
+    captions: [
+      { start: 5, end: 8, text: 'Four five?' },
+      { start: 1, end: 4, text: 'One two three.' },
+      { start: 12, end: 15, text: 'Six seven eight nine ten.' },
+    ],
+    bubbles: [
+      { start: 21, end: 24, speaker: 'girl', text: '"Hi there friend."' },
+      { start: 16, end: 18, speaker: 'girl', text: 'psst', narrate: false },
+    ],
+    cues: [{ t: 2, sound: 'pop' }, { t: 0.5, sound: 'bird' }, { t: 17, sound: 'boing' }, { t: 29, sound: 'chime' }],
+  });
+  const tl = { lines: [
+    { id: 'l1', text: 'One two three.', start: 0, end: 1 },
+    { id: 'l2', text: 'Four five?', start: 2, end: 2.8 },
+    { id: 'l3', text: 'Six seven', start: 4, end: 4.6 },
+    { id: 'l4', text: 'eight nine ten.', start: 5, end: 5.9 },
+    { id: 'l5', text: 'Hi there friend.', start: 8, end: 9.5 },
+  ] };
+
+  test('norm and spokenItems', () => {
+    assert.equal(norm('He went back, into the pond... "Yes!" 3'), 'hewentbackintothepondyes3');
+    assert.equal(norm('도끼야, 안녕!'), '도끼야안녕');
+    assert.deepEqual(spokenItems(sbEn()).map((x) => x.start), [1, 5, 12, 21]);
+    assert.deepEqual(spokenItems({}), []);
+  });
+
+  test('matchSpeech splits shared lines, joins split ones, and reports mismatches', () => {
+    const spans = matchSpeech([{ text: 'Hi.' }, { text: 'Ok there.' }, { text: '...' }, { text: 'One' }, { text: 'two.' }],
+      [{ id: 'm', text: 'Hi. Ok there.', start: 0, end: 2 }, { id: 'n', text: 'One two.', start: 3, end: 4 }]);
+    assert.equal(spans[0].start, 0);
+    assert.ok(Math.abs(spans[0].end - 2 * 2 / 9) < 1e-9);
+    assert.deepEqual(spans[1].ids, ['m']);
+    assert.equal(spans[1].end, 2);
+    assert.deepEqual(spans[2], { start: 0, end: 0, ids: [] });
+    assert.deepEqual([spans[3].ids, spans[4].ids, spans[4].end], [['n'], ['n'], 4]);
+    assert.throws(() => matchSpeech([{ text: 'Hello' }], [{ id: 'x', text: 'Goodbye', start: 0, end: 1 }]), /x "Goodbye" does not match "Hello"/);
+    assert.throws(() => matchSpeech([{ text: 'Hello' }], []), /no recorded line left for "Hello"/);
+    assert.throws(() => matchSpeech([], [{ id: 'x', text: 'a', start: 0, end: 1 }]), /1 recorded line\(s\) left over, starting with x/);
+  });
+
+  test('moves scenes, captions, bubbles and cues to the recorded speech', () => {
+    const { storyboard: r, changes } = retime(sbEn(), tl);
+    assert.deepEqual(r.scenes.map((s) => [s.start, s.end]), [[0, 8], [8, 16.9], [16.9, 25.4]]);
+    assert.equal(r.duration, 25.4);
+    assert.deepEqual(r.captions.map((c) => [c.start, c.end, c.voice_lines]), [[1, 2.5, ['l1']], [3, 4, ['l2']], [10, 12.5, ['l3', 'l4']]]);
+    assert.deepEqual([r.bubbles[0].start, r.bubbles[0].end, r.bubbles[0].voice_lines], [17.9, 19.4, ['l5']]);
+    assert.deepEqual([r.bubbles[1].start, r.bubbles[1].end, r.bubbles[1].voice_lines], [14, 16, undefined]);
+    assert.deepEqual(r.cues.map((c) => c.t), [2, 0.5, 15, 25.35]);
+    assert.ok(r.cues.every((c) => !('_done' in c)) && r.bubbles.every((b) => !('_done' in b)));
+    assert.equal(changes.length, 3);
+    assert.match(changes[0], /^a: 0:00.0 10.0s -> 0:00.0 8.0s$/);
+    assert.deepEqual(validate(r).errors, []);
+    const keep = retime(sbEn(), tl, { keepLength: true, minGap: 0.5, tail: 1 }).storyboard;
+    assert.deepEqual(keep.scenes[0], { id: 'a', start: 0, end: 10 });
+  });
+
+  test('scenes without speech keep their length; moved items are not moved twice', () => {
+    const sb = {
+      schema: SCHEMA, title: 'G', duration: 30, scenes: [{ id: 'a', start: 0, end: 10 }, { id: 'b', start: 10, end: 20 }, { id: 'c', start: 20, end: 30 }],
+      captions: [{ start: 1, end: 4, text: '긴 문장' }],
+      bubbles: [{ start: 18, end: 19.5, speaker: 'x', text: '쉿', narrate: false }],
+      cues: [{ t: 18, sound: 'pop' }],
+    };
+    const { storyboard: r, changes } = retime(sb, { lines: [{ id: 'k', text: '긴 문장', start: 0, end: 12 }] });
+    assert.deepEqual(r.scenes.map((s) => [s.start, s.end]), [[0, 19], [19, 29], [29, 39]]);
+    assert.equal(r.cues[0].t, 27);
+    assert.deepEqual([r.bubbles[0].start, r.bubbles[0].end], [27, 28.5]);
+    assert.equal(changes.length, 3);
+  });
+
+  test('a storyboard with only scenes keeps its timing', () => {
+    const { storyboard: r, changes } = retime({ schema: SCHEMA, title: 'S', duration: 9, scenes: [{ id: 'a', start: 0, end: 9 }] }, { lines: [] });
+    assert.deepEqual([r.duration, r.scenes[0].end, changes], [9, 9, []]);
+  });
+
+  test('cli retime writes the storyboard, needs --timeline and --out, reports bad timelines', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'retime-'));
+    const sbFile = path.join(dir, 'sb.json'), tlFile = path.join(dir, 'tl.json'), out = path.join(dir, 'out.json');
+    fs.writeFileSync(sbFile, JSON.stringify(sbEn()));
+    fs.writeFileSync(tlFile, JSON.stringify(tl));
+    let o = [], e = [];
+    const io = { out: (x) => o.push(x), err: (x) => e.push(x) };
+    assert.equal(main(['retime', sbFile, '--timeline', tlFile, '--out', out, '--min-gap', '0.3', '--tail', '0.8', '--keep-length', 'no'], io), 0);
+    assert.equal(JSON.parse(fs.readFileSync(out, 'utf8')).duration, 25.4);
+    assert.match(o.at(-1), /Retimed 0:30.0 -> 0:25.4; 3 scene\(s\)/);
+    assert.equal(main(['retime', sbFile, '--out', out], io), 1);
+    assert.match(e.at(-1), /retime <storyboard.json> --timeline/);
+    fs.writeFileSync(tlFile, JSON.stringify({ lines: [] }));
+    assert.equal(main(['retime', sbFile, '--timeline', tlFile, '--out', out], io), 1);
+    assert.match(e.at(-1), /^error: no recorded line left/);
   });
 });

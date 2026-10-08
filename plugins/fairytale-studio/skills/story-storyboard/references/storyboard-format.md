@@ -51,3 +51,8 @@ Validator rules (`scripts/storyboard.mjs validate`):
 
 - Errors: wrong schema, missing title/duration, no scenes, missing or duplicate scene ids, start ≥ end, times outside the video, scene gaps or overlaps, first scene not at 0, last scene not at `duration`, overlapping captions, empty text, bubble without speaker, unknown speaker/character, cue time out of range, cue without sound.
 - Warnings: text that needs more than `chars / max-cps` seconds (Korean; band default 4 / 5 / 5.5 characters per second, whitespace not counted; `--max-cps` overrides) or `words / max-wpm` minutes (English; band default 120 / 135 / 150 words per minute; `--max-wpm` overrides), more than two lines, episode duration outside the band's single-story range (3-5: 3-7 min, 6-8: 6-12 min, 9-10: 10-18 min), scenes shorter than the band minimum (8 / 5 / 4 s, last scene exempt).
+
+## Fields added by `retime`
+
+- `captions[].voice_lines`, `bubbles[].voice_lines`: ids of the recorded lines (from the narration `timeline.json`) that speak this item, in order. The video plays those clips at the item's `start`.
+- Scene `start`/`end`, item times, cue `t` and `duration` are rewritten; everything else is kept. Keep the pre-voice version as `storyboard.estimate.json`.

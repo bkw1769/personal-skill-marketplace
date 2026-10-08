@@ -35,6 +35,13 @@ Ask only for what is missing and cannot be inferred:
 
    Errors (gaps, overlaps, out-of-range times, unknown speakers or characters) must be fixed. Warnings (reading speed, more than two lines, episode length or scene length outside the audience band) should be fixed unless the user accepts them; say which ones remain. `--audience 3-5` checks the same storyboard against another band, for example when making a gentle version.
 6. **Review with the user** using storyboard.md: scene list, words on screen, music and cue counts per scene. Change the JSON, re-run validate, re-render.
+7. **Re-time to the recorded voice** once narration exists (voice first, picture follows). Keep the estimated storyboard as `storyboard.estimate.json` and always re-time from it, so re-recording a line and re-running gives the same result:
+
+   ```bash
+   node <skill-dir>/scripts/storyboard.mjs retime storyboard.estimate.json --timeline <tts out>/timeline.json --out storyboard.json
+   ```
+
+   Recorded lines are matched to captions and bubbles by their text (letters and digits only, so punctuation edits made for TTS still match; split and merged lines are handled). Each scene keeps its lead-in and the pause after every line (question pauses survive), lasts as long as its speech plus a tail but never less than the band's minimum scene, and cues and unspoken bubbles move with the line before them. Spoken items get `voice_lines` (the recorded line ids) for the video's audio track. Validate afterwards: reading-speed warnings now mean the voice itself is faster than the band (golden-axe: the narrator spoke 150-200 wpm against 120 for 3-5) - slow the voice or add pauses, not the captions.
 
 ## Files
 
