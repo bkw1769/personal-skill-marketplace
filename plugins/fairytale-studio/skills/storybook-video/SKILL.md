@@ -1,6 +1,6 @@
 ---
 name: storybook-video
-description: Build a hand-drawn watercolor storybook video (Canvas 2D + Web Audio, 1920x1080) from a timed storyboard.json and transparent character sprites - player page with captions, speech bubbles, paint-blot transitions, synthesized music and sound effects on one clock, browser narration, real-time MP4/WebM recording - then verify the recorded file (duration, frame size, fps, audio) with a bundled MP4 probe. Use this whenever the user wants to 동화 영상 만들어줘, 이 동화 애니메이션으로, JS로 영상 만들어줘, 장면 하나 추가해줘, 효과음/배경음악 넣어줘, 영상 저장/녹화, 영상 제대로 저장됐는지 확인해줘, or turn a storyboard and character art into an animated storybook, even if they do not mention canvas or JavaScript.
+description: Build a hand-drawn watercolor storybook video (Canvas 2D + Web Audio, 1920x1080) from a timed storyboard.json, transparent character sprites and torn-paper background element kits - player page with captions, speech bubbles, paint-blot transitions, synthesized music and sound effects on one clock, recorded TTS narration (or browser narration) with automatic music ducking and an offline level check (voice over music, LUFS), real-time MP4/WebM recording - then verify the recorded file (duration, frame size, fps, audio) with a bundled MP4 probe. Use this whenever the user wants to 동화 영상 만들어줘, 이 동화 애니메이션으로, JS로 영상 만들어줘, 장면 하나 추가해줘, 효과음/배경음악 넣어줘, 영상 저장/녹화, 영상 제대로 저장됐는지 확인해줘, or turn a storyboard and character art into an animated storybook, even if they do not mention canvas or JavaScript.
 ---
 
 # Storybook video
@@ -10,10 +10,10 @@ A browser page that draws every frame from the storyboard and plays synthesized 
 ## 1. Scaffold
 
 ```bash
-node <skill-dir>/scripts/new-story.mjs stories/<story>/video --storyboard stories/<story>/storyboard.json --sprites <path>/sprites.json
+node <skill-dir>/scripts/new-story.mjs stories/<story>/video --storyboard stories/<story>/storyboard.json --sprites <characters>/sprites.json --sprites <kits>/sprites.json --narration out/tts/<story>-<lang>
 ```
 
-This copies the template, writes `story.config.js` with relative URLs, and warns about cast members with no sprite. Engine files (`index.html`, `js/{main,stage,audio,paint,sprites,util}.js`) can later be refreshed with `--update-engine`; author files (`story.config.js`, `js/scenes.js`, `js/score.js`) are never overwritten.
+This copies the template, writes `story.config.js` with relative URLs, and warns about cast members with no sprite. `--sprites` repeats (character poses plus background element kits; all names land in one sprite table). `--narration` points at the storybook-narration output folder (`full.wav` + `timeline.json`); the storyboard must have been re-timed to it (story-storyboard `retime`, which writes `voice_lines`), and the page then plays the recorded voice instead of browser speech, with the music ducked under every line. Engine files (`index.html`, `js/{main,stage,audio,paint,sprites,util}.js`) can later be refreshed with `--update-engine`; author files (`story.config.js`, `js/scenes.js`, `js/score.js`) are never overwritten.
 
 ## 2. Serve and look
 
@@ -39,7 +39,7 @@ Write one function per scene id in `js/scenes.js` (signature and helpers in `ref
 
 ## 4. Sound
 
-Start with the auto score; replace it scene by scene in `js/score.js` when the story deserves real music. Keep music at least 15 dB under narration and instrumental only, and master to −14 LUFS (levels table in `references/sound-design.md`). Cue sound effects in the storyboard (`cues`) so the timing lives in one place. Names, arguments and mood recipes: `references/sound-design.md`. Any name the synth does not know is listed in the console as silent.
+Start with the auto score; replace it scene by scene in `js/score.js` when the story deserves real music. Keep music at least 15 dB under narration and instrumental only, and master to −14 LUFS (levels table in `references/sound-design.md`). With recorded narration, measure instead of guessing: `await __mix()` in the page console renders the whole sound offline and returns `voiceOverMusicDb` (voice energy over the ducked music while someone speaks), `lufs` and `peak`; tune `mix: { music, duck, voice, master }` in story.config.js until the voice is 15 dB+ over the music, about −14 LUFS and the peak under 0.89 (−1 dB). Golden-axe ended at `{ music: 0.45, duck: 0.4, voice: 1, master: 1.35 }` with bass and drums turned down in score.js: voice 19-22 dB over the music in every 30 s window, about −14 LUFS, peak 0.77. The master chain ends in a peak limiter, so `master` sets loudness without clipping. A full 4-minute render takes longer than a console call allows; start it with `.then()` and read the result afterwards. Cue sound effects in the storyboard (`cues`) so the timing lives in one place. Names, arguments and mood recipes: `references/sound-design.md`. Any name the synth does not know is listed in the console as silent.
 
 ## 5. Record and verify
 

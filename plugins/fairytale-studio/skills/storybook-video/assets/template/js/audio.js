@@ -11,15 +11,36 @@ export function nf(n) {
 }
 
 export class Synth {
-  constructor() {
-    const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' }));
+  /**
+   * @param {BaseAudioContext} [context] Pass an OfflineAudioContext to render offline (see renderRange).
+   * @param {{music?: number, duck?: number, voice?: number, master?: number, dynamics?: boolean}} [mix] Levels:
+   *   music bed (music + effects) gain, factor on the bed while a recorded line plays, recorded voice gain,
+   *   master gain; dynamics: false skips the master compressor and limiter (raw balance checks).
+   */
+  constructor(context, mix = {}) {
+    const ctx = (this.ctx = context || new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' }));
+    this.mix = { music: 1, duck: 0.3, voice: 1, master: 0.85, ...mix };
     this.master = ctx.createGain();
-    this.master.gain.value = 0.85;
+    this.master.gain.value = this.mix.master;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
-    this.master.connect(comp);
-    comp.connect(ctx.destination);
-    this.out = comp;
+    // Peak limiter so a loud line or effect never clips at the output. Web Audio compressors add
+    // automatic makeup gain (about +2.3 dB at these settings); the trim after it takes that back so
+    // peaks stay near -1 dBFS. mix.dynamics === false bypasses both (level checks of the raw balance).
+    const lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -4; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.12;
+    const trim = ctx.createGain();
+    trim.gain.value = 0.86;
+    if (this.mix.dynamics === false) {
+      this.master.connect(ctx.destination);
+      this.out = this.master;
+    } else {
+      this.master.connect(comp);
+      comp.connect(lim);
+      lim.connect(trim);
+      trim.connect(ctx.destination);
+      this.out = trim;
+    }
     this.verb = ctx.createConvolver();
     this.verb.buffer = this.makeIR(2.6);
     const vg = ctx.createGain();
@@ -30,6 +51,10 @@ export class Synth {
     this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
     const nd = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+    this.voiceOut = ctx.createGain();
+    this.voiceOut.gain.value = this.mix.voice;
+    this.voiceOut.connect(this.master);
+    this.voiceBuf = null;
     this.session = null;
     this.events = [];
     this.idx = 0;
@@ -52,15 +77,21 @@ export class Synth {
     const now = this.ctx.currentTime;
     if (this.session) {
       const old = this.session;
-      old.dry.gain.setTargetAtTime(0, now, 0.03);
-      old.wet.gain.setTargetAtTime(0, now, 0.03);
-      setTimeout(() => { old.dry.disconnect(); old.wet.disconnect(); }, 600);
+      for (const n of [old.dry, old.wet, old.voice]) {
+        n.gain.cancelScheduledValues(now);
+        n.gain.setTargetAtTime(0, now, 0.03);
+      }
+      setTimeout(() => { old.dry.disconnect(); old.wet.disconnect(); old.voice.disconnect(); }, 600);
     }
     const dry = this.ctx.createGain();
+    dry.gain.value = this.mix.music;
     dry.connect(this.master);
     const wet = this.ctx.createGain();
+    wet.gain.value = this.mix.music;
     wet.connect(this.verb);
-    this.session = { dry, wet };
+    const voice = this.ctx.createGain();
+    voice.connect(this.voiceOut);
+    this.session = { dry, wet, voice };
   }
 
   start(events, fromT, anchor) {
@@ -69,7 +100,42 @@ export class Synth {
     this.newSession();
     this.idx = events.findIndex((e) => e.t >= fromT - 0.02);
     if (this.idx < 0) this.idx = events.length;
+    // A recorded line or a duck window already under way at the seek point resumes mid-way.
+    const at = this.ctx.currentTime + 0.03;
+    for (let k = 0; k < this.idx; k++) {
+      const e = events[k];
+      if (e.fn === 'voice' && e.t + e.a[1] > fromT + 0.05) this.voice(at, e.a[0] + (fromT - e.t), e.a[1] - (fromT - e.t));
+      if (e.fn === 'duck' && e.t + e.a[0] > fromT) this.duck(at, e.a[0] - (fromT - e.t));
+    }
     this.active = true;
+  }
+
+  /** Use a decoded recording (the narration's full.wav) for 'voice' events. */
+  setVoice(buffer) {
+    this.voiceBuf = buffer;
+  }
+
+  /** Recorded narration: play `dur` seconds of the voice buffer from `offset`. No reverb. */
+  voice(t, offset, dur) {
+    if (!this.voiceBuf || dur <= 0) return;
+    const s = this.ctx.createBufferSource();
+    s.buffer = this.voiceBuf;
+    s.connect(this.session.voice);
+    s.start(t, Math.max(0, offset), dur);
+  }
+
+  /** Lower music and effects to mix.duck for `dur` seconds (side-chain style), then recover. */
+  duck(t, dur) {
+    const low = this.mix.music * this.mix.duck;
+    for (const n of [this.session.dry, this.session.wet]) {
+      n.gain.setTargetAtTime(low, t, 0.06);
+      n.gain.setTargetAtTime(this.mix.music, t + Math.max(0.05, dur), 0.3);
+    }
+  }
+
+  /** Mute or unmute the recorded voice (the narration button). */
+  setVoiceOn(on) {
+    this.voiceOut.gain.setTargetAtTime(on ? this.mix.voice : 0, this.ctx.currentTime, 0.02);
   }
 
   stop() {
@@ -651,4 +717,115 @@ export function autoScore(sb) {
 /** Storyboard cues -> player events. Unknown sound names are reported by the player. */
 export function cuesToEvents(sb) {
   return (sb.cues || []).map((c) => ({ t: c.t, fn: c.sound, a: c.args || [] }));
+}
+
+/**
+ * Recorded narration -> player events. Every caption or bubble with `voice_lines` (added by the
+ * story-storyboard retime step) plays its span of the narration's full.wav at its start time, found
+ * through timeline.json. Duck windows cover each line plus a short lead-in and are merged across
+ * pauses shorter than mergeGap so the music does not pump between sentences.
+ * @returns {{events: {t: number, fn: string, a: number[]}[], missing: string[]}}
+ */
+export function narrationEvents(sb, timeline, mergeGap = 1.6) {
+  const byId = new Map((timeline.lines || []).map((l) => [l.id, l]));
+  const voice = [];
+  const missing = [];
+  for (const it of [...(sb.captions || []), ...(sb.bubbles || [])]) {
+    const ids = it.voice_lines || [];
+    const ls = ids.map((id) => byId.get(id)).filter(Boolean);
+    for (const id of ids) if (!byId.has(id)) missing.push(id);
+    if (!ls.length) continue;
+    const off = Math.min(...ls.map((l) => l.start));
+    const end = Math.max(...ls.map((l) => l.end));
+    voice.push({ t: it.start, fn: 'voice', a: [off, end - off] });
+  }
+  voice.sort((a, b) => a.t - b.t);
+  const ducks = [];
+  for (const v of voice) {
+    const s = Math.max(0, v.t - 0.25), e = v.t + v.a[1] + 0.1;
+    const last = ducks[ducks.length - 1];
+    if (last && s - (last.t + last.a[0]) < mergeGap) last.a[0] = Math.max(last.a[0], e - last.t);
+    else ducks.push({ t: s, fn: 'duck', a: [e - s] });
+  }
+  return { events: [...voice, ...ducks], missing };
+}
+
+/**
+ * Render the events between t0 and t1 offline (no real-time playback), for level checks.
+ * part: 'all' (the mix as recorded), 'voice' (recorded narration only), 'bed' (music and
+ * effects, ducked as in the mix, without the voice).
+ * @returns {Promise<AudioBuffer>}
+ */
+export async function renderRange(events, t0, t1, { voiceBuf = null, mix = {}, part = 'all', rate = 48000 } = {}) {
+  const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil((t1 - t0) * rate)), rate);
+  const synth = new Synth(ctx, mix);
+  if (voiceBuf) synth.setVoice(voiceBuf);
+  if (part === 'bed') synth.voiceOut.gain.value = 0;
+  for (const e of events) {
+    if (part === 'voice' && e.fn !== 'voice') continue;
+    if (part === 'bed' && e.fn === 'voice') continue;
+    const at = e.t - t0;
+    // A line or duck window already under way at t0 (windows merge across short pauses, so one can
+    // span a whole scene) continues from t0, as it does when the player seeks.
+    if (at < 0 && e.fn === 'duck' && e.t + e.a[0] > t0) { synth.duck(0, e.a[0] + at); continue; }
+    if (at < 0 && e.fn === 'voice' && e.t + e.a[1] > t0) { synth.voice(0, e.a[0] - at, e.a[1] + at); continue; }
+    if (at < 0 || e.t >= t1) continue;
+    const fn = synth[e.fn];
+    if (typeof fn === 'function') fn.call(synth, at, ...(e.a || []));
+  }
+  return ctx.startRendering();
+}
+
+/** ITU-R BS.1770 K-weighting (pre-filter shelf + RLB high-pass) of a buffer, offline. */
+export async function kWeight(buffer) {
+  const ctx = new OfflineAudioContext(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const shelf = ctx.createBiquadFilter();
+  shelf.type = 'highshelf'; shelf.frequency.value = 1681; shelf.gain.value = 4;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 38; hp.Q.value = 0.5;
+  src.connect(shelf).connect(hp).connect(ctx.destination);
+  src.start();
+  return ctx.startRendering();
+}
+
+/** Gated integrated loudness (LUFS) of a K-weighted buffer: 400 ms blocks, -70 LUFS and -10 LU gates. */
+export function integratedLoudness(kbuf) {
+  const sr = kbuf.sampleRate, block = Math.round(0.4 * sr), hop = Math.round(0.1 * sr);
+  const chans = Array.from({ length: kbuf.numberOfChannels }, (_, i) => kbuf.getChannelData(i));
+  const sq = new Float64Array(kbuf.length + 1);
+  for (let i = 0; i < kbuf.length; i++) { let a = 0; for (const d of chans) a += d[i] * d[i]; sq[i + 1] = sq[i] + a; }
+  const z = [];
+  for (let s = 0; s + block <= kbuf.length; s += hop) z.push((sq[s + block] - sq[s]) / block);
+  const L = (p) => -0.691 + 10 * Math.log10(p);
+  const abs = z.filter((p) => p > 0 && L(p) > -70);
+  if (!abs.length) return -Infinity;
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const rel = L(mean(abs)) - 10;
+  return L(mean(abs.filter((p) => L(p) > rel)));
+}
+
+/** Sample peak (linear) over all channels. */
+export function peakOf(buffer) {
+  let p = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) for (const x of buffer.getChannelData(c)) if (Math.abs(x) > p) p = Math.abs(x);
+  return p;
+}
+
+/**
+ * How far the voice sits above the music bed while someone speaks (dB): energy of the voice
+ * render against the bed render over the 50 ms windows where the voice is active.
+ */
+export function speechToBedDb(voice, bed, activeDb = -45) {
+  const v = voice.getChannelData(0), b = bed.getChannelData(0);
+  const win = Math.round(0.05 * voice.sampleRate);
+  let vs = 0, bs = 0;
+  for (let s = 0; s + win <= v.length; s += win) {
+    let a = 0, c = 0;
+    for (let i = s; i < s + win; i++) { a += v[i] * v[i]; c += b[i] * b[i]; }
+    if (10 * Math.log10(a / win + 1e-12) < activeDb) continue;
+    vs += a; bs += c;
+  }
+  return vs ? 10 * Math.log10(vs / Math.max(bs, 1e-12)) : null;
 }

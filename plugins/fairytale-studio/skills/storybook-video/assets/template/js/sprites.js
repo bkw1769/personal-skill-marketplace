@@ -14,17 +14,23 @@ function loadImage(src) {
   });
 }
 
-/** Load every sprite in the manifest. `url` is the sprites.json URL; PNGs sit next to it. */
-export async function loadSprites(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`cannot load ${url} (${res.status})`);
-  const manifest = await res.json();
-  const base = new URL('.', new URL(url, location.href)).href;
-  let id = 0;
-  await Promise.all(manifest.sprites.filter((s) => !s.empty).map(async (s) => {
-    const c = await loadImage(base + s.file);
-    S[s.name] = { c, w: c.naturalWidth, h: c.naturalHeight, id: id++, name: s.name };
-  }));
+/**
+ * Load every sprite in one manifest or a list of manifests (for example the character sprites and
+ * a background element kit). `urls` are sprites.json URLs; each manifest's PNGs sit next to it.
+ * A name found in two manifests keeps the later one and is reported in the console.
+ */
+export async function loadSprites(urls) {
+  for (const url of Array.isArray(urls) ? urls : [urls]) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`cannot load ${url} (${res.status})`);
+    const manifest = await res.json();
+    const base = new URL('.', new URL(url, location.href)).href;
+    await Promise.all(manifest.sprites.filter((s) => !s.empty).map(async (s) => {
+      const c = await loadImage(base + s.file);
+      if (S[s.name]) console.warn(`sprite "${s.name}" is in more than one manifest; using ${url}`);
+      S[s.name] = { c, w: c.naturalWidth, h: c.naturalHeight, id: nameSeed(s.name) & 0xffff, name: s.name };
+    }));
+  }
   return S;
 }
 

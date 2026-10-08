@@ -83,6 +83,8 @@ Children need speech clearly above everything else: toddlers learned words when 
 | New vocabulary | drop the music for that sentence | evidence → inference |
 | Final master | −14 LUFS integrated, true peak ≤ −1 dBTP | practitioner |
 
+With recorded narration these are measured, not estimated: `await __mix(t0, t1)` renders the mix offline (also the voice alone and the ducked bed alone) and reports `voiceOverMusicDb`, `lufs` (BS.1770 K-weighted, gated) and sample `peak`. Levels live in story.config.js `mix`: `music` (bed gain), `duck` (bed gain factor while a line plays), `voice`, `master`. On golden-axe the defaults gave the voice only 8.6 dB over the music at −18 LUFS and peaks above 1.0. What fixed it: a peak limiter after the master compressor (Web Audio adds automatic makeup gain, so the limiter is followed by a trim), bass and drums halved in score.js (they carried most of the bed's energy), and `{ music: 0.45, duck: 0.4, voice: 1, master: 1.35 }`. Result per 30 s window: voice 19-22 dB over the music, −13.2 to −15.4 LUFS (about −14 overall), peak 0.77. Lines 1.3 s apart merge into one long duck window, so the music stays down through a narrated stretch and comes back in question pauses and scene breaks; measure windows with `__mix(t0, t1)` rather than single lines.
+
 Animation, music and sound effects made storybooks more effective in a meta-analysis (43 studies) when they matched the story; interactive extras distracted. Use sound to mark events, not to decorate.
 
 ## Rules learned

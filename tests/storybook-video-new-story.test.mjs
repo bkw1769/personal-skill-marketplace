@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/fairytale-studio/skills/storybook-video/scripts/new-story.mjs');
-const { main, parseArgs, relUrl, checkInputs, TEMPLATE, ENGINE_FILES, AUTHOR_FILES } = await import(SCRIPT);
+const { main, parseArgs, relUrl, checkInputs, TEMPLATE, ENGINE_FILES, AUTHOR_FILES, TIMELINE_SCHEMA } = await import(SCRIPT);
 
 const io = () => { const out = [], err = []; return { out, err, io: { out: (s) => out.push(s), err: (s) => err.push(s) } }; };
 const SB = { schema: 'storyboard/1', title: '토끼', scenes: [{ id: 'a', start: 0, end: 5 }], cast: [{ id: 'rabbit', sprites: ['rabbit'] }, { id: 'fox', sprites: ['fox-1'] }, { id: 'owl' }] };
@@ -44,7 +44,20 @@ describe('helpers', () => {
     assert.deepEqual(checkInputs({ schema: 'storyboard/1', scenes: [{}] }, { schema: 'sprites/1' }), { errors: [], warnings: [] });
   });
   test('parseArgs', () => {
-    assert.deepEqual(parseArgs(['d', '--storyboard', 's', '--sprites', 'p', '--save-name', 'n', '--update-engine']), { update: true, dir: 'd', storyboard: 's', sprites: 'p', saveName: 'n' });
+    assert.deepEqual(parseArgs(['d', '--storyboard', 's', '--sprites', 'p', '--save-name', 'n', '--update-engine']), { update: true, dir: 'd', storyboard: 's', sprites: ['p'], narration: undefined, saveName: 'n' });
+    assert.deepEqual(parseArgs(['d', '--sprites', 'a', '--sprites', 'b', '--narration', 'out/tts']).sprites, ['a', 'b']);
+    assert.equal(parseArgs(['--narration', 'x']).narration, 'x');
+  });
+  test('checkInputs merges sprite manifests and checks the narration timeline', () => {
+    const kit = { schema: 'sprites/1', sprites: [{ name: 'fox-1' }] };
+    assert.deepEqual(checkInputs(SB, [SPRITES, kit]).warnings, ['cast "owl" has no sprite in sprites.json (listed: none); default scenes will skip it']);
+    assert.deepEqual(checkInputs(SB, [SPRITES, { sprites: [] }]).errors, ['sprites.json schema must be "sprites/1" (make it with the sheet-to-sprites skill)']);
+    const sb = { ...SB, cast: [], captions: [{ text: 'a', voice_lines: ['l1'] }, { text: 'b' }], bubbles: [{ text: 'c', voice_lines: ['l2', 'l9'] }] };
+    const tl = { schema: TIMELINE_SCHEMA, lines: [{ id: 'l1' }, { id: 'l2' }] };
+    assert.deepEqual(checkInputs(sb, SPRITES, tl), { errors: ['voice_lines not in timeline.json: l9 (re-run retime with the current timeline)'], warnings: [] });
+    const bare = checkInputs({ ...SB, cast: [] }, SPRITES, { schema: 'x' });
+    assert.match(bare.errors[0], /timeline.json schema must be "fairytale-tts-batch\/1"/);
+    assert.match(bare.warnings[0], /no caption or bubble has voice_lines/);
   });
 });
 
@@ -103,6 +116,33 @@ describe('main', () => {
     r = io();
     assert.equal(main([path.join(root, 'v5'), '--storyboard', path.join(root, 'old.json'), '--sprites', spFile], r.io), 1);
     assert.equal(fs.existsSync(path.join(root, 'v5')), false);
+  });
+
+  test('several sprite manifests and recorded narration go into the config', () => {
+    const root = project();
+    const sbFile = path.join(root, 'stories/rabbit/storyboard.json');
+    const spFile = path.join(root, 'stories/rabbit/sprites/sprites.json');
+    const kit = path.join(root, 'kit.json');
+    fs.writeFileSync(kit, JSON.stringify({ schema: 'sprites/1', sprites: [{ name: 'house' }, { name: 'tree' }] }));
+    const tts = path.join(root, 'out', 'tts');
+    fs.mkdirSync(tts, { recursive: true });
+    fs.writeFileSync(path.join(tts, 'timeline.json'), JSON.stringify({ schema: TIMELINE_SCHEMA, lines: [{ id: 'l1' }] }));
+    let r = io();
+    assert.equal(main([path.join(root, 'v'), '--storyboard', sbFile, '--sprites', spFile, '--sprites', kit, '--narration', tts], r.io), 1);
+    assert.match(r.err[0], /full.wav not found/);
+    fs.writeFileSync(path.join(tts, 'full.wav'), 'RIFF');
+    r = io();
+    assert.equal(main([path.join(root, 'v'), '--storyboard', sbFile, '--sprites', spFile, '--sprites', kit, '--narration', tts], r.io), 0);
+    assert.match(r.out[0], /\(1 scenes, 4 sprites, narration 1 lines\)/);
+    assert.ok(r.err.some((w) => /no caption or bubble has voice_lines/.test(w)));
+    const cfg = fs.readFileSync(path.join(root, 'v', 'story.config.js'), 'utf8');
+    assert.match(cfg, /sprites: \['\.\.\/stories\/rabbit\/sprites\/sprites\.json', '\.\.\/kit\.json'\],/);
+    assert.match(cfg, /narration: \{ audio: '\.\.\/out\/tts\/full\.wav', timeline: '\.\.\/out\/tts\/timeline\.json' \},/);
+    assert.match(cfg, /mix: \{ music: 1, duck: 0\.3, voice: 1, master: 0\.85 \},/);
+    fs.writeFileSync(path.join(tts, 'timeline.json'), JSON.stringify({ schema: TIMELINE_SCHEMA }));
+    r = io();
+    assert.equal(main([path.join(root, 'v7'), '--storyboard', sbFile, '--sprites', spFile, '--narration', tts], r.io), 0);
+    assert.match(r.out[0], /narration 0 lines/);
   });
 
   test('runs as a script', () => {

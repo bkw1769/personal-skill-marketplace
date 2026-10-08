@@ -34,7 +34,7 @@ The storyboard's `audience` band (`3-5`, `6-8`, `9-10`) decides how a scene shou
 - **Objects off screen.** Nine ships were animated but only one ever entered the frame because their x range was relative to the wrong origin. Compute positions from the visible frame (0..1920) and check with `__sheet` at several times.
 - **Scale breaks the story.** The wooden horse drawn taller than the city gate it is pulled through. Check size relations between props, buildings and characters on the same frame.
 - **Overlay hides controls.** The start screen covered the save button. Keep primary actions on the overlay itself or above it.
-- **Hidden preview pane.** A hidden or background browser tab throttles `requestAnimationFrame`; review stills with `?still&t=` and screenshots of the visible page, not a background tab.
+- **Hidden preview pane.** A hidden or background browser tab gets no `requestAnimationFrame` at all (measured 0 fps in a collapsed preview pane). The player switches to a 32 Hz timer while the page is hidden, which keeps running because the page plays audio, so a recording from a hidden pane still came out at about 28-30 fps. Review stills with `?still&t=` and `__sheet`; screenshots of a hidden pane still work.
 - **Heavy frames drop frames while recording.** Real-time capture of busy scenes ran at about 20 fps instead of 30 (check with probe-mp4). Pre-paint static layers, reduce per-frame `wash` calls with many layers, and avoid recording while other heavy tabs run.
 
 ## Review routine

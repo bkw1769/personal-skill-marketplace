@@ -4,7 +4,7 @@ import CONFIG from '../story.config.js';
 import { W, H } from './util.js';
 import { loadSprites } from './sprites.js';
 import { initPaint } from './paint.js';
-import { Synth, autoScore, cuesToEvents } from './audio.js';
+import { Synth, autoScore, cuesToEvents, narrationEvents, renderRange, kWeight, integratedLoudness, peakOf, speechToBedDb } from './audio.js';
 import { initStage, renderFrame, narrationLines } from './stage.js';
 import { SCENES } from './scenes.js';
 import * as SCORE from './score.js';
@@ -26,6 +26,8 @@ let lines = [];
 let lineIdx = 0;
 let recorder = null;
 let seeking = false;
+// Recorded narration (CONFIG.narration = { audio: full.wav URL, timeline: timeline.json URL }).
+let NARR = null; // { timeline, bytes, buffer }
 
 const fmt = (s) => { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const now = () => (playing ? synth.ctx.currentTime - anchor : T);
@@ -50,7 +52,7 @@ function resetNarration(t) {
   if ('speechSynthesis' in window) speechSynthesis.cancel();
 }
 function narrate(t) {
-  if (!voiceOn || !playing) return;
+  if (NARR || !voiceOn || !playing) return;
   while (lineIdx < lines.length && lines[lineIdx].t <= t) {
     const l = lines[lineIdx++];
     if (t - l.t > 1) continue;
@@ -64,22 +66,33 @@ function narrate(t) {
   }
 }
 
-/** All sound events: the story's written score if it has one, else the auto score, plus cues. */
+/** All sound events: the story's written score if it has one, else the auto score, plus cues and recorded narration. */
 function buildEvents() {
   const music = typeof SCORE.buildScore === 'function' ? SCORE.buildScore(SB) : autoScore(SB);
-  return [...music, ...cuesToEvents(SB)].sort((a, b) => a.t - b.t);
+  const ev = [...music, ...cuesToEvents(SB)];
+  if (NARR) {
+    const { events: voice, missing } = narrationEvents(SB, NARR.timeline);
+    if (missing.length) console.warn(`voice_lines not in timeline.json (silent): ${missing.join(', ')}`);
+    if (!voice.length) console.warn('narration is configured but no caption or bubble has voice_lines; run the storyboard retime step');
+    ev.push(...voice);
+  }
+  return ev.sort((a, b) => a.t - b.t);
 }
 
-function ensureAudio() {
+async function ensureAudio() {
   if (synth) return;
-  synth = new Synth();
+  synth = new Synth(undefined, CONFIG.mix || {});
   events = buildEvents();
+  if (NARR) {
+    NARR.buffer = await synth.ctx.decodeAudioData(NARR.bytes.slice(0));
+    synth.setVoice(NARR.buffer);
+  }
   const unknown = [...new Set(events.map((e) => e.fn).filter((fn) => typeof synth[fn] !== 'function'))];
   if (unknown.length) console.warn('Unknown sound names (silent):', unknown.join(', '));
   setInterval(() => synth && synth.pump(), 50);
 }
 async function play() {
-  ensureAudio();
+  await ensureAudio();
   await synth.ctx.resume();
   if (T >= DURATION) T = 0;
   anchor = synth.ctx.currentTime - T;
@@ -120,7 +133,14 @@ function frame() {
   narrate(shown);
   if (!seeking) $('seek').value = String(shown);
   $('time').textContent = `${fmt(shown)} / ${fmt(DURATION)}`;
-  requestAnimationFrame(frame);
+  nextFrame();
+}
+// A hidden page (background tab, collapsed preview pane) gets no requestAnimationFrame at all;
+// while it plays audio its timers still run, so frames keep coming and a recording keeps its
+// frame rate. Visible pages use requestAnimationFrame.
+function nextFrame() {
+  if (document.hidden) setTimeout(frame, 1000 / 32);
+  else requestAnimationFrame(frame);
 }
 
 function pickMime() {
@@ -129,7 +149,8 @@ function pickMime() {
 }
 async function record() {
   if (recorder && recorder.state === 'recording') return;
-  ensureAudio();
+  await ensureAudio();
+  if (NARR) { voiceOn = true; synth.setVoiceOn(true); $('voice').classList.add('on'); }
   const mime = pickMime();
   if (!mime) { alert('이 브라우저는 영상 녹화를 지원하지 않습니다.'); return; }
   const dest = synth.ctx.createMediaStreamDestination();
@@ -170,6 +191,14 @@ async function main() {
   document.title = SB.title;
   $('seek').max = String(DURATION);
   $('length').textContent = `소리를 켜고 보세요 · ${fmt(DURATION)}`;
+  if (CONFIG.narration) {
+    const [tl, au] = await Promise.all([fetch(CONFIG.narration.timeline), fetch(CONFIG.narration.audio)]);
+    if (!tl.ok || !au.ok) throw new Error(`cannot load narration ${CONFIG.narration.timeline} / ${CONFIG.narration.audio}`);
+    NARR = { timeline: await tl.json(), bytes: await au.arrayBuffer(), buffer: null };
+    voiceOn = true;
+    $('voice').classList.add('on');
+    $('voice').title = '녹음된 내레이션 켜기/끄기';
+  }
   await fontsReady();
   await loadSprites(CONFIG.sprites);
   initPaint();
@@ -178,13 +207,17 @@ async function main() {
   if ('speechSynthesis' in window) speechSynthesis.getVoices();
   $('go').disabled = false;
   $('go').textContent = '이야기 시작';
-  requestAnimationFrame(frame);
+  nextFrame();
   if (qp.has('still')) { $('start').style.display = 'none'; document.title = 'ready'; return; }
   $('go').onclick = () => { $('start').style.display = 'none'; play(); };
   $('play').onclick = () => (playing ? pause() : play());
   $('seek').oninput = (e) => { seeking = true; seek(Number(e.target.value)); };
   $('seek').onchange = () => { seeking = false; };
-  $('voice').onclick = () => { voiceOn = !voiceOn; $('voice').classList.toggle('on', voiceOn); resetNarration(now()); };
+  $('voice').onclick = () => {
+    voiceOn = !voiceOn;
+    $('voice').classList.toggle('on', voiceOn);
+    if (NARR) { if (synth) synth.setVoiceOn(voiceOn); } else resetNarration(now());
+  };
   $('save').onclick = () => { $('start').style.display = 'none'; record(); };
   $('save2').onclick = () => { $('start').style.display = 'none'; record(); };
   $('full').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
@@ -203,7 +236,27 @@ main().catch((e) => {
   ctx.fillText('불러오기 실패: ' + e.message, 80, H / 2);
 });
 
-// Review hooks: ?still&t=<s> shows one paused frame; __sheet([t1, t2, ...]) draws a contact sheet.
+// Review hooks: ?still&t=<s> shows one paused frame; __sheet([t1, t2, ...]) draws a contact sheet;
+// await __mix(t0, t1) renders the sound offline and reports levels (voice over music, LUFS, peak).
+window.__mix = async (t0 = 0, t1 = DURATION) => {
+  const ev = buildEvents();
+  const mix = CONFIG.mix || {};
+  let voiceBuf = null;
+  if (NARR) voiceBuf = NARR.buffer || (await new OfflineAudioContext(1, 1, 48000).decodeAudioData(NARR.bytes.slice(0)));
+  const all = await renderRange(ev, t0, t1, { voiceBuf, mix, part: 'all' });
+  const out = { seconds: +(t1 - t0).toFixed(1), lufs: +integratedLoudness(await kWeight(all)).toFixed(1), peak: +peakOf(all).toFixed(3) };
+  if (voiceBuf) {
+    // The balance is measured before the master compressor and limiter, which act on the sum.
+    const raw = { ...mix, dynamics: false };
+    const v = await renderRange(ev, t0, t1, { voiceBuf, mix: raw, part: 'voice' });
+    const b = await renderRange(ev, t0, t1, { voiceBuf, mix: raw, part: 'bed' });
+    const d = speechToBedDb(v, b);
+    out.voiceOverMusicDb = d === null ? null : +d.toFixed(1);
+    out.voiceLufs = +integratedLoudness(await kWeight(v)).toFixed(1);
+    out.bedLufs = +integratedLoudness(await kWeight(b)).toFixed(1);
+  }
+  return out;
+};
 window.__seek = (t) => { T = t; renderFrame(ctx, t); };
 window.__sheet = (times, cols = 3) => {
   const off = document.createElement('canvas');

@@ -14,10 +14,10 @@
 | File | Owner | Role |
 |---|---|---|
 | `index.html` | engine | Canvas 1920x1080, start overlay, control bar (play, seek, narration, record, fullscreen). Fonts: Gaegu (captions), Nanum Pen Script (bubbles) from Google Fonts; falls back to system fonts after 4 s. |
-| `story.config.js` | author | `storyboard`, `sprites` URLs and `saveName` for recordings. |
-| `js/main.js` | engine | Loads config, storyboard, sprites; player (play/pause/seek, keyboard: Space, arrows), narration, MediaRecorder, review hooks. |
+| `story.config.js` | author | `storyboard`, `sprites` (one URL or a list: characters plus element kits), optional `narration: { audio, timeline }` and `mix: { music, duck, voice, master }`, and `saveName` for recordings. |
+| `js/main.js` | engine | Loads config, storyboard, sprites and recorded narration; player (play/pause/seek, keyboard: Space, arrows), narration (recorded voice on the audio clock, or browser speech without it), MediaRecorder, review hooks (`?still&t=`, `__sheet`, `__mix`). |
 | `js/stage.js` | engine | Scene lookup, paint-blot transitions, captions, quote, bubbles, paper grain, default animatic scene, narration lines, `bob()`. |
-| `js/audio.js` | engine | `Synth` (Web Audio instruments and effects), score helpers `seq/chords/arps/perc`, `autoScore()`, `cuesToEvents()`. |
+| `js/audio.js` | engine | `Synth` (Web Audio instruments and effects, recorded `voice` and `duck` events, mix levels), score helpers `seq/chords/arps/perc`, `autoScore()`, `cuesToEvents()`, `narrationEvents()` (voice_lines -> events), offline level tools `renderRange`, `kWeight`, `integratedLoudness`, `peakOf`, `speechToBedDb`. |
 | `js/paint.js` | engine | Generic watercolor painters and pre-painted canvases (`BG.clouds/sun/moon/ships/tents/grain`). |
 | `js/sprites.js` | engine | Loads sprites.json + PNGs into `S`, draws with `spr()`. |
 | `js/util.js` | engine | Maths and easing, seeded random, `ink` (wobbly pen), `wash` (watercolor fill), `blob`, `ellipsePts`, `rectPts`, `handText`, palette `C`, `INK`, `PAPER`, `W`, `H`. |
@@ -27,6 +27,8 @@
 ## One clock
 
 While playing, time is `audioContext.currentTime - anchor`. Every frame is drawn from that `T`, and sound events are scheduled 0.4 s ahead on the same AudioContext time, so picture and sound cannot drift. Seeking rebuilds the sound session from the new `T`. Recording captures the canvas stream (30 fps request) and the synth output together.
+
+Recorded narration rides the same clock: every caption or bubble with `voice_lines` becomes a `voice` event that plays its span of `full.wav` (found through `timeline.json`) at the item's `start`, and `duck` events lower the music bed to `mix.duck` around each line (merged across pauses under 1.6 s so the music does not pump). Seeking into the middle of a line resumes it mid-way. The narration button mutes and unmutes the recorded voice.
 
 ## Frame composition (stage.renderFrame)
 
@@ -62,7 +64,8 @@ SCENES['bonk'] = (ctx, T, info) => {
 - Shapes: `rectPts`, `ellipsePts`, `inkEllipse`.
 - Text: `handText(ctx, text, x, y, {size, font, weight, color, reveal, outline})`.
 - Painters (paint.js): `paper`, `sky`, `clouds`, `sun`, `moon`, `ground`, `waves`, `gull`, `house`, `cypress`, `heart`, `star`, `note`, `bulb`, `puff`, `plank`, `torch`, `nightOverlay`, `starsField`, and `BG.ships[i]`, `BG.tents[i]` canvases.
-- Sprites: `spr(ctx, name, x, y, height, {rot, flip, sq, alpha, filter, pivot: 'center', boil: false, clipBottom})`.
+- Sprites: `spr(ctx, name, x, y, height, {rot, flip, sq, alpha, filter, pivot: 'center', boil: false, clipBottom})`. Sprites from different sheets are drawn at different scales; size each character from one standing pose per sheet (a table of target heights, as golden-axe's `scenes.js` does with `GROUPS`) so poses stay consistent.
+- Timing inside a scene: read the scene's captions, bubbles and cues from the storyboard (golden-axe `line(info, k)`, `cues(info, 'hammer')`) instead of hard-coding seconds, so a re-time after re-recording the voice moves the animation with it.
 - Collage pieces: `paste(ctx, name, x, y, height, {tilt, shadow, parallax, camX, alpha, flip, sway, pivot})` draws a torn-paper element sprite as if glued on the paper: a fixed hand tilt (default from the name, -1.5 to +1.5 degrees; `tilt` in degrees overrides), a soft warm drop shadow down-right scaled to the piece (`shadow: 0` turns it off; default 0.3 opacity), horizontal parallax `x - camX * parallax`, and an optional `sway` (radians of slow rocking about the base, for trees and reeds). No boil: paper pieces stay still unless they sway. Layer order and parallax values: `fairytale-art-prompts` `references/element-kits.md`.
 - Motion: `seg`, `lerp`, `smooth`, `easeIn/Out/InOut`, `backOut`, `bounceOut`, `env(T, t0, t1, fadeIn, fadeOut)`, `bob(T, period, amp)`.
 
