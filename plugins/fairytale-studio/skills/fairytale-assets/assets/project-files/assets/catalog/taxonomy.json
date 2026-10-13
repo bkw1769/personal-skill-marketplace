@@ -114,6 +114,24 @@
         "bass"
       ],
       "note": "Playable instruments: multisample folders, soundfonts, or code synth voices."
+    },
+    "voice": {
+      "folder": "audio/voices",
+      "categories": [
+        "narrator",
+        "child",
+        "adult",
+        "elder",
+        "creature"
+      ],
+      "approval_requires": [
+        "model",
+        "revision",
+        "model_license",
+        "description",
+        "ref_text"
+      ],
+      "note": "Frozen TTS character voices: one folder per voice id (assets/audio/voices/<voice-id>/) with ref.wav (the reference clip), voice.json (tool record) and manifest.json. Category = role (narrator, child, adult, elder, creature for animals and monsters). Written by tts/bin/tts pick/approve; approval needs provenance fields and a commercial source."
     }
   },
   "facets": {
@@ -166,7 +184,9 @@
       "sleep",
       "magic-moment",
       "crowd-scene",
-      "sea-scene"
+      "sea-scene",
+      "narration",
+      "dialogue"
     ],
     "tempo": [
       "slow",
@@ -179,7 +199,28 @@
     ],
     "story": "free: kebab-case story slug, e.g. story:troy",
     "instrument": "free: kebab-case instrument name, e.g. instrument:glockenspiel",
-    "character": "free: kebab-case character slug, e.g. character:odysseus"
+    "character": "free: kebab-case character slug, e.g. character:odysseus",
+    "lang": [
+      "ko",
+      "en"
+    ],
+    "gender": [
+      "female",
+      "male",
+      "neutral"
+    ],
+    "age": [
+      "child",
+      "teen",
+      "young-adult",
+      "middle-aged",
+      "elderly"
+    ],
+    "voice-origin": [
+      "designed",
+      "variant",
+      "recorded"
+    ]
   },
   "statuses": {
     "approved": "Checked by a person; safe to use in new work.",

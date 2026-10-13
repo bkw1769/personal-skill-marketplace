@@ -38,6 +38,7 @@ assets/
     ├── sfx/<category>/                  효과음 (cartoon, nature, animal, crowd, foley …)
     ├── ambience/<category>/             반복 재생용 배경 소리
     ├── instruments/<instrument>/        악기 샘플 (VCSL 등)
+    ├── voices/<voice-id>/               TTS 캐릭터 목소리: ref.wav(참조 음성) + voice.json(생성 기록) + manifest.json
     └── <kind>/procedural/               Web Audio로 합성하는 소리 (impl 경로만)
 ```
 
@@ -87,8 +88,25 @@ npm run assets:build
 
 5. 사람이 확인한 항목만 `status`를 `approved`로 바꾸고 다시 build 한다.
 
+## 목소리 (voice)
+
+채택한 TTS 목소리는 `audio/voices/<voice-id>/`에 보관하고 다른 작품에서 다시 쓴다. 폴더는 `tts/bin/tts`가 만든다.
+
+| 단계 | 명령 | 결과 |
+|---|---|---|
+| 설계 | (storybook-narration 스킬의 `tts/` 도구) `tts/bin/tts design --voice fox-ko --lang ko --instruct "<영어 설명>" --text "<샘플 문장>" --category creature --gender male --age young-adult --character fox` | `candidates/take-N.wav` (Git 제외) |
+| 고정 | `tts/bin/tts pick --voice fox-ko --take 2` | `ref.wav`, `voice.json`, `manifest.json`(`candidate`) 생성, 인덱스 재생성 |
+| 승인 | 사람이 듣고 동의한 뒤 `tts/bin/tts approve --voice fox-ko` | `approved`. 검증기가 거부하면 `candidate`로 되돌린다 |
+
+- ID: `voice.<category>.<voice-id>`. 카테고리는 역할(`narrator`, `child`, `adult`, `elder`, `creature`).
+- 라벨: `lang:`, `gender:`, `age:`, `voice-origin:`(designed / variant / recorded), `character:`, `story:`, `mood:`, `use:narration|dialogue`.
+- `provenance`에 모델·revision·모델 라이선스·목소리 설명·참조 문장·seed가 남는다. 승인하려면 이 기록이 필요하다(`taxonomy.json`의 `approval_requires`).
+- 찾기: `npm run assets:find -- --kind voice --tag lang:ko`
+
 ## 라이선스 원칙
 
-- 상업 이용 가능 여부가 아직 정해지지 않았으므로(FT-001) 상업 이용 가능한 출처만 승인한다. 비상업(NC) 라이선스는 검증기가 승인을 막는다.
+- 공개·상업 이용을 전제로 상업 이용 가능한 출처만 승인한다. 검증기가 아래 경우 승인을 막는다: `policy: blocked` 출처, `commercial_ok: false` 출처, 비상업(NC) 라이선스, 생성 기록(provenance)이 빠진 목소리, 모델 라이선스가 비상업인 목소리, 동의서(`consent`) 없는 실존 인물 녹음.
+- 목소리 출처: `qwen3-tts-voice-design`(허용: 텍스트 설명으로 설계한 목소리만, 실존 인물 묘사·모방 금지), `voice-recording-consented`(제한: 서면 동의서 경로 필수, 동의서는 `docs/consent/`에 두고 Git에 올리지 않음), `qwen3-tts-preset-speakers`·`omnivoice`·`fish-audio-s2`·`f5-tts`·`xtts-v2`·`higgs-tts-3`(차단), `supertonic-3`(초안 전용).
+- 공개 작품에는 AI 음성 사용을 고지한다(영상 시작부 또는 설명란).
 - 출처 표기가 필요한 자산은 `licenses/CREDITS.md`에 자동으로 모인다. 작품을 공개할 때 쓴 자산의 줄을 엔딩 크레딧에 옮긴다.
 - `redistribute_ok: false`인 자산(Sonniss, Pixabay 등)은 공개 저장소에 올리지 않는다. 확인: `npm run assets:find -- --json`에서 `redistribute_ok`를 본다.

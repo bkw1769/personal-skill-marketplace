@@ -16,6 +16,7 @@ const TAXONOMY = {
   kinds: {
     sfx: { folder: 'audio/sfx', categories: ['cartoon', 'nature'] },
     character: { folder: 'art/characters', categories: ['cast-lineup'] },
+    voice: { folder: 'audio/voices', categories: ['narrator'], approval_requires: ['model', 'model_license'] },
   },
   facets: { mood: ['playful', 'calm'], story: 'free' },
   statuses: { approved: '', candidate: '', 'reference-only': '', rejected: '' },
@@ -25,6 +26,8 @@ const SOURCES = [
   { id: 'cc0', name: 'CC0 Lib', license: 'CC0-1.0', commercial_ok: true, attribution_required: false, redistribute_ok: true, policy: 'allowed' },
   { id: 'byl', name: 'BY Lib', license: 'CC-BY-4.0', commercial_ok: true, attribution_required: true, redistribute_ok: true, policy: 'restricted' },
   { id: 'bad', name: 'Blocked Lib', license: 'NC', commercial_ok: false, attribution_required: false, redistribute_ok: false, policy: 'blocked' },
+  { id: 'refs', name: 'User refs', license: 'unknown', commercial_ok: false, attribution_required: false, redistribute_ok: false, policy: 'restricted' },
+  { id: 'rec', name: 'Consented recording', license: 'per consent', commercial_ok: true, attribution_required: false, redistribute_ok: false, policy: 'restricted', requires_consent: true },
 ];
 
 /** Build a minimal WAV buffer: mono 16-bit at `rate` Hz with `samples` samples, plus optional extra chunk before data. */
@@ -198,6 +201,27 @@ describe('validateItem', () => {
     assert.equal(errs({ source: 'bad', status: 'rejected' }), '');
     assert.match(errs({ license: 'CC-BY-NC-4.0' }), /non-commercial/);
     assert.equal(errs({ license: 'CC-BY-NC-4.0', status: 'candidate' }), '');
+  });
+  test('commercial and consent gates on approval', () => {
+    assert.match(errs({ source: 'refs' }), /not cleared for commercial use/);
+    assert.equal(errs({ source: 'refs', status: 'reference-only' }), '');
+    assert.equal(errs({ source: 'refs', commercial_ok: true }), '');
+    assert.match(errs({ source: 'rec' }), /needs a consent record/);
+    assert.match(errs({ source: 'rec', consent: 'docs/consent/none.pdf' }), /consent record not found: docs\/consent\/none\.pdf/);
+    write('docs/consent/actor.pdf', 'signed');
+    assert.equal(errs({ source: 'rec', consent: 'docs/consent/actor.pdf' }), '');
+    assert.equal(errs({ source: 'rec', status: 'candidate' }), '');
+  });
+  test('voice provenance required for approval', () => {
+    write('assets/audio/voices/narrator-ko/ref.wav', 'ref');
+    const voice = { id: 'voice.narrator.narrator-ko', kind: 'voice', category: 'narrator', dir: 'audio/voices/narrator-ko', file: 'ref.wav' };
+    assert.match(errs(voice), /approval needs provenance\.model\n.*approval needs provenance\.model_license/);
+    assert.match(errs({ ...voice, provenance: { model: 'm', model_license: '' } }), /provenance\.model_license/);
+    assert.match(errs({ ...voice, provenance: { model: 'm', model_license: 'CC-BY-NC-4.0' } }), /model license "CC-BY-NC-4\.0" is not commercial/);
+    assert.match(errs({ ...voice, provenance: { model: 'm', model_license: 'research-only' } }), /is not commercial/);
+    assert.equal(errs({ ...voice, provenance: { model: 'm', model_license: 'apache-2.0' } }), '');
+    assert.equal(errs({ ...voice, status: 'candidate' }), '');
+    assert.match(errs({ ...voice, kind: 'nope', id: 'nope.narrator.narrator-ko' }), /unknown kind/);
   });
   test('file vs impl', () => {
     assert.match(errs({ file: undefined }), /exactly one of file or impl/);

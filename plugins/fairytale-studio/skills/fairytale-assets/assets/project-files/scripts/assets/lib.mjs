@@ -11,6 +11,7 @@ const SKIP_DIRS = new Set(['_vendor', 'catalog', 'licenses', 'node_modules']);
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ID = /^([a-z0-9-]+)\.([a-z0-9-]+)\.([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 const LICENSE_FIELDS = ['license', 'commercial_ok', 'attribution_required', 'redistribute_ok'];
+const NON_COMMERCIAL = /\bNC\b|non-?commercial|research[- ]only/i;
 
 /**
  * @typedef {Object} Item
@@ -30,6 +31,8 @@ const LICENSE_FIELDS = ['license', 'commercial_ok', 'attribution_required', 'red
  * @property {string} [license]
  * @property {string} [attribution]
  * @property {string} [origin_url]
+ * @property {Record<string, unknown>} [provenance]  How the asset was made (model, revision, prompt …); kinds may require fields before approval.
+ * @property {string} [consent]  Project-relative path of a signed consent record (sources with requires_consent).
  * @property {string} manifest  Manifest path relative to the project root.
  * @property {string} dir       Folder of the manifest relative to the assets root.
  */
@@ -166,10 +169,23 @@ export function validateItem(item, ctx) {
     else if (Array.isArray(allowed) ? !allowed.includes(value) : !SLUG.test(value)) err(`tag value "${tag}" is not allowed`);
   }
 
+  const approved = item.status === 'approved';
   const source = ctx.sources.get(item.source);
   if (!source) err(`unknown source "${item.source}"`);
-  else if (item.status === 'approved' && source.policy === 'blocked') err(`source ${item.source} is blocked; cannot approve`);
-  if (/\bNC\b/.test(item.license || '') && item.status === 'approved') err('non-commercial (NC) license cannot be approved');
+  else if (approved) {
+    if (source.policy === 'blocked') err(`source ${item.source} is blocked; cannot approve`);
+    if ((item.commercial_ok ?? source.commercial_ok) === false) err(`source ${item.source} is not cleared for commercial use; cannot approve`);
+    if (source.requires_consent) {
+      if (!item.consent) err(`source ${item.source} needs a consent record (consent: <path>) before approval`);
+      else if (!fs.existsSync(path.join(ctx.projectRoot, item.consent))) err(`consent record not found: ${item.consent}`);
+    }
+  }
+  if (/\bNC\b/.test(item.license || '') && approved) err('non-commercial (NC) license cannot be approved');
+  if (approved && kind && kind.approval_requires) {
+    const prov = item.provenance || {};
+    for (const field of kind.approval_requires) if (prov[field] === undefined || prov[field] === '') err(`approval needs provenance.${field}`);
+    if (NON_COMMERCIAL.test(String(prov.model_license || ''))) err(`model license "${prov.model_license}" is not commercial; cannot approve`);
+  }
 
   if (Boolean(item.file) === Boolean(item.impl)) err('exactly one of file or impl is required');
   if (item.file) {

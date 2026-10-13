@@ -1,6 +1,6 @@
 {
   "schema": "fairytale-sources/1",
-  "description": "Every place an asset can come from, with its license verdict. Manifest items reference a source id; the license fields below are merged into the generated index. policy: allowed = may be approved; restricted = allowed with the listed conditions; blocked = never approve (kept so nobody re-researches it).",
+  "description": "Every place an asset can come from, with its license verdict. Manifest items reference a source id; the license fields below are merged into the generated index. policy: allowed = may be approved; restricted = allowed with the listed conditions; blocked = never approve (kept so nobody re-researches it). requires_consent: true = items need a consent record before approval.",
   "verified_on": "2026-10-07",
   "sources": [
     {
@@ -437,6 +437,112 @@
       "redistribute_ok": false,
       "policy": "blocked",
       "notes": "Paid tiers grant commercial rights but terms are changing after the 2026 Warner settlement; re-check before any paid use."
+    },
+    {
+      "id": "qwen3-tts-voice-design",
+      "name": "Voices designed with Qwen3-TTS 1.7B VoiceDesign from text descriptions (cloned with Base)",
+      "type": "internal",
+      "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+      "license": "project-owned output; model Apache-2.0",
+      "commercial_ok": true,
+      "attribution_required": false,
+      "redistribute_ok": true,
+      "policy": "allowed",
+      "conditions": "Descriptions must not name, imitate or target a real person. No CustomVoice preset speakers. Variants must derive from an approved designed voice. Disclose AI-generated voices in published work.",
+      "notes": "Model weights, tokenizer and mlx-community 8-bit conversions labeled apache-2.0 on Hugging Face (checked 2026-10-07). Pinned revisions in tts/src/fairytale_tts/config.py."
+    },
+    {
+      "id": "qwen3-tts-preset-speakers",
+      "name": "Qwen3-TTS CustomVoice preset speakers (e.g. Sohee, Vivian, Ryan)",
+      "type": "model",
+      "url": "https://github.com/QwenLM/Qwen3-TTS/issues/353",
+      "license": "Apache-2.0 model; speaker likeness rights unconfirmed",
+      "commercial_ok": false,
+      "attribution_required": false,
+      "redistribute_ok": false,
+      "policy": "blocked",
+      "notes": "Whether the original speakers cleared commercial use is unanswered upstream (issue #353, open since 2026-08-02). Not downloaded; never use for published output."
+    },
+    {
+      "id": "voice-recording-consented",
+      "name": "Recordings of a real person (voice actor, family, staff) used as a voice reference",
+      "type": "recording",
+      "license": "per signed consent agreement",
+      "commercial_ok": true,
+      "attribution_required": false,
+      "redistribute_ok": false,
+      "policy": "restricted",
+      "requires_consent": true,
+      "conditions": "Approve only with a written consent record (item field consent: <project-relative path>) covering AI training/cloning, commercial use, channels, duration, withdrawal, compensation and personal-information processing; guardian consent under 14. Keep consent files out of public repositories."
+    },
+    {
+      "id": "supertonic-3",
+      "name": "Supertonic 3 (Supertone, archived)",
+      "type": "model",
+      "url": "https://huggingface.co/supertone-oss-archive/supertonic-3",
+      "license": "MIT code; OpenRAIL-M weights",
+      "commercial_ok": true,
+      "attribution_required": false,
+      "redistribute_ok": true,
+      "policy": "restricted",
+      "conditions": "Drafts and previews only. OpenRAIL-M requires disclosing machine-generated content; repository archived (no fixes). Not used for final narration."
+    },
+    {
+      "id": "omnivoice",
+      "name": "OmniVoice (k2-fsa)",
+      "type": "model",
+      "url": "https://huggingface.co/k2-fsa/OmniVoice",
+      "license": "Apache-2.0 code; CC-BY-NC weights",
+      "commercial_ok": false,
+      "attribution_required": true,
+      "redistribute_ok": false,
+      "policy": "blocked",
+      "notes": "Comparison listening only."
+    },
+    {
+      "id": "fish-audio-s2",
+      "name": "Fish Audio S2 / OpenAudio",
+      "type": "model",
+      "url": "https://huggingface.co/fishaudio/s2-pro",
+      "license": "Fish Audio Research License (internal business use counts as commercial)",
+      "commercial_ok": false,
+      "attribution_required": false,
+      "redistribute_ok": false,
+      "policy": "blocked"
+    },
+    {
+      "id": "f5-tts",
+      "name": "F5-TTS base weights",
+      "type": "model",
+      "url": "https://huggingface.co/SWivid/F5-TTS",
+      "license": "CC-BY-NC-4.0 weights (Emilia data)",
+      "commercial_ok": false,
+      "attribution_required": true,
+      "redistribute_ok": false,
+      "policy": "blocked"
+    },
+    {
+      "id": "xtts-v2",
+      "name": "Coqui XTTS-v2",
+      "type": "model",
+      "url": "https://huggingface.co/coqui/XTTS-v2",
+      "license": "Coqui Public Model License (non-commercial; vendor closed, no commercial license available)",
+      "commercial_ok": false,
+      "attribution_required": false,
+      "redistribute_ok": false,
+      "policy": "blocked"
+    },
+    {
+      "id": "higgs-tts-3",
+      "name": "Higgs TTS 3 (Boson AI)",
+      "type": "model",
+      "url": "https://huggingface.co/bosonai/higgs-tts-3-4b",
+      "license": "Research and Non-Commercial + Creator Use Grant",
+      "commercial_ok": false,
+      "attribution_required": true,
+      "redistribute_ok": false,
+      "policy": "blocked",
+      "notes": "Creator grant excludes tools/apps; needs legal review before any use."
     }
   ]
 }

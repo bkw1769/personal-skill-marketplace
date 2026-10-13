@@ -1,6 +1,6 @@
 ---
 name: fairytale-assets
-description: Find, reuse and register shared production assets for storybook / fairy-tale projects - character sheets and transparent sprites, backgrounds, props, style references, background music, jingles, sound effects, ambience and instrument samples - through a labeled catalog in the project's assets/ folder (one manifest.json per folder, controlled tags, a source-and-license ledger, a generated searchable index). Use this before making or downloading any art or sound for a story so existing assets are reused, whenever the user asks for 배경, 소품, 효과음, 배경음악, BGM, 사운드, 악기 샘플, 스프라이트, 시안 재사용, 자산 정리/등록/라벨링, 무료 음원 찾아줘, asks where an asset came from or whether it may be used commercially, and after generating or downloading new art or audio so it gets catalogued.
+description: Find, reuse and register shared production assets for storybook / fairy-tale projects - character sheets and transparent sprites, backgrounds, props, style references, background music, jingles, sound effects, ambience, instrument samples and adopted TTS character voices - through a labeled catalog in the project's assets/ folder (one manifest.json per folder, controlled tags, a source-and-license ledger, a generated searchable index). Use this before making or downloading any art or sound for a story so existing assets are reused, whenever the user asks for 배경, 소품, 효과음, 배경음악, BGM, 사운드, 악기 샘플, 스프라이트, 시안 재사용, 자산 정리/등록/라벨링, 무료 음원 찾아줘, asks where an asset came from or whether it may be used commercially, wants to 목소리 보관/재사용/라벨링, and after generating or downloading new art or audio so it gets catalogued.
 ---
 
 # Fairy-tale assets
@@ -67,12 +67,38 @@ node scripts/assets/cli.mjs fill
 node scripts/assets/cli.mjs build
 ```
 
-`build` refuses to write the index while any error remains (unknown tag, missing file, changed hash, approved item from a blocked source, approved NC license). Fix the manifest, not the validator.
+`build` refuses to write the index while any error remains. Errors include:
+- unknown tag, missing file or changed hash
+- an approved item from a blocked source, or from a source with `commercial_ok: false`
+- an approved NC license
+- an approved item of a kind with `approval_requires` (voices) that lacks those `provenance` fields, or whose model license is non-commercial
+- an approved item from a `requires_consent` source without an existing `consent` file
+
+Fix the manifest, not the validator. These gates are what keep commercial output legally clean.
 
 6. **Status.** New items stay `candidate` until the user has seen or heard them; then set `approved` and build again.
+
+## Voices
+
+Adopted TTS voices are kind `voice` in `assets/audio/voices/<voice-id>/`: `ref.wav`, `voice.json` and `manifest.json`, labeled with `lang:`, `gender:`, `age:`, `voice-origin:`, `character:` and `mood:`. The storybook-narration skill's `tts/bin/tts pick` writes them as `candidate`. `tts/bin/tts approve` approves a voice after the user has listened; prefer it over editing the status by hand, because it reverts when validation fails.
+
+Before designing a new voice, look for an existing one:
+
+```bash
+node scripts/assets/cli.mjs find --kind voice --tag lang:ko
+```
+
+Voice sources in `sources.json`:
+
+| Source | Policy | Meaning |
+|---|---|---|
+| `qwen3-tts-voice-design` | allowed | Voices designed from text descriptions only. |
+| `voice-recording-consented` | restricted | A real person's voice. Needs a `consent` file. |
+| `qwen3-tts-preset-speakers`, non-commercial TTS models | blocked | Never approve. |
 
 ## Related skills
 
 - `fairytale-art-prompts` generates sheets into `out/`; approved sets move to `assets/art/characters/<story>/<set>/` with their prompts.json and a manifest.
 - `sheet-to-sprites` cuts sprites; register them in `sprites/` under the set (category `sprite`).
+- `storybook-narration` designs, freezes and approves voices into `assets/audio/voices/`.
 - `storybook-video` plays synth sounds by name and can play registered samples; see its sound-design reference.
