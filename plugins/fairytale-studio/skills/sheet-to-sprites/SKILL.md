@@ -25,6 +25,8 @@ node <skill-dir>/scripts/find-pieces.mjs <kit.png> --crops <set>/crops.json --ke
 - Names are given in the kit prompt's slot order and assigned in reading order (rows top to bottom, left to right). A count mismatch stops with the list of found rectangles: two pieces touch or one is missing; regenerate the sheet rather than drawing boxes by hand. Without `--names` pieces are numbered `<key>-1..n`.
 - Every crop gets the kit options `{"largest": true, "tol": 48, "soft": 220}`: `soft` widens the edge fade so the white-to-magenta blend band is un-mixed instead of staying as a pink fringe. Pieces closer than 6 px (rim fibres) merge; retry with `--gap 2` before regenerating. Re-running for the same key replaces only that sheet's crops, so all kits of a story can share one crops.json.
 
+**Character cut-out sheets** (art-prompts template 7: each figure on its own paper piece on magenta) are cut the same way, with the pose slot names: `find-pieces.mjs <sheet.png> --crops <set>/crops.json --key dori --names walking,chopping,...`. Prefer them to cutting pose sheets on paper: on paper, white or pale clothing has no edge against the background and gets flood-filled away (golden-axe Dori lost parts of his white hanbok this way, even with `holeMin`). **Background plates** are not cut at all; they are used whole.
+
 Then cut as below (step 3). Check in `_contact.png` that the white torn rim survives all around and no magenta fringe is left: pink halo → raise `tol` for that crop; rim eaten → lower it. Element sprites are anchored bottom-centre like characters.
 
 ## Workflow

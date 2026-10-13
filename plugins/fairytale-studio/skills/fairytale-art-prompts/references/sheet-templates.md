@@ -1,6 +1,6 @@
 # Sheet templates
 
-Each template gives the composition block and caption pattern. `<...>` marks slots. Canvas: large landscape, 1536x1024 unless the tool offers more. Templates 1–3 are generalized from the approved Troy sheets; 4 and 5 are new. Template 6, the element kit, lives in `element-kits.md` with its own backdrop rules (it is not on paper and has no text).
+Each template gives the composition block and caption pattern. `<...>` marks slots. Canvas: large landscape, 1536x1024 unless the tool offers more. Templates 1–3 are generalized from the approved Troy sheets; 4 and 5 are new. Template 6 (element kit) and template 8 (background plate) live in `element-kits.md`. Template 7 (character cut-out sheet) is below: it is the production source for character sprites, while sheets 1-4 on paper are for review and identity.
 
 Rules shared by sheets 1-5, because the sheets feed an automatic cut-out step and need to read as artist model sheets:
 
@@ -75,3 +75,32 @@ Pull location lines from the era module's architecture table.
 ## 6. Element kit
 
 Separate torn-paper pieces on a flat magenta backdrop, one sheet per layer, no text. Full template, naming, layers and cutting: `element-kits.md`.
+
+## 7. Character cut-out sheet (production sprites)
+
+Why: on review sheets the figure sits on off-white paper, so white or pale clothing (hanbok, linen, a white cloud) has no edge against the paper and the cutter flood-fills straight into it; parts of Dori's white trousers and jacket vanished this way. On a magenta backdrop with a paper margin around each figure, the margin is what gets cut, and everything inside it survives. It also gives characters the same cut-out look as the near element pieces.
+
+Make it from an approved pose sheet (template 2) or turnaround (template 4). One character per sheet, up to 8 figures, no text.
+
+```text
+Input images: Image 1 is the approved character lineup, a STRICT CHARACTER IDENTITY AND PALETTE reference, not an edit target; Image 2 is the approved pose sheet for <name>, the reference for each pose.
+Asset type: character cut-out sheet for <name> in the children's fairy tale "<title>": production sprites to be cut out, not a review sheet.
+
+<STYLE BLOCK from the style module>
+
+Each figure is drawn on its own piece of off-white watercolor paper and cut out by hand around the figure, like a paper puppet from a picture book: an even off-white paper margin, about 3 percent of the figure height, follows the outline of the figure and of everything it holds, all around. The paper piece is one solid silhouette: small gaps between the legs, between an arm and the body or inside a held tool stay filled with paper. A continuous black pen outline closes every edge of the figure, and above all every edge where white or pale clothing meets the paper margin, so no part of the figure fades into the margin. Pieces lie flat, evenly lit, no cast shadow, no curl.
+
+Composition: exactly <N> separate figures in <rows> rows, in this reading order, all at the same scale, complete head-to-toe with props inside their own paper piece —
+1 <slot-name>: <pose sentence from the pose sheet>.
+2 <slot-name>: ...
+
+Preserve face, haircut, clothing colors, age and distinguishing features exactly: <identity sentence from the character bible>.
+
+<Backdrop block from torn-paper-collage.md>
+
+Constraints: no title, captions, labels or swatches; no ground line, floor shadow or ground patch under the feet; no effect marks (motion lines, sparkle marks, exclamation marks, sweat drops) outside the paper piece, because the video adds those; no extra characters; <style negatives>; <era anachronism negatives>; the magenta exists only as the flat backdrop.
+```
+
+Give every pose that will be used in both directions two slots, `<pose>-right` and `<pose>-left` ("same pose facing left, drawn again, not mirrored: the jacket still closes right over left"), because mirroring a hanbok or robe sprite reverses its closing (see element-kits.md, Direction and gaze). Plan facings from the story's screen geography: travel out = right, return = left, and the side of the frame where each character's targets sit.
+
+Cut with `sheet-to-sprites` exactly like a kit: `find-pieces.mjs --names <slot names>` then `cut-sprites.mjs`. Seated poses keep their seat (rock, stump) inside the same paper piece; if the seat must be reused alone, make it a separate element piece instead.

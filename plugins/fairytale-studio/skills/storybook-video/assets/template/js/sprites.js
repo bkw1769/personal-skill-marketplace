@@ -4,6 +4,8 @@ import { hash, state } from './util.js';
 
 /** name -> { c: HTMLImageElement, w, h, id, name } */
 export const S = {};
+/** name -> { c: HTMLImageElement, w, h } full-bleed background plates (far distance, never cut). */
+export const P = {};
 
 function loadImage(src) {
   return new Promise((res, rej) => {
@@ -97,5 +99,44 @@ export function paste(ctx, name, x, y, h, o = {}) {
   }
   ctx.scale((o.flip ? -1 : 1) * scale, scale);
   ctx.drawImage(s.c, -s.w / 2, o.pivot === 'center' ? -s.h / 2 : -s.h, s.w, s.h);
+  ctx.restore();
+}
+
+/**
+ * Load background plates: `map` is { name: url } (relative to the page), e.g.
+ * { 'plate-pond-day': '../assets/plates/plate-pond-day.png' }.
+ * @param {Record<string, string>} map
+ * @returns {Promise<Record<string, {c: HTMLImageElement, w: number, h: number}>>}
+ */
+export async function loadPlates(map) {
+  await Promise.all(Object.entries(map).map(async ([name, url]) => {
+    const c = await loadImage(url);
+    P[name] = { c, w: c.naturalWidth, h: c.naturalHeight };
+  }));
+  return P;
+}
+
+/**
+ * Draw a background plate (the painted far distance) so it covers the whole canvas.
+ * Options: camX with parallax (default 0.1; the plate shifts by -camX * parallax, clamped so no edge shows),
+ * zoom (overscan, default 1.06), dy (vertical offset in px), alpha, filter.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} name
+ * @param {{camX?: number, parallax?: number, zoom?: number, dy?: number, alpha?: number, filter?: string}} [o]
+ * @returns {void}
+ */
+export function plate(ctx, name, o = {}) {
+  const p = P[name];
+  if (!p) return;
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  const k = Math.max(cw / p.w, ch / p.h) * (o.zoom ?? 1.06);
+  const dw = p.w * k, dh = p.h * k;
+  const maxX = (dw - cw) / 2, maxY = (dh - ch) / 2;
+  const dx = Math.max(-maxX, Math.min(maxX, -(o.camX || 0) * (o.parallax ?? 0.1)));
+  const dy = Math.max(-maxY, Math.min(maxY, o.dy || 0));
+  ctx.save();
+  if (o.alpha !== undefined) ctx.globalAlpha *= o.alpha;
+  if (o.filter) ctx.filter = o.filter;
+  ctx.drawImage(p.c, (cw - dw) / 2 + dx, (ch - dh) / 2 + dy, dw, dh);
   ctx.restore();
 }

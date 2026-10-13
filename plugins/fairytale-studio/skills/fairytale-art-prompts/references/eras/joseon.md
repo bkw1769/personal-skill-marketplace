@@ -57,11 +57,23 @@ Separate pieces for `references/element-kits.md`, by layer. Make 2-3 variants of
 | Layer | Pieces (sentence seeds) |
 |---|---|
 | `sky` | soft round cloud pieces (2-3 variants), a pale sun disc, a crescent moon, a small flock of far birds as ink ticks |
-| `far` | layered pine-covered mountain range in pale blue-green (2 variants, wide), a single distant peak with mist bands, a far hill with a band of pines |
-| `mid` | thatched cottage (choga) with round straw roof and rope net, a poorer cottage with a patched roof, a tiled-roof house (giwa) with curved eaves, a small pavilion (jeongja), a big pine with an umbrella canopy (2-3 variants), a persimmon tree with orange fruit, a bamboo clump |
-| `near` | low mud-and-stone wall segment (straight and corner), brushwood gate (sarip-mun), jar terrace (jangdokdae) of brown earthenware jars on a stone platform, stone cairn (doltap), mossy rock cluster (2 variants), firewood stack, straw-rope fence, small round pond with a rock rim, flat sitting stone, a well with a wooden bucket |
+| `plate` | background plates, not pieces: layered rounded ridgelines with tiny pine dots and mist bands behind a sunny mountain foot (village), a valley of slopes (path), a far pine band (forest), two slopes framing a gap (pond); one per location and time of day |
+| `mid` | big village guardian tree (jeongja-namu, a broad old zelkova) with a small open thatched pavilion (mojeong) or a pyeongsang under it, thatched cottage (choga) with round straw roof and rope net, a poorer cottage with a patched roof, a tiled-roof house (giwa) with curved eaves, a small pavilion (jeongja), a big pine with an umbrella canopy (2-3 variants), a persimmon tree with orange fruit, a bamboo clump |
+| `near` | low mud-and-stone wall segment (straight and corner), brushwood fence and gate (ssari fence, sarip-mun, see-through weave), a pair of wooden jangseung guardian poles, a sotdae (pole with wooden birds), straw-mat drying (meongseok with red peppers or grain, autumn), straw stack, small vegetable patch, jar terrace (jangdokdae) of brown earthenware jars on a stone platform, stone cairn (doltap), mossy rock cluster (2 variants), firewood stack, straw-rope fence, small round pond with a rock rim, flat sitting stone, a well with a wooden bucket |
 | `front` | reeds (2 variants), grass tufts, wild chrysanthemums, a pine branch entering from the top edge |
 | `fx` | kitchen-chimney smoke curl, water splash, concentric ripples, magic mist, sparkles |
+
+## Placement rules (배치)
+
+Where things stand in a Joseon village, so scenes look like a real place and not a random paste-up. Sources and the line between sourced facts and common explanations: `docs/research/reports/전통 마을 배치와 그림책 화면 구성.md` in the fairytale project (Encyclopedia of Korean Culture entries 장독대, 마당, 문, 초가, 모정, 집촌, 촌락, 당산제; village-shrine studies).
+
+- **Village:** cottages cluster loosely on a sunny lower slope with the mountain behind them and fields or a stream in front (the mountain lives in the plate). Stagger them up the slope, roofs at different heights, partly overlapping; never a straight row.
+- **Village entrance (마을 어귀):** the big guardian tree with a mojeong or pyeongsang under it, a pair of jangseung beside the road, often a sotdae; a cairn or shrine tree along the mountain road. This is the establishing shot of the village. Jangseung do not stand in a family's yard.
+- **One cottage (choga):** 3-4 kan, straight or L-shaped. The front yard (anmadang) is the work yard: straw stack, drying mat, firewood, the jige resting. A see-through brushwood fence with a sarip-mun in front, or only a fence, or none for the poorest. The jar terrace stands behind the house by the kitchen back door; in a small mountain house it may stand in the sunny yard beside the kitchen. In a frontal view put it at one side of the house, a little behind and smaller. The well is shared in the village or in the back yard; a persimmon tree beside the house; a vegetable patch behind or beside.
+- **Rich house (giwa):** tiled roof, earth-and-tile wall around it, a real wooden gate; jars behind the inner quarters.
+- **Pond in the woods (golden axe):** in the 1924 text the woodcutter chops a big tree at the pond's edge and the axe slips into the water, so the tree he chops stands on the bank next to the water.
+- **Mountain path:** the path winds upward; a cairn by the path; pines and stumps along it.
+- **Golden-axe beats as published books stage them:** the axe slips from the tree on the bank into the water in a close shot with a splash; the spirit rises from the water half of the frame, large, and talks across the shoreline to the woodcutter kneeling or standing on the grass half; the greedy neighbour throws his axe from the forest edge toward the water; the village appears only small across the pond.
 
 ## Props
 
@@ -82,6 +94,8 @@ No Japanese kimono, obi, geta, samurai armor, katana, torii gates or pagoda-styl
 Axes and sickles are tools, never weapons. Tigers and dokkaebi are comic and soft. Mountain spirits and other magical beings appear gently: sparkles, mist and bubbles announce them before they show. No ghosts with long hair over the face, no grave scenes, no blood. For ages 3-5 see `references/audience.md`: villains look silly, figures stand out clearly from the background.
 
 ## Cultural accuracy checks
+
+- Jeogori, durumagi, dopo and every wrapped robe close right over left as seen by the viewer (우임). Never mirror such a sprite: mirrored, it closes 좌임, the burial-clothes closing. Generate left-facing poses instead.
 
 - On a jeogori the wearer's left front panel crosses over the right, and the ribbon bow (goreum) sits on the wearer's right chest.
 - Married men wear a top-knot (sangtu) and often a gat; unmarried boys and girls wear a long single braid with a daenggi ribbon. A young unmarried woodcutter can wear a braid or a simple cloth headband.

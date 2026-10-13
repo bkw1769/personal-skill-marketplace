@@ -4,6 +4,8 @@ Status: drafted 2026-10-08; first used on the four golden-axe kits (`out/charact
 
 Look in one line: every background element is its own small watercolor-and-ink painting on a piece of watercolor paper, torn out by hand along its outline, and later pasted onto a drawing-paper ground with a thin shadow under the torn edge.
 
+Applies to element pieces (mid, near, front) and to character cut-out sheets (template 7 in `sheet-templates.md`). Background plates (far distance) never get it: the far world stays a soft painted backdrop so the cut-out pieces stand out against it.
+
 This is a **finish module**, not a replacement style. The drawing inside each piece still follows a style module (watercolor-ink today): same pen line, same washes, same palette. The finish only changes how the piece ends: a torn deckled paper rim instead of a soft wash fading into the page. Characters stay drawn sprites (no torn rim) unless the user asks for collage characters too; then use the same block on character kits.
 
 Why it exists: backgrounds made as whole pictures cannot be re-arranged, re-used across scenes or animated in layers (parallax, a gate that opens, a tree that sways). Pieces cut from one shared kit can, and the torn rim plus a pasted shadow make the composite read as a deliberate handmade collage instead of a cut-out with hard edges.
