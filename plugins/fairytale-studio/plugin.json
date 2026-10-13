@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "fairytale-studio",
-  "version": "0.1.1",
-  "description": "Skills for producing illustrated storybook videos: art prompts, asset catalog, storyboard, sprite cutting, canvas video and output checks.",
+  "version": "0.2.0",
+  "description": "Skills for producing illustrated storybook videos: art prompts, asset catalog, storyboard, sprite cutting, narration (Qwen3-TTS), canvas video and output checks.",
   "author": {
     "name": "bkw1769"
   },
@@ -11,8 +11,8 @@
     "com.openai": {
       "interface": {
         "displayName": "동화 제작 스튜디오",
-        "shortDescription": "동화 시안·스토리보드·스프라이트·영상 제작 스킬",
-        "longDescription": "동화·스토리북 제작용 스킬 모음입니다. 그림체×시대 프롬프트, 공통 자산 카탈로그, 스토리보드, 시안 스프라이트 추출, 수채화풍 동화 영상 제작과 출력 검증을 포함합니다.",
+        "shortDescription": "동화 시안·스토리보드·스프라이트·나레이션·영상 제작 스킬",
+        "longDescription": "동화·스토리북 제작용 스킬 모음입니다. 그림체×시대 프롬프트, 공통 자산 카탈로그, 스토리보드, 시안 스프라이트 추출, Qwen3-TTS 한국어·영어 나레이션, 수채화풍 동화 영상 제작과 출력 검증을 포함합니다.",
         "developerName": "bkw1769",
         "category": "Productivity",
         "capabilities": [
@@ -22,6 +22,7 @@
         "defaultPrompt": [
           "이 시놉시스로 3분 동화 스토리보드 짜줘.",
           "캐릭터 시안에서 스프라이트 잘라줘.",
+          "이 대본으로 한국어 나레이션 만들어줘.",
           "스토리보드랑 스프라이트로 동화 영상 만들어줘."
         ]
       }

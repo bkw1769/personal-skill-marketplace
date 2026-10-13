@@ -1,0 +1,3 @@
+interface:
+  display_name: "동화 나레이션"
+  short_description: "Qwen3-TTS로 한국어·영어 동화 목소리를 설계·고정하고 대사별로 생성·검수합니다"

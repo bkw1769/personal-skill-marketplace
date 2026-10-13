@@ -10,9 +10,10 @@ A private-ready Codex plugin marketplace for bkw1769.
 | `fairytale-studio` | `fairytale-assets` | Labeled asset store for art and sound: manifests, controlled tags, license ledger of vetted libraries, searchable index (bundled tool + tests). |
 | `fairytale-studio` | `story-storyboard` | Synopsis to timed storyboard.json (scenes, captions, bubbles, music, sound cues) with a validator and Markdown view. |
 | `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, contact sheet). |
+| `fairytale-studio` | `storybook-narration` | Korean/English narration with Qwen3-TTS 1.7B on MLX: design and freeze voices, script/storyboard to lint-checked lines, batch generation with QA and retakes, full.wav + timeline.json (portable tts/ template + line tool). |
 | `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, dev server, recording) and an MP4 probe for checking the output. |
 
-The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-video.
+The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-narration → storybook-video.
 
 ## Local installation
 
@@ -56,7 +57,7 @@ Scripts bundled in skills are plain Node.js (22.8+, built-ins only) and have uni
 npm test
 ```
 
-Browser template code (`storybook-video/assets/template/`) is not unit-tested; it was checked end to end (scaffold, render, record, probe) with real storyboard and sprite data.
+The `storybook-narration/assets/tts-template/` Python tool has its own pytest suite (100% coverage, run with `tts/bin/test.sh` after copying it into a project); it is not run by `npm test`. Browser template code (`storybook-video/assets/template/`) is not unit-tested; it was checked end to end (scaffold, render, record, probe) with real storyboard and sprite data.
 
 ## Add or update skills
 

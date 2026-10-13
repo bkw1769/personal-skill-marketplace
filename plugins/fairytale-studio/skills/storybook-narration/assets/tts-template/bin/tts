@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run the fairytale TTS CLI with uv, Python and models on the external drive.
+set -euo pipefail
+source "$(dirname "$0")/env.sh"
+exec uv run --frozen --quiet fairytale-tts "$@"
