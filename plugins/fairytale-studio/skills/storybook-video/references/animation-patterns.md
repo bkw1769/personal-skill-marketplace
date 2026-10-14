@@ -13,6 +13,7 @@
 | Night | `nightOverlay(ctx, 0.35)` after the scene, `starsField`, `moon`; warm `torch()` glows use `lighter` compositing so they punch through. |
 | Camera pan | Paint a wide background once (e.g. 3200 px) and `drawImage` it at `-camX`; move characters with the same `camX` (parallax: clouds at a fraction). |
 | Zoom | `ctx.translate(cx, cy); ctx.scale(z, z); ctx.translate(-cx, -cy)` before drawing the scene. |
+| Work action (chopping, hammering, digging) | Two key-frame sprites, **raise** and **strike**, swapped on the action's sound cues (strike from 0.06 s before the cue to 0.3 s after), plus the object being worked: a chopping block whose log splits on each hit, a trunk the blade meets, chips via `puff()`. Never fake the swing by rotating one standing pose around its feet: the whole body tilts and reads as falling over (golden-axe review). Ask the art skill for the two frames from real technique (see fairytale-art-prompts sheet-templates, "Tools in action"). |
 | Crowd | Reuse two or three sprites with `flip` and small size/`k` variations; spread them across the visible width. |
 | Celebration | Confetti and bunting (simple rotated rectangles and washed triangles) driven by `T`. |
 
@@ -33,6 +34,7 @@ The storyboard's `audience` band (`3-5`, `6-8`, `9-10`) decides how a scene shou
 - **Visible before entering.** Floating-point easing left a character at 0.0001 opacity on screen before its entrance. Clamp entrance curves so they are exactly 0 before `t0` and exactly 1 after `t1` (`seg` already clamps; custom curves must too).
 - **Objects off screen.** Nine ships were animated but only one ever entered the frame because their x range was relative to the wrong origin. Compute positions from the visible frame (0..1920) and check with `__sheet` at several times.
 - **Scale breaks the story.** The wooden horse drawn taller than the city gate it is pulled through. Check size relations between props, buildings and characters on the same frame.
+- **Tilting a pose to animate a tool.** A chopping pose rotated back and forth around the feet looked wrong to the user: the body leaned instead of the arms swinging, and the axe edge pointed the wrong way. Use raise/strike key frames instead (Motion recipes, Work action).
 - **Overlay hides controls.** The start screen covered the save button. Keep primary actions on the overlay itself or above it.
 - **Hidden preview pane.** A hidden or background browser tab gets no `requestAnimationFrame` at all (measured 0 fps in a collapsed preview pane). The player switches to a 32 Hz timer while the page is hidden, which keeps running because the page plays audio, so a recording from a hidden pane still came out at about 28-30 fps. Review stills with `?still&t=` and `__sheet`; screenshots of a hidden pane still work.
 - **Heavy frames drop frames while recording.** Real-time capture of busy scenes ran at about 20 fps instead of 30 (check with probe-mp4). Pre-paint static layers, reduce per-frame `wash` calls with many layers, and avoid recording while other heavy tabs run.
