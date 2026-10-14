@@ -88,6 +88,7 @@ Rules for element sentences:
 - State the base: "standing on a short torn strip of its own ground" only for pieces that need a footing (a house on its yard edge); otherwise "straight base cut along the bottom of the object".
 - Repeat the size relation inside the sheet when it matters: "the jar terrace is about one third the height of the cottage".
 - Textures (bark, roof straw, stone, water) are a few irregular short brush strokes of varied size and direction, never a repeated pattern or stamped symbol: "bark suggested by a few irregular short brush strokes". A bare "bark scales" gave rows of identical diamonds on golden-axe v2 trunks.
+- See-through objects (brushwood gates and fences, lattices, ladders, nets, a gate standing ajar) are painted on a solid backing: say "painted on one continuous piece of cream paper; between the branches and in any gap the paper shows what is behind it (the pale ochre yard and a soft shadow) as opaque watercolor; no magenta and no holes inside the piece". Then only the outline is cut. Without it the gaps hold the magenta backdrop, which survives cutting as purple lines (golden-axe brushwood gate, 2026-10-14). The piece then hides what is behind its gaps, so paint the backing in the colour of the ground it will stand on.
 - `fx` pieces (sparkles, mist, splash) are often better without a paper rim: say "painted directly as loose watercolor marks with no paper rim" for those pieces only, and expect to cut them with `"text": true`.
 
 Name list: keep the slot names in the record (`prompts.json` → `pieces`) in the same order; `find-pieces.mjs --names` uses them.
@@ -208,5 +209,6 @@ Size: a piece shown big must be drawn big. Put large edge pieces one or two per 
 - Backdrop is one flat colour to every edge (no gradient, no texture).
 - Same pen line, wash and palette as the anchor cast sheet; same era details.
 - Sizes on one sheet compare truthfully (jar terrace smaller than the house, the gate fits a person).
+- No magenta inside any piece: gates, fences and other see-through parts have their solid backing (zoom into the gaps).
 - `find-pieces` finds exactly N pieces; `cut-sprites` contact sheet shows clean rims.
 - Plates: full bleed to every edge, no rim or frame, no near objects, lower part calm and open, farthest ridges paler than nearer ones; the other times of day keep the day plate's composition.

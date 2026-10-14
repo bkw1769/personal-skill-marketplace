@@ -49,6 +49,7 @@ The composite supplies what the kit leaves out on purpose:
 |---|---|
 | Buildings arrive with their own yard, fence, wall, jars and flowers attached (seen on golden-axe village-mid) | `the building alone with only a thin strip of ground at its base: no wall, fence, jars, plants or yard around it; those are separate pieces` |
 | Rims came out as smooth die-cut sticker outlines on one of four sheets (seen on golden-axe village-mid) | put `torn by hand: irregular deckled edge with soft fibres, never a smooth sticker outline` both in the collage block position and at the end of Constraints |
+| Magenta shows between gate or fence slats and survives cutting as purple lines (seen on golden-axe wall-long-dori) | `painted on one continuous piece of cream paper; between the slats the paper shows the pale ochre yard behind them as opaque watercolor; no magenta and no holes inside the piece` (see element-kits.md, solid backing) |
 | Model paints a little ground, grass or shadow under each piece | `every piece is isolated on the magenta backdrop: no ground patch, grass strip, puddle or shadow under it` |
 | Backdrop gets a gradient or paper texture | repeat the backdrop block at the end of Constraints |
 | Pieces crowd and touch | reduce the slot count (8 or fewer per sheet) and repeat `wide clear magenta gaps` |
