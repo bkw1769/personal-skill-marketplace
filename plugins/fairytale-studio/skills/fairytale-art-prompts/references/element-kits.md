@@ -152,6 +152,8 @@ Per scene, draw back to front: background plate → moving `sky` items → `mid`
 
 General picture-book staging for pasting pieces on a plate (sources in the fairytale project's research report, plus common practice). Era files add where things stand in that world (e.g. `eras/joseon.md` Placement rules).
 
+- **One home per shot, few pieces:** a house scene shows one house with at most one tree and its front wall; a neighbour's house gets its own shot. Remove anything the narration does not need (golden-axe review: two houses, extra trees, a cairn and a far pine beside the path all read as clutter).
+- **Foreground grass runs edge to edge** when it frames the bottom of the picture (two wide bank pieces, one mirrored), never a short strip in the middle.
 - **Ground lines:** the plate's horizon is about 58 % of the height. Anchor every piece by its base on the ground below it: farther pieces higher (just under the horizon) and smaller, nearer pieces lower and bigger. Same-size pieces on one baseline look like a shelf; vary both.
 - **Overlap:** a nearer piece covers the base of a farther one (fence over the bottom of the cottage, reeds over the pond rim). Overlap is the strongest depth cue a paste-up has.
 - **Subject in the middle ground:** the character stands on a ground line at about 80-90 % of the height, with clear space around the head and the action. Pieces never cover the face or the hands doing the action.
@@ -194,6 +196,8 @@ Checked on the golden-axe test scenes (2026-10-13): every pose had been drawn fa
 ### Edge pieces
 
 Pieces meant to be cropped by the frame: a very wide pond, a foreground meadow bank, trunk clusters cut at the top, corner rock clusters. In the kit sheet sentence name the straight cut sides ("its left side and bottom are straight cut edges") and add to the scale line that the torn rim runs only along natural edges. Paste them with the straight sides placed outside the frame. Golden-axe test sheet: `kit-edge-pieces` (2026-10-13).
+
+Walls and fences in front of a house are one long piece with the gate built into it (`wall-long-<house>`: about eight times wider than tall, gate in the middle, both ends straight cut edges so it runs off both sides of the frame), not short segments pasted in a row: on golden-axe the segments read as separate pieces and the gate did not join them. Place the gate in front of the door and let the wall cover only the house's foundation.
 
 Size: a piece shown big must be drawn big. Put large edge pieces one or two per sheet ("filling most of the sheet") so each comes out at 1,000 px or more, and never upscale a piece more than 1.5x in a scene. On `kit-edge-pieces` six pieces shared one sheet, came out 300-550 px and were upscaled 2-2.6x: soft painting, rims two to three times thicker than the characters', ripple lines turned into heavy zigzags. Golden-axe large sheets: `big-pond-wide`, `big-trunks`, `big-meadow-bank`, `big-houses-solo` (2026-10-14).
 
