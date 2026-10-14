@@ -17,9 +17,10 @@
         "expression-pose",
         "turnaround",
         "prop-structure",
-        "sprite"
+        "sprite",
+        "cutout-sheet"
       ],
-      "note": "Story design sheets (cast, expressions, turnarounds, and prop-structure sheets made in the same set) and cut-out sprites. Category = sheet template from fairytale-art-prompts. Always tagged story:<slug>."
+      "note": "Story design sheets (cast, expressions, turnarounds, and prop-structure sheets made in the same set) and cut-out sprites. Category = sheet template from fairytale-art-prompts. Always tagged story:<slug>. cutout-sheet = magenta character cut-out sheet (art-prompts template 7)."
     },
     "background": {
       "folder": "art/backgrounds",
@@ -33,7 +34,9 @@
         "sky",
         "camp",
         "interior",
-        "night"
+        "night",
+        "pond",
+        "path"
       ],
       "note": "Full-frame or panning scenery. Category = location type."
     },

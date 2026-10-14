@@ -98,7 +98,7 @@ Voice sources in `sources.json`:
 
 ## Related skills
 
-- `fairytale-art-prompts` generates sheets into `out/`; approved sets move to `assets/art/characters/<story>/<set>/` with their prompts.json and a manifest.
+- `fairytale-art-prompts` generates sheets into `out/`; approved sets move into the store with their prompts.json, crops.json and a manifest: character cut-out sheets to `assets/art/characters/<story>/<set>/` (sprites in its `sprites/`, category `cutout-sheet` / `sprite`), far background plates to `assets/art/backgrounds/<era>/`, torn-paper kit sheets to `assets/art/props/<era>/<set>/` (pieces in its `sprites/`). Re-cut the sprites inside the store (`cut-sprites.mjs crops.json --out sprites --rim <story paper>`) so sprites.json points at the copied sheets; sheets made later and not yet seen by the user stay `candidate`. Videos then load sprites and plates from `assets/`, not `out/`.
 - `sheet-to-sprites` cuts sprites; register them in `sprites/` under the set (category `sprite`).
 - `storybook-narration` designs, freezes and approves voices into `assets/audio/voices/`.
 - `storybook-video` plays synth sounds by name and can play registered samples; see its sound-design reference.

@@ -2,7 +2,7 @@
 // the storyboard and the sprites, then plays, seeks, narrates and records.
 import CONFIG from '../story.config.js';
 import { W, H } from './util.js';
-import { loadSprites } from './sprites.js';
+import { loadSprites, loadPlates } from './sprites.js';
 import { initPaint } from './paint.js';
 import { Synth, autoScore, cuesToEvents, narrationEvents, renderRange, kWeight, integratedLoudness, peakOf, speechToBedDb } from './audio.js';
 import { initStage, renderFrame, narrationLines } from './stage.js';
@@ -201,6 +201,7 @@ async function main() {
   }
   await fontsReady();
   await loadSprites(CONFIG.sprites);
+  if (CONFIG.plates) await loadPlates(CONFIG.plates);
   initPaint();
   initStage(SB, SCENES);
   lines = narrationLines();
