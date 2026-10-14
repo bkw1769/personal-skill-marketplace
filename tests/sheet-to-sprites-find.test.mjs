@@ -115,7 +115,7 @@ describe('find-pieces CLI', () => {
     let spec = JSON.parse(fs.readFileSync(crops, 'utf8'));
     assert.equal(spec.schema, 'sprite-crops/1');
     assert.equal(spec.sheets.kit, '../kit.png');
-    assert.deepEqual(spec.crops.house, { sheet: 'kit', x: 0, y: 0, w: 84, h: 84, options: { largest: true, tol: 48, soft: 220 } });
+    assert.deepEqual(spec.crops.house, { sheet: 'kit', x: 0, y: 0, w: 84, h: 84, options: { largest: true, tol: 48, soft: 220, key: true } });
     assert.deepEqual(Object.keys(spec.crops), ['house', 'tree']);
 
     spec.sheets.cast = 'cast.png';

@@ -10,6 +10,12 @@
  * @property {number}  [tol]      Paper colour tolerance (default 24).
  * @property {number}  [holeMin]  Smallest enclosed paper area (px) treated as a hole.
  * @property {number}  [pad]      Transparent margin kept around the trimmed sprite (default 2).
+ * @property {boolean} [key]      Chroma backdrop: every pixel within `tol` of the backdrop colour is removed,
+ *                                also where it is enclosed (gaps between fence slats, under an arm), not only
+ *                                the backdrop connected to the crop border; pixels within 3 px of strongly
+ *                                backdrop-coloured ones, and the faintly tinted pixels connected to them, are
+ *                                treated as blends (colour-difference key, alpha from the backdrop's chroma)
+ *                                and un-mixed. Only for colours no drawing uses.
  * @property {number}  [soft]     Colour-distance range over which edge pixels fade from transparent to opaque
  *                                (default 42, for ink on paper; about 220 for a flat chroma backdrop such as magenta).
  */
@@ -40,6 +46,53 @@ export function crop(img, r) {
   const data = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) data.set(img.data.subarray(((y0 + y) * img.width + x0) * 4, ((y0 + y) * img.width + x1) * 4), y * width * 4);
   return { width, height, data };
+}
+
+/**
+ * Colour-difference key for a chroma backdrop (magenta, green, cyan): near strongly backdrop-coloured
+ * pixels, how much of the backdrop's chroma a pixel carries sets its alpha, and the later un-mix step
+ * restores its own colour. Thin enclosed gaps (fence slats, a gate) are blends the flood fill never
+ * reaches. Does nothing for a paper-like backdrop with no weak channel.
+ * @param {Uint8Array} d RGBA pixels
+ * @param {number} w
+ * @param {number} h
+ * @param {number[]} paper backdrop colour
+ * @param {Float32Array} dist distance of each pixel from the backdrop colour
+ * @param {Uint8Array} bg 1 = already background
+ * @param {Float32Array} alpha updated in place
+ * @param {number} tol
+ */
+export function spillKey(d, w, h, paper, dist, bg, alpha, tol) {
+  const hi = [0, 1, 2].filter((c) => paper[c] > 128), lo = [0, 1, 2].filter((c) => paper[c] <= 128);
+  if (!hi.length || !lo.length) return;
+  const chroma = (/** @type {number} */ i) => Math.min(...hi.map((c) => d[i * 4 + c])) - Math.max(...lo.map((c) => d[i * 4 + c]));
+  const full = Math.min(...hi.map((c) => paper[c])) - Math.max(...lo.map((c) => paper[c]));
+  const N = w * h, R = 3;
+  const zone = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (bg[i] || dist[i] >= tol * 2.5) continue;
+    const x = i % w, y = (i / w) | 0;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if (xx >= 0 && yy >= 0 && xx < w && yy < h) zone[yy * w + xx] = 1;
+    }
+  }
+  // A gap's faint pink run (backdrop blended with paper or wood) continues from those pixels: follow
+  // connected pixels that still carry some backdrop chroma. Pinks with no strong pixel nearby (a pink
+  // flower) are never reached.
+  const q = [];
+  for (let i = 0; i < N; i++) if (zone[i]) q.push(i);
+  while (q.length) {
+    const i = /** @type {number} */ (q.pop()), x = i % w, y = (i / w) | 0;
+    for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+      if (j >= 0 && !zone[j] && !bg[j] && chroma(j) > 0.06 * full) { zone[j] = 1; q.push(j); }
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    if (!zone[i] || bg[i]) continue;
+    const a = clamp01(1 - chroma(i) / full);
+    alpha[i] = Math.min(alpha[i], a < 0.15 ? 0 : a);
+  }
 }
 
 /**
@@ -101,6 +154,7 @@ export function extractSprite(src, opt = {}) {
         comps.push({ size, border });
       }
     };
+    if (opt.key) for (let i = 0; i < N; i++) if (dist[i] < tol) bg[i] = 1;
     // Enclosed paper (between legs, inside a wheel) becomes transparent too.
     const holeMin = opt.holeMin ?? Math.max(90, N * 0.0012);
     labelAll((i) => !bg[i] && dist[i] < tol * 0.85);
@@ -131,6 +185,7 @@ export function extractSprite(src, opt = {}) {
     }
     const soft = opt.soft ?? 42;
     for (let i = 0; i < N; i++) alpha[i] = bg[i] ? 0 : near[i] ? clamp01((dist[i] - 8) / soft) : 1;
+    if (opt.key) spillKey(d, w, h, paper, dist, bg, alpha, tol);
   }
   let minX = w, minY = h, maxX = -1, maxY = -1;
   // Solid drawing (alpha >= 0.5) on each border row/column of the crop: the figure continues outside it.

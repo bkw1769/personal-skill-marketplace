@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'plugins/fairytale-studio/skills/sheet-to-sprites/scripts');
 const { decodePng, encodePng, paeth } = await import(path.join(DIR, 'png.mjs'));
-const { median, crop, extractSprite, cutSprite, drawBoxes, contactSheet, SIDES } = await import(path.join(DIR, 'extract.mjs'));
+const { median, crop, extractSprite, cutSprite, drawBoxes, contactSheet, SIDES, spillKey } = await import(path.join(DIR, 'extract.mjs'));
 const { main, parseArgs, normalizeCrop } = await import(path.join(DIR, 'cut-sprites.mjs'));
 
 const SIG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -162,6 +162,72 @@ describe('extract', () => {
     assert.ok(a > 80 && a < 180, `edge alpha ${a}`);
     const g = soft.image.data[(5 * soft.image.width) * 4 + 1];
     assert.ok(g > 200, `green restored to cream, got ${g}`);
+  });
+
+  test('key removes backdrop enclosed inside a piece (gaps between slats), not only the outside', () => {
+    const img = { width: 60, height: 60, data: new Uint8Array(60 * 60 * 4) };
+    for (let i = 0; i < 3600; i++) img.data.set([250, 5, 249, 255], i * 4);
+    fill(img, 10, 10, 50, 50, [245, 238, 220]);          // paper piece
+    fill(img, 20, 20, 40, 40, [140, 90, 60]);            // gate
+    fill(img, 28, 22, 31, 38, [250, 5, 249]);            // enclosed magenta slit (48 px, below holeMin)
+    const plain = extractSprite(img, { pad: 0, tol: 48, soft: 220 });
+    assert.equal(alphaAt(plain.image, 19, 20), 255);     // slit stays opaque magenta without key
+    const keyed = extractSprite(img, { pad: 0, tol: 48, soft: 220, key: true });
+    assert.equal(alphaAt(keyed.image, 19, 20), 0);
+    assert.equal(alphaAt(keyed.image, 5, 5), 255);       // paper rim kept
+  });
+
+  test('key un-mixes magenta blends next to an enclosed gap, leaves distant pinks alone', () => {
+    const img = { width: 60, height: 60, data: new Uint8Array(60 * 60 * 4) };
+    for (let i = 0; i < 3600; i++) img.data.set([250, 5, 249, 255], i * 4);
+    fill(img, 10, 10, 50, 50, [245, 238, 220]);          // paper piece
+    fill(img, 20, 20, 40, 40, [140, 90, 60]);            // gate
+    fill(img, 29, 22, 30, 38, [235, 20, 232]);           // almost pure backdrop, just outside tol 24
+    fill(img, 28, 22, 29, 38, [190, 90, 140]);           // wood-magenta blend beside it
+    fill(img, 29, 38, 30, 46, [250, 215, 246]);          // faint pink run continuing below the slit
+    fill(img, 12, 44, 16, 48, [235, 150, 190]);          // pink flower far from any magenta
+    const r = extractSprite(img, { pad: 0, tol: 24, soft: 220, key: true });
+    const at = (x, y) => [...r.image.data.subarray((y * r.image.width + x) * 4, (y * r.image.width + x) * 4 + 4)];
+    const core = at(19, 20), side = at(18, 20);
+    assert.equal(core[3], 0);                            // keyed out by its chroma
+    assert.ok(side[3] > 0 && side[3] < 255, `blend alpha ${side[3]}`);
+    assert.ok(Math.min(side[0], side[2]) - side[1] < 15, `blend keeps a magenta cast: ${side}`);
+    const faint = at(19, 33);                            // 10 px below the slit: reached through the run
+    assert.ok(faint[3] < 255 && Math.min(faint[0], faint[2]) - faint[1] < 15, `faint run keeps a magenta cast: ${faint}`);
+    assert.equal(at(2, 34)[3], 255);                     // pink flower untouched
+    assert.deepEqual(at(2, 34).slice(0, 3), [235, 150, 190]);
+  });
+
+  test('spillKey follows a tinted run from a strong pixel, stops at background and untinted pixels', () => {
+    const w = 8, h = 2, M = [250, 5, 249];
+    const px = [
+      [245, 20, 242], [250, 215, 246], [250, 215, 246], [250, 215, 246], [250, 215, 246], [250, 215, 246], [250, 215, 246], [250, 215, 246],
+      [200, 200, 200], [250, 215, 246], [200, 200, 200], [200, 200, 200], [200, 200, 200], [200, 200, 200], [200, 200, 200], [200, 200, 200],
+    ];
+    const d = new Uint8Array(w * h * 4);
+    px.forEach((c, i) => d.set([...c, 255], i * 4));
+    const dist = Float32Array.from(px.map((c) => Math.hypot(c[0] - M[0], c[1] - M[1], c[2] - M[2])));
+    const bg = new Uint8Array(w * h);
+    bg[6] = 1; bg[9] = 1;                                 // background inside the run and inside the 3 px zone
+    const alpha = new Float32Array(w * h).fill(1);
+    alpha[6] = 0; alpha[9] = 0;
+    spillKey(d, w, h, M, dist, bg, alpha, 24);
+    assert.equal(alpha[0], 0);                           // strong pixel keyed out
+    assert.ok(alpha[5] > 0.8 && alpha[5] < 1);           // reached through the run beyond the 3 px zone
+    assert.equal(alpha[7], 1);                           // behind a background pixel: not reached
+    assert.equal(alpha[6], 0);
+    assert.equal(alpha[9], 0);
+    assert.equal(alpha[12], 1);                          // grey: no backdrop chroma
+    const one = Float32Array.from([1]);                  // a lone strong pixel touches every image edge
+    spillKey(Uint8Array.from([245, 20, 242, 255]), 1, 1, M, Float32Array.from([17]), new Uint8Array(1), one, 24);
+    assert.equal(one[0], 0);
+  });
+
+  test('spillKey does nothing for a paper-like backdrop without a weak channel', () => {
+    const d = Uint8Array.from([245, 238, 220, 255]);
+    const alpha = Float32Array.from([1]);
+    spillKey(d, 1, 1, [245, 238, 220], Float32Array.from([0]), Uint8Array.from([0]), alpha, 24);
+    assert.equal(alpha[0], 1);
   });
 
   test('options: largest, holeMin, tol, text', () => {

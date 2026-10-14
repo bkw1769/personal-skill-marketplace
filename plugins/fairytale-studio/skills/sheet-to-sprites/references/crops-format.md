@@ -31,6 +31,7 @@
 | `tol` | 24 | Colour distance (0-441) still counted as paper. Lower it if pale washes (light skin, lilac dress) get eaten; raise it if paper texture or shadows remain. |
 | `holeMin` | max(90, 0.12% of crop) | Minimum size of an enclosed paper island that is made transparent. Lower it to clear small gaps between fingers or wheel spokes; raise it if a pale area inside the figure turns transparent. |
 | `pad` | 2 | Transparent margin kept around the trimmed sprite. |
+| `key` | false | Chroma backdrops (magenta kits and cut sheets): remove backdrop-coloured pixels also where they are enclosed (gaps between slats, under an arm) and un-mix the tinted blends next to them. Pinks with no backdrop-coloured pixel nearby (flowers, a pink skirt) are left alone. Never use it on paper-coloured sheets. |
 | `soft` | 42 | Colour-distance range over which edge pixels fade to opaque (and get the background un-mixed). 42 suits ink on paper; about 220 suits a flat chroma backdrop (magenta kits), where the blend band between the white rim and the backdrop is wide in colour distance. |
 | `grow` | true | Set `false` to use the rectangle exactly as written (no automatic headroom). |
 | `growMax` | 160 | Most pixels each side may grow for this crop. |

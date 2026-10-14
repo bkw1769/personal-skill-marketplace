@@ -17,9 +17,10 @@ import { NAME } from './cut-sprites.mjs';
  * Cutter options written for every kit piece: keep only the piece itself, treat the flat
  * chroma backdrop generously, and fade the torn rim over the whole backdrop-to-paper colour
  * range so the blend band is un-mixed instead of left as a pink fringe (measured on the
- * golden-axe kits: edge pixels with a magenta cast fell from about 94 % to under 1 %).
+ * golden-axe kits: edge pixels with a magenta cast fell from about 94 % to under 1 %); `key` also
+ * removes backdrop enclosed inside a piece (gaps between gate slats showed magenta in the video).
  */
-export const KIT_OPTIONS = Object.freeze({ largest: true, tol: 48, soft: 220 });
+export const KIT_OPTIONS = Object.freeze({ largest: true, tol: 48, soft: 220, key: true });
 
 /**
  * @typedef {{x: number, y: number, w: number, h: number, area: number}} Piece
