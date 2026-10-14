@@ -13,7 +13,7 @@ Why it exists: backgrounds made as whole pictures cannot be re-arranged, re-used
 ## COLLAGE BLOCK (paste verbatim, after the style block)
 
 ```text
-Each element is its own small ink-and-watercolor painting on a separate piece of off-white cold-press watercolor paper, torn out by hand around the element: an irregular torn deckled edge with a thin uneven white paper margin (about 1 to 3 percent of the piece width) showing all around the painted element, tiny soft paper fibres along the tear, the paper margin following the element's outline loosely, like a cut-out pasted into a children's picture book. The painting stays inside its paper piece; nothing is painted on the backdrop. Pieces lie perfectly flat and are lit evenly from the front: no cast shadows, no curl, no lifted corners, no glue marks.
+Each element is its own small ink-and-watercolor painting on a separate piece of warm cream cold-press watercolor paper (one paper tone close to #f4efe2, the same for every piece and every character), torn out by hand around the element: an irregular torn deckled edge with a thin uneven cream paper margin (about 1 to 3 percent of the piece width) showing all around the painted element, tiny soft paper fibres along the tear, the paper margin following the element's outline loosely, like a cut-out pasted into a children's picture book. The painting stays inside its paper piece; nothing is painted on the backdrop. Pieces lie perfectly flat and are lit evenly from the front: no cast shadows, no curl, no lifted corners, no glue marks.
 ```
 
 ## Backdrop block (element-kit sheets only; paste verbatim)
@@ -23,6 +23,8 @@ The kit sheet is not paper: it is one flat colour that no element uses, so the c
 ```text
 Backdrop: the whole sheet is one flat, uniform, untextured solid pure magenta (#FF00FF) background, evenly lit with no gradient, vignette, paper grain, noise or shadow, filling the frame to every edge. Pieces sit on it with wide clear magenta gaps between them and never touch each other or the sheet edge. No title, captions, labels, numbers, swatches or any other text on the sheet.
 ```
+
+Paper tone: element pieces and character cut-out sheets name the same warm cream paper (`#f4efe2`). Golden-axe v2 said "off-white" in the kit block and "white" in the cut-out block; the model painted cream rims on pieces and pure-white rims on characters, so one scene looked like two kinds of paper. Already-cut sprites with a different rim can be colour-matched in code instead of regenerated. In those prompts also change the style block's "visible off-white cold-press paper texture" to the same cream, so the prompt never names two paper colours.
 
 If a story needs magenta or hot-pink elements (a flower field, a royal robe), switch the backdrop to pure flat cyan (#00FFFF) and say so in the record.
 
@@ -50,5 +52,7 @@ The composite supplies what the kit leaves out on purpose:
 | Model paints a little ground, grass or shadow under each piece | `every piece is isolated on the magenta backdrop: no ground patch, grass strip, puddle or shadow under it` |
 | Backdrop gets a gradient or paper texture | repeat the backdrop block at the end of Constraints |
 | Pieces crowd and touch | reduce the slot count (8 or fewer per sheet) and repeat `wide clear magenta gaps` |
-| Paint leaks onto the backdrop or the rim disappears | `a visible white paper margin all around every painted element` |
+| Paint leaks onto the backdrop or the rim disappears | `a visible cream paper margin all around every painted element` |
+| Rims differ between kits and character sheets (cream vs pure white, seen on golden-axe v2) | use the same paper sentence (`warm cream ... close to #f4efe2`) in every kit and cut-out prompt of a story |
+| Bark, roof straw or stone texture repeats one stamped symbol (rows of identical diamonds on golden-axe v2 trunks) | `bark suggested by a few irregular short brush strokes of varied size and direction, never a repeated pattern or stamped symbol` in the piece sentence, and `no repeated stamped texture symbols` in Constraints |
 | Magenta tint creeps into the paintings | `paintings use only the listed palette; the magenta exists only as the flat backdrop` |

@@ -88,7 +88,7 @@ Asset type: character cut-out sheet for <name> in the children's fairy tale "<ti
 
 <STYLE BLOCK from the style module>
 
-Each figure is drawn on its own piece of off-white watercolor paper and cut out by hand around the figure, like a paper puppet from a picture book: an even off-white paper margin, about 3 percent of the figure height, follows the outline of the figure and of everything it holds, all around. The paper piece is one solid silhouette: small gaps between the legs, between an arm and the body or inside a held tool stay filled with paper. A continuous black pen outline closes every edge of the figure, and above all every edge where white or pale clothing meets the paper margin, so no part of the figure fades into the margin. Pieces lie flat, evenly lit, no cast shadow, no curl.
+Each figure is drawn on its own piece of warm cream watercolor paper (the same paper tone as the element pieces, close to #f4efe2) and cut out by hand around the figure, like a paper puppet from a picture book: an even cream paper margin, about 3 percent of the figure height, follows the outline of the figure and of everything it holds, all around. The paper piece is one solid silhouette: small gaps between the legs, between an arm and the body or inside a held tool stay filled with paper. A continuous black pen outline closes every edge of the figure, and above all every edge where white or pale clothing meets the paper margin, so no part of the figure fades into the margin. Pieces lie flat, evenly lit, no cast shadow, no curl.
 
 Composition: exactly <N> separate figures in <rows> rows, in this reading order, all at the same scale, complete head-to-toe with props inside their own paper piece —
 1 <slot-name>: <pose sentence from the pose sheet>.
@@ -100,6 +100,8 @@ Preserve face, haircut, clothing colors, age and distinguishing features exactly
 
 Constraints: no title, captions, labels or swatches; no ground line, floor shadow or ground patch under the feet; no effect marks (motion lines, sparkle marks, exclamation marks, sweat drops) outside the paper piece, because the video adds those; no extra characters; <style negatives>; <era anachronism negatives>; the magenta exists only as the flat backdrop.
 ```
+
+Keep the paper sentence identical to the element kits of the same story (see `styles/torn-paper-collage.md`, Paper tone): a pure-white character margin next to cream pieces reads as two different papers.
 
 Give every pose that will be used in both directions two slots, `<pose>-right` and `<pose>-left` ("same pose facing left, drawn again, not mirrored: the jacket still closes right over left"), because mirroring a hanbok or robe sprite reverses its closing (see element-kits.md, Direction and gaze). Plan facings from the story's screen geography: travel out = right, return = left, and the side of the frame where each character's targets sit.
 

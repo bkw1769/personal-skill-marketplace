@@ -57,8 +57,8 @@ If the requested style or era has no file yet, create it first from the skeleton
 - Era holds: no anachronisms from the era module's banned list.
 - Captions legible and exactly as listed; no extra text.
 - Cut-out ready: figures separated with clear paper between them, clear paper above the highest point of each figure (hair, plumes, ears, raised hands), nothing touching the title band or captions, complete head-to-toe (the video pipeline flood-fills the paper around each figure, so touching groups cannot be separated).
-- Element kits and character cut-out sheets: exactly the listed pieces in order, each with a paper margin all around and a closed pen outline (white clothing included), no ground or shadow, flat backdrop to every edge, no text; `find-pieces` finds exactly that many pieces (full list in `references/element-kits.md`).
-- Background plates: full bleed, no rim, nothing near, calm open lower part, paler with distance.
+- Element kits and character cut-out sheets: exactly the listed pieces in order, each with a paper margin all around in the same cream paper tone on every sheet of the story and a closed pen outline (white clothing included), textures drawn as irregular strokes rather than repeated symbols, no ground or shadow, flat backdrop to every edge, no text; `find-pieces` finds exactly that many pieces (full list in `references/element-kits.md`).
+- Background plates: full bleed, no rim, nothing near, paler with distance; the lower part is a calm ground field in the location's own colour (earth, forest floor, waterside grass, path; never a blue wavy ground at night), and far trees are irregular dabs, not stamped shapes.
 - Audience-safe: no blood, injury, frightening faces or realistic weapons; for 3-5, villains look silly rather than scary and every figure stands out clearly from the background (`references/audience.md`).
 
 ## Adding a style or era

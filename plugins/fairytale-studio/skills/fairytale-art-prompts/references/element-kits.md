@@ -87,6 +87,7 @@ Rules for element sentences:
 - Positive and concrete, one sentence: shape, materials, colours from the palette, the one telling era detail. "thatched-roof cottage with a round golden straw roof held by a rope net, white mud walls, one paper-screen door, a small wooden step".
 - State the base: "standing on a short torn strip of its own ground" only for pieces that need a footing (a house on its yard edge); otherwise "straight base cut along the bottom of the object".
 - Repeat the size relation inside the sheet when it matters: "the jar terrace is about one third the height of the cottage".
+- Textures (bark, roof straw, stone, water) are a few irregular short brush strokes of varied size and direction, never a repeated pattern or stamped symbol: "bark suggested by a few irregular short brush strokes". A bare "bark scales" gave rows of identical diamonds on golden-axe v2 trunks.
 - `fx` pieces (sparkles, mist, splash) are often better without a paper rim: say "painted directly as loose watercolor marks with no paper rim" for those pieces only, and expect to cut them with `"text": true`.
 
 Name list: keep the slot names in the record (`prompts.json` → `pieces`) in the same order; `find-pieces.mjs --names` uses them.
@@ -104,12 +105,24 @@ Input images: Image 1 is the approved character lineup, a STRICT PALETTE AND STY
 
 <ERA BLOCK landscape lines only>
 
-Composition: one wide landscape painting that fills the whole canvas edge to edge, painted directly on off-white cold-press watercolor paper, with no paper rim, torn edge, border, frame or vignette. Back to front: <sky: time of day, light colour, a few soft cloud shapes>; <far: mountain ranges / far hills / distant forest band, with the era's landscape details>; <a pale low ground wash: grass, water or path colour>. Atmospheric distance: the farther a form, the paler, cooler and simpler it is, with fewer and lighter pen lines than the characters; the farthest ridges have no outline at all. The horizon sits at about <58> percent of the height and the lower <38> percent is a calm, almost empty pale wash left open for pasted pieces and characters. Balanced and unfocused: no single landmark in the centre and nothing a pasted piece would have to line up with. No text.
+Composition: one wide landscape painting that fills the whole canvas edge to edge, painted directly on warm cream cold-press watercolor paper (close to #f4efe2), with no paper rim, torn edge, border, frame or vignette. Back to front: <sky: time of day, light colour, a few soft cloud shapes>; <far: mountain ranges / far hills / distant forest band, with the era's landscape details>; <ground field: the location's own ground colour, see Ground fields below>. Atmospheric distance: the farther a form, the paler, cooler and simpler it is, with fewer and lighter pen lines than the characters; the farthest ridges have no outline at all. The horizon sits at about <58> percent of the height. The lower <38> percent is a calm ground field in the location's own colour, slightly deeper and warmer toward the bottom edge so pasted pieces feel grounded, with only a few loose brush marks and no objects, left open for pasted pieces and characters. Balanced and unfocused: no single landmark in the centre and nothing a pasted piece would have to line up with. No text.
 
 Palette: <style palette with era tilt>, lighter and slightly cooler than the pieces.
 
 Constraints: no characters, people, animals, houses, walls, fences, close trees, rocks, water edges or props; no cut-paper rim, torn edge, sticker outline, frame or border; no hard foreground objects; no photorealism, no 3D, no digital gradients, no glossy finish.
 ```
+
+Ground fields (fill `<ground field>` per location; golden-axe v2 left every plate with the same empty pale-green lower half, so a forest plate did not read as a forest and every piece seemed to float):
+
+| Location | Ground field sentence |
+|---|---|
+| Village, yard | a warm packed-earth yard in soft yellow ochre with a little grass at the far edge |
+| Forest | a deep green forest floor with soft darker tree-shadow patches and fallen-needle brown |
+| Pond, waterside | a waterside meadow in fresh green with a slightly bluer damp band toward the water side (the water itself is a piece) |
+| Path | a pale dirt path colour in light ochre-grey, flanked by soft grass green |
+| Night (any place) | a dark green-grey field with a few lighter moonlit patches; no blue ground and no horizontal wavy strokes, which read as water |
+
+Far trees: describe far pines and forest bands as "irregular soft green brush dabs with no visible trunks, never a row of identical umbrella or lollipop shapes". "Tiny umbrella-shaped pines drawn with a few dabs" gave stamped monkey-puzzle trees on all eight golden-axe v2 plates.
 
 Size and use: the generator gives 1536x1024; the video draws it with `plate()` (storybook-video) scaled to cover 1920x1080 with a little overscan so parallax never shows an edge. The slight upscale is harmless because far forms are soft by design. Record plates in prompts.json with `"sheet": "plate"`, `"layer": "plate"`, `"location"` and `"time"`.
 
