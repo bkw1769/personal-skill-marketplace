@@ -340,6 +340,18 @@ describe('cut-sprites CLI', () => {
     let r = io();
     assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'o2'), '--only', 'right'], r.io), 0);
     assert.deepEqual(fs.readdirSync(path.join(dir, 'o2')).sort(), ['_contact.png', 'right.png', 'sprites.json']);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'o2', 'sprites.json'), 'utf8')).sprites.map((x) => x.name), ['right']);
+    // re-cutting one sprite inside a full folder keeps the other manifest entries in order
+    assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'full')], io().io), 0);
+    assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'full'), '--only', 'right'], io().io), 0);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'full', 'sprites.json'), 'utf8')).sprites.map((x) => x.name), ['left', 'right', 'blank']);
+    // a manifest that lacks a re-cut name gets it appended; one without a sprites list is treated as empty
+    fs.writeFileSync(path.join(dir, 'o2', 'sprites.json'), JSON.stringify({ schema: 'sprites/1', sprites: [{ name: 'other' }] }));
+    assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'o2'), '--only', 'left'], io().io), 0);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'o2', 'sprites.json'), 'utf8')).sprites.map((x) => x.name), ['other', 'left']);
+    fs.writeFileSync(path.join(dir, 'o2', 'sprites.json'), '{}');
+    assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'o2'), '--only', 'left'], io().io), 0);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'o2', 'sprites.json'), 'utf8')).sprites.map((x) => x.name), ['left']);
     r = io();
     assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'o3'), '--only', 'ghost'], r.io), 1);
     assert.match(r.err[0], /--only names not in crops: ghost/);

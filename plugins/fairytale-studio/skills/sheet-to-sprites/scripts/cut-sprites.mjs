@@ -6,7 +6,7 @@
 // (red = rectangle as written, green = rectangle after automatic growth).
 // A rectangle whose drawing runs into its edge is grown on that side (see cutSprite);
 // --update-crops writes the grown rectangles back into crops.json; --strict exits 1 if a
-// sprite is still cut after growing. --rim recolours every sprite's paper margin to the story's paper
+// sprite is still cut after growing. --only keeps the other entries of an existing sprites.json. --rim recolours every sprite's paper margin to the story's paper
 // colour (see rim.mjs), so pieces and characters from different sheets match.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -131,8 +131,17 @@ export function main(argv, io) {
       fs.writeFileSync(args.cropsFile, JSON.stringify(spec, null, 2) + '\n');
       io.out(`Updated ${finalRect.size} rectangle(s) in ${args.cropsFile}.`);
     }
-    const manifest = { schema: 'sprites/1', crops_file: path.relative(path.resolve(args.out), path.resolve(args.cropsFile)), anchor: 'bottom-center', sprites: records };
-    fs.writeFileSync(path.join(args.out, 'sprites.json'), JSON.stringify(manifest, null, 2) + '\n');
+    // --only re-cuts a few sprites inside an existing folder: keep the other entries of its manifest.
+    const manifestFile = path.join(args.out, 'sprites.json');
+    let all = records;
+    if (args.only.length && fs.existsSync(manifestFile)) {
+      const fresh = new Map(records.map((r) => [r.name, r]));
+      const old = /** @type {{name: string}[]} */ (JSON.parse(fs.readFileSync(manifestFile, 'utf8')).sprites || []);
+      all = old.map((r) => fresh.get(r.name) ?? r);
+      for (const r of records) if (!old.some((o) => o.name === r.name)) all.push(r);
+    }
+    const manifest = { schema: 'sprites/1', crops_file: path.relative(path.resolve(args.out), path.resolve(args.cropsFile)), anchor: 'bottom-center', sprites: all };
+    fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
     io.out(`Cut ${records.length} sprite(s) into ${args.out} (contact sheet: _contact.png, order = sprites.json; green frame = grown, red = still cut).`);
     return args.strict && stillCut ? 1 : 0;
   } catch (e) {

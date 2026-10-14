@@ -122,6 +122,8 @@ Ground fields (fill `<ground field>` per location; golden-axe v2 left every plat
 | Path | a pale dirt path colour in light ochre-grey, flanked by soft grass green |
 | Night (any place) | a dark green-grey field with a few lighter moonlit patches; no blue ground and no horizontal wavy strokes, which read as water |
 
+High horizon (forest floor about 30 %, village overview about 25 %): the sentence "the lower part is a calm ground field ... no objects" makes the model leave that area empty, so a bird's-eye plate came out with its patchwork shrunk to a strip. For those plates replace it: "the lower 71 percent shows the valley floor seen from above, ... continuing all the way to the bottom edge, its fields getting larger and simpler toward the bottom, pale flat washes with few lines".
+
 Far trees: describe far pines and forest bands as "irregular soft green brush dabs with no visible trunks, never a row of identical umbrella or lollipop shapes". "Tiny umbrella-shaped pines drawn with a few dabs" gave stamped monkey-puzzle trees on all eight golden-axe v2 plates.
 
 Size and use: the generator gives 1536x1024; the video draws it with `plate()` (storybook-video) scaled to cover 1920x1080 with a little overscan so parallax never shows an edge. The slight upscale is harmless because far forms are soft by design. Record plates in prompts.json with `"sheet": "plate"`, `"layer": "plate"`, `"location"` and `"time"`.

@@ -21,9 +21,10 @@ A prompt = **style module** (how it is drawn) + optional **finish module** (how 
 | Finish | `references/styles/torn-paper-collage.md` | Drafted 2026-10-08. Torn deckled paper rim around each background piece, flat magenta kit backdrop, pasted-shadow composite rules. |
 | Kits | `references/element-kits.md` | Mandatory for backgrounds: inventory, layers (plate/sky/mid/near/front/fx), kit sheet template 6, background plate template 8, naming, cutting and compositing. |
 | Era | `references/eras/medieval-europe.md` | Drafted; not yet generated. |
-| Era | `references/eras/joseon.md` | Drafted for 금도끼 은도끼 (2026-10); not yet generated. Korean 전래동화 world, with cultural accuracy checks. |
+| Era | `references/eras/joseon.md` | Used for 금도끼 은도끼 (2026-10-08 to 2026-10-14). Korean 전래동화 world, with cultural accuracy checks. |
 | Sheets | `references/sheet-templates.md` | Cast lineup, expression/pose, turnaround, prop/structure, location (mood only), element kit (6) and background plate (8) in element-kits.md, character cut-out sheet (template 7). |
 | Identity | `references/consistency.md` | Character bible and reference chaining rules. |
+| Generation | `references/generation.md` + `scripts/codex-image.mjs` | Running prompts through Codex CLI: one sheet, batch order (day plate first, look at every sheet), and taking the run's own image from its log, never the newest PNG. |
 | Records | `references/record-format.md` | Output folder, `prompts.json`, README. |
 | Example | `references/examples/medieval-cast-hansel-gretel.md` | A fully assembled cast-lineup prompt. |
 | Audience | `references/audience.md` | Lines to add per age band (shapes, silhouettes, villain look, background simplicity). |
@@ -45,9 +46,9 @@ If the requested style or era has no file yet, create it first from the skeleton
    7. Palette: style palette with the era tilt.
    8. Constraints: style negatives + era anachronism negatives + audience-safety negatives + cut-out rules. Kit sheets use the collage negatives instead of the style module's "no cut-paper collage", and repeat the backdrop block.
    Keep subject lines positive: describe what is there. Forbidden objects go only in Constraints, because naming an object inside a subject line (even "no glasses") tends to make the model draw it.
-5. **Generate or hand over.** If an image tool is available, generate with the anchor attached; otherwise give the user the finished prompt and the list of images to attach.
+5. **Generate or hand over.** If an image tool is available, generate with the anchor attached; otherwise give the user the finished prompt and the list of images to attach. With Codex CLI follow `references/generation.md`: copy each image via `scripts/codex-image.mjs <log>` (the run's own image, never the newest PNG) and look at it before generating any sheet that attaches it.
 6. **Record** every generated image in the story folder's `prompts.json` and README (`references/record-format.md`); kits also record `layer`, `pieces` (slot names in order) and `scale_ref`. The record is what lets anyone reproduce or extend the set without this conversation.
-7. **Cut kits** right after approval with `sheet-to-sprites` (`find-pieces.mjs --names <pieces>` then `cut-sprites.mjs`), so a sheet whose pieces touch is caught while regenerating is still cheap.
+7. **Cut kits** right after approval with `sheet-to-sprites` (`find-pieces.mjs --names <pieces>` then `cut-sprites.mjs --rim <story paper>`), so a sheet whose pieces touch is caught while regenerating is still cheap.
 8. **Review** against the checklist below before calling a sheet approved; regenerate only the failing sheet, keeping the same prompt plus a targeted fix line.
 
 ## Review checklist

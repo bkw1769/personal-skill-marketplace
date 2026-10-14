@@ -58,7 +58,7 @@ Then cut as below (step 3). Check in `_contact.png` that the white torn rim surv
    - `_contact.png`: all sprites on a checkerboard in `sprites.json` order; green frame = grown, red frame = still cut. Check every cell: complete heads and hands, clean edges, no paper halo, no fragments of neighbours, no stray paint dots.
    - Keep the fix: `--update-crops` writes the grown rectangles back into crops.json, so the next run and any other tool reading crops.json use the corrected boxes.
    - `--strict` exits with an error while any sprite is still cut (use it in scripts); `--no-grow` reproduces the rectangles exactly as written.
-   - Iterate on a few names only with `--only girl,girl-front`.
+   - Iterate on a few names only with `--only girl,girl-front`; the other entries of an existing sprites.json are kept (before 0.3.0 the manifest was overwritten with only those names, which hid every other sprite from the video).
 4. **Fix what growth could not, with options or coordinates, not by hand-editing pixels** (details in `references/crops-format.md`):
    - Still cut at `sheet edge`: the drawing leaves the sheet; regenerate the sheet with more margin (art-prompts headroom rule).
    - Still cut at `neighbour`: two figures are too close; widen by hand towards the free side or regenerate with more space.
