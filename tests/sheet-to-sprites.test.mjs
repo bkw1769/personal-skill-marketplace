@@ -303,8 +303,9 @@ describe('cut-sprites CLI', () => {
   });
 
   test('parseArgs', () => {
-    assert.deepEqual(parseArgs(['c.json', '--out', 'o', '--only', 'a,,b', '--boxes', '--no-grow', '--update-crops', '--strict']), { only: ['a', 'b'], boxes: true, grow: false, updateCrops: true, strict: true, cropsFile: 'c.json', out: 'o' });
-    assert.deepEqual(parseArgs([]), { only: [], boxes: false, grow: true, updateCrops: false, strict: false, cropsFile: undefined, out: undefined });
+    assert.deepEqual(parseArgs(['c.json', '--out', 'o', '--only', 'a,,b', '--boxes', '--no-grow', '--update-crops', '--strict']), { only: ['a', 'b'], boxes: true, grow: false, updateCrops: true, strict: true, cropsFile: 'c.json', out: 'o', rim: undefined });
+    assert.deepEqual(parseArgs([]), { only: [], boxes: false, grow: true, updateCrops: false, strict: false, cropsFile: undefined, out: undefined, rim: undefined });
+    assert.equal(parseArgs(['--rim', '#f4efe2']).rim, '#f4efe2');
   });
 
   function project() {
@@ -393,6 +394,34 @@ describe('cut-sprites CLI', () => {
     r = io();
     assert.equal(main([file, '--out', path.join(dir, 'o5'), '--update-crops'], r.io), 0);
     assert.doesNotMatch(r.out.join('\n'), /Updated/);
+  });
+
+  test('--rim recolours paper margins, records them, warns when a sprite has none, rejects bad colours', () => {
+    const dir = project();
+    const s = sheet(80, 80);
+    fill(s, 0, 0, 80, 80, [255, 0, 255]);         // magenta backdrop
+    fill(s, 20, 20, 60, 60, [253, 252, 253]);     // white paper piece
+    fill(s, 30, 30, 50, 50, [30, 60, 90]);        // painted element inside its margin
+    fs.writeFileSync(path.join(dir, 'm.png'), encodePng(s));
+    const spec = JSON.parse(fs.readFileSync(path.join(dir, 'crops.json'), 'utf8'));
+    spec.sheets.m = 'm.png';
+    spec.crops.piece = { sheet: 'm', x: 10, y: 10, w: 60, h: 60, options: { largest: true, tol: 48, soft: 220 } };
+    fs.writeFileSync(path.join(dir, 'crops.json'), JSON.stringify(spec));
+    let r = io();
+    assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'rim'), '--rim', '#f4efe2'], r.io), 0);
+    const m = JSON.parse(fs.readFileSync(path.join(dir, 'rim', 'sprites.json'), 'utf8'));
+    const piece = m.sprites.find((x) => x.name === 'piece');
+    assert.deepEqual(piece.rim, { target: '#f4efe2', before: '#fdfcfd' });
+    const img = decodePng(fs.readFileSync(path.join(dir, 'rim', 'piece.png')));
+    const at = (x, y) => [...img.data.subarray((y * img.width + x) * 4, (y * img.width + x) * 4 + 3)];
+    const ox = 20 - 10 - piece.offset.x, oy = 20 - 10 - piece.offset.y;
+    assert.deepEqual(at(ox + 3, oy + 3), [244, 239, 226]);
+    assert.deepEqual(at(ox + 20, oy + 20), [30, 60, 90]);
+    assert.ok(r.err.some((e) => /left has no paper rim to recolour/.test(e)));
+    assert.ok(!r.err.some((e) => /blank has no paper rim/.test(e)));
+    r = io();
+    assert.equal(main([path.join(dir, 'crops.json'), '--out', path.join(dir, 'rim2'), '--rim', 'cream'], r.io), 1);
+    assert.match(r.err[0], /must look like #f4efe2/);
   });
 
   test('runs as a script', () => {

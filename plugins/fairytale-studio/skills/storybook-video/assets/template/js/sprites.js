@@ -1,6 +1,6 @@
 // Loads transparent sprites listed in a sprites.json (made by the sheet-to-sprites skill)
 // and draws them with the hand-drawn "boil" wobble.
-import { hash, state } from './util.js';
+import { hash, state, makeCanvas } from './util.js';
 
 /** name -> { c: HTMLImageElement, w, h, id, name } */
 export const S = {};
@@ -37,9 +37,67 @@ export async function loadSprites(urls) {
 }
 
 /**
+ * Scene light for pasted pieces and character sprites. Plates are painted per time of day and are never
+ * tinted; without this, daylight figures on a sunset or night plate look stuck on. Multiply tint: `amount`
+ * 0..1 blends the colour from white (no change) to full strength.
+ */
+export const TINTS = {
+  sunset: { color: '#f0a060', amount: 0.32 },
+  night: { color: '#4f5f9e', amount: 0.5 },
+  mist: { color: '#d8d2ea', amount: 0.22 },
+};
+/** @type {string | {color: string, amount: number} | null} */
+let sceneTint = null;
+
+/**
+ * Set the light every spr()/paste() uses until changed: a TINTS name, {color, amount}, or null for daylight.
+ * stage.js resets it before each scene from the storyboard scene's `light` field (default daylight).
+ * @param {string | {color: string, amount: number} | null | undefined} t
+ * @returns {void}
+ */
+export function setTint(t) {
+  sceneTint = t ?? null;
+}
+
+const TINTED = new WeakMap();
+
+/**
+ * The image tinted for a light (cached per image and light); the image itself for daylight.
+ * Usable on any image or canvas, e.g. pieces a story draws without paste().
+ * @param {HTMLImageElement | HTMLCanvasElement} im
+ * @param {string | {color: string, amount: number} | null | undefined} t
+ * @returns {HTMLImageElement | HTMLCanvasElement}
+ */
+export function tinted(im, t) {
+  const v = typeof t === 'string' ? TINTS[t] : t;
+  if (typeof t === 'string' && !v) console.warn(`unknown tint "${t}" (use ${Object.keys(TINTS).join(', ')})`);
+  if (!v || !(v.amount > 0)) return im;
+  const key = v.color + '|' + v.amount;
+  let byLight = TINTED.get(im);
+  if (!byLight) TINTED.set(im, (byLight = new Map()));
+  let c = byLight.get(key);
+  if (!c) {
+    const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+    c = makeCanvas(w, h);
+    const g = c.getContext('2d');
+    const n = parseInt(v.color.slice(1), 16);
+    const mix = [n >> 16, (n >> 8) & 255, n & 255].map((ch) => Math.round(255 + (ch - 255) * Math.min(1, v.amount)));
+    g.drawImage(im, 0, 0);
+    g.globalCompositeOperation = 'multiply';
+    g.fillStyle = `rgb(${mix.join(',')})`;
+    g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(im, 0, 0);
+    byLight.set(key, c);
+  }
+  return c;
+}
+
+/**
  * Draw a sprite anchored at bottom-centre (or centre with pivot:'center').
  * h is the on-screen height; the sprite boils slightly 8 times a second.
- * Options: rot, flip, sq (squash), alpha, filter, pivot, boil:false, k (boil seed), clipBottom.
+ * Options: rot, flip, sq (squash), alpha, filter, pivot, boil:false, k (boil seed), clipBottom,
+ * tint (a TINTS name, {color, amount}, or null for daylight; default: the scene light from setTint).
  */
 export function spr(ctx, name, x, y, h, o = {}) {
   const s = S[name];
@@ -61,7 +119,7 @@ export function spr(ctx, name, x, y, h, o = {}) {
     ctx.rect(-s.w / 2 - 4, -s.h * o.clipBottom - 2 + (o.pivot === 'center' ? s.h / 2 : 0), s.w + 8, s.h * o.clipBottom + 4);
     ctx.clip();
   }
-  ctx.drawImage(s.c, -s.w / 2, oy, s.w, s.h);
+  ctx.drawImage(tinted(s.c, o.tint !== undefined ? o.tint : sceneTint), -s.w / 2, oy, s.w, s.h);
   ctx.restore();
 }
 
@@ -77,7 +135,7 @@ function nameSeed(name) {
  * Anchored bottom-centre (or centre with pivot:'center'); h is the on-screen height.
  * Options: tilt (degrees, default a fixed -1.5..+1.5 from the name), shadow (opacity, default 0.3, 0 = off),
  * parallax (default 1) with camX (camera x; the piece moves by -camX * parallax), sway (radians of slow
- * rocking about the base, for trees and reeds), alpha, flip, pivot. No boil: paper pieces stay still.
+ * rocking about the base, for trees and reeds), alpha, flip, pivot, tint (as in spr). No boil: paper pieces stay still.
  */
 export function paste(ctx, name, x, y, h, o = {}) {
   const s = S[name];
@@ -98,7 +156,7 @@ export function paste(ctx, name, x, y, h, o = {}) {
     ctx.shadowOffsetY = h * 0.008;
   }
   ctx.scale((o.flip ? -1 : 1) * scale, scale);
-  ctx.drawImage(s.c, -s.w / 2, o.pivot === 'center' ? -s.h / 2 : -s.h, s.w, s.h);
+  ctx.drawImage(tinted(s.c, o.tint !== undefined ? o.tint : sceneTint), -s.w / 2, o.pivot === 'center' ? -s.h / 2 : -s.h, s.w, s.h);
   ctx.restore();
 }
 

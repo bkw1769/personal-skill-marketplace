@@ -5,7 +5,7 @@ import {
   W, H, C, INK, PAPER, state, clamp, seg, easeIn, backOut, env, hash, rng,
   ink, blob, ellipsePts, inkEllipse, handText, makeCanvas, boil,
 } from './util.js';
-import { S, spr } from './sprites.js';
+import { S, spr, setTint } from './sprites.js';
 import { BG, paper, sky, clouds, sun, moon, ground, nightOverlay, starsField } from './paint.js';
 
 export const BLOT = 0.9; // seconds of paint-bleed transition between scenes
@@ -48,6 +48,7 @@ function infoFor(i, T) {
 function drawScene(ctx, i, T) {
   const info = infoFor(i, T);
   const f = DRAW[info.scene.id] || DRAW.default || defaultScene;
+  setTint(info.scene.light ?? null);
   ctx.save();
   f(ctx, T, info);
   ctx.restore();

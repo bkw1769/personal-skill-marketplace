@@ -27,6 +27,20 @@ node <skill-dir>/scripts/find-pieces.mjs <kit.png> --crops <set>/crops.json --ke
 
 **Character cut-out sheets** (art-prompts template 7: each figure on its own paper piece on magenta) are cut the same way, with the pose slot names: `find-pieces.mjs <sheet.png> --crops <set>/crops.json --key dori --names walking,chopping,...`. Prefer them to cutting pose sheets on paper: on paper, white or pale clothing has no edge against the background and gets flood-filled away (golden-axe Dori lost parts of his white hanbok this way, even with `holeMin`). **Background plates** are not cut at all; they are used whole.
 
+**One paper colour per story.** Cut every kit and character cut-out sheet with `--rim <paper hex>` (the story's paper colour from its character bible, `#f4efe2` by default), so the paper margins of all sprites match whatever paper tone the image model painted on each sheet:
+
+```bash
+node <skill-dir>/scripts/cut-sprites.mjs <set>/crops.json --out <set>/sprites --boxes --rim '#f4efe2'
+```
+
+Before compositing, check every sprite folder the story uses in one call; it exits 1 when any rim is off by more than `--tol` (8):
+
+```bash
+node <skill-dir>/scripts/rim.mjs <set>/sprites <set>/cut-sprites --target '#f4efe2' --check
+```
+
+Without `--check` it recolours off rims in place (folders cut before `--rim` existed) and records `rim: {target, before}` in sprites.json. The rim is found by walking in from the transparent outside through pale, low-colour paper pixels; the closed pen outline stops the walk, so white clothing, beards and clouds inside the outline keep their colour. Why: golden-axe v2 kits came out cream (#fcf4e3) and the character sheets pure white (#fdfcfd); side by side in a scene they read as two different papers, and prompts alone do not hold one tone across sheets.
+
 Then cut as below (step 3). Check in `_contact.png` that the white torn rim survives all around and no magenta fringe is left: pink halo → raise `tol` for that crop; rim eaten → lower it. Element sprites are anchored bottom-centre like characters.
 
 ## Workflow
@@ -36,7 +50,7 @@ Then cut as below (step 3). Check in `_contact.png` that the white torn rim surv
 3. **Draw the boxes and cut:**
 
    ```bash
-   node <skill-dir>/scripts/cut-sprites.mjs path/to/crops.json --out path/to/sprites --boxes
+   node <skill-dir>/scripts/cut-sprites.mjs path/to/crops.json --out path/to/sprites --boxes [--rim '#f4efe2']
    ```
 
    - **Automatic headroom:** when solid drawing runs into a side of a rectangle (3+ ink pixels on the border line), that side grows 8 px at a time (up to 160 px) until the drawing is clear. It stops early at the sheet edge, or when the next step would swallow a whole neighbouring figure. The console lists every grown crop (`grew ody: top +16px`) and every crop that is still cut, with the reason.

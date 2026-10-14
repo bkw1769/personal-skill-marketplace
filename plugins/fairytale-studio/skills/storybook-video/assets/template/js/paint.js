@@ -299,6 +299,47 @@ export function ground(ctx, y, color = C.grass, seed = 11) {
   wash(ctx, [[-40, y + 10], [W * 0.3, y - 6], [W * 0.7, y + 8], [W + 40, y - 4], [W + 40, H + 40], [-40, H + 40]], color, { alpha: 0.7, seed, amp: 14 });
   ink(ctx, [[-20, y + 6], [W * 0.5, y], [W + 20, y + 4]], { w: 2, seed: seed + 1, amp: 3, alpha: 0.5 });
 }
+/**
+ * Something rising out of water or sitting in it (a spirit on a cloud, a frog, a dropped axe): expanding
+ * ripple rings and foam on the surface around (x, y); w is the width of the disturbed water. Call it twice:
+ * front:false before drawing the figure (back arcs and foam behind it), front:true after it (front arcs,
+ * a foam lip over the figure's base, and droplets for 1.2 s after t0, the splash time). Without this a
+ * figure placed over a pond floats in front of the water instead of coming out of it.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y water surface line
+ * @param {number} w
+ * @param {number} T
+ * @param {{front?: boolean, t0?: number, color?: string, foam?: string, seed?: number}} [o]
+ * @returns {void}
+ */
+export function waterRise(ctx, x, y, w, T, o = {}) {
+  const { front = false, t0 = -99, color = C.seaDeep, foam = C.white, seed = 5 } = o;
+  const ry = w * 0.16, n = 28;
+  for (let i = 0; i < 3; i++) {
+    const p = (T * 0.45 + i / 3) % 1;
+    const pts = ellipsePts(x, y, w * (0.35 + p * 0.65), ry * (0.35 + p * 0.65), n, seed + i, 0.04);
+    const arc = front ? pts.slice(0, n / 2 + 1) : [...pts.slice(n / 2), pts[0]];
+    ink(ctx, arc, { w: Math.max(2.5, w * 0.009), color, alpha: (1 - p) * 0.85, seed: boil(seed * 7 + i), amp: 1.5, double: false });
+  }
+  if (!front) {
+    blob(ctx, x, y, w * 0.4, ry * 0.5, foam, { alpha: 0.75, seed: boil(seed + 11), edge: false });
+    return;
+  }
+  blob(ctx, x, y + ry * 0.12, w * 0.36, ry * 0.4, foam, { alpha: 0.8, seed: boil(seed + 12), edge: false });
+  ink(ctx, ellipsePts(x, y + ry * 0.12, w * 0.36, ry * 0.4, n, seed + 9, 0.06).slice(1, n / 2), { w: 2, color, alpha: 0.55, seed: boil(seed + 13), amp: 1.2, double: false });
+  const tt = T - t0;
+  if (tt < 0 || tt > 1.2) return;
+  for (let i = 0; i < 12; i++) {
+    const vx = (hash(seed * 3 + i) - 0.5) * w * 0.9, vy = 260 + hash(seed * 5 + i) * 320;
+    const dx = vx * tt, dy = -(vy * tt - 0.5 * 900 * tt * tt);
+    if (dy > 0) continue;
+    const r = (6 + hash(i) * 7) * Math.max(1, w / 400), a = 1 - tt / 1.2;
+    blob(ctx, x + dx, y + dy, r, r * 1.2, foam, { alpha: 0.9 * a, seed: seed + i, edge: false });
+    inkEllipse(ctx, x + dx, y + dy, r, r * 1.2, { w: 1.6, color, alpha: 0.7 * a, seed: seed + i, double: false });
+  }
+}
+
 /** Multiply a cool tint over the frame for night scenes (a = 0..1). */
 export function nightOverlay(ctx, a, color = '#34437a') {
   if (a <= 0) return;

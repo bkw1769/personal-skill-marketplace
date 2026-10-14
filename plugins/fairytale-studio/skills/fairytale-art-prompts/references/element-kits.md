@@ -144,7 +144,7 @@ node <sheet-to-sprites>/scripts/cut-sprites.mjs <set>/crops.json --out <set>/spr
 
 ## Compositing
 
-Per scene, draw back to front: background plate → moving `sky` items → `mid` → `near` → characters → `front` → `fx`. Overlap pieces like a real paste-up; anchor each piece by its bottom centre on its ground line; keep the per-piece tilt and the soft drop shadow from the collage finish. In storybook-video use `plate(ctx, name, {camX, parallax})` for the plate and `paste(ctx, name, x, y, height, {tilt, shadow, parallax})` for pieces (see that skill's architecture reference). For a still review image, compose the same layers on a 1920x1080 canvas.
+Per scene, draw back to front: background plate → moving `sky` items → `mid` → `near` → characters → `front` → `fx`. Overlap pieces like a real paste-up; anchor each piece by its bottom centre on its ground line; keep the per-piece tilt and the soft drop shadow from the collage finish. In storybook-video use `plate(ctx, name, {camX, parallax})` for the plate and `paste(ctx, name, x, y, height, {tilt, shadow, parallax})` for pieces (see that skill's architecture reference). Pieces and characters are painted in daylight: in a sunset, night or mist scene set the scene `light` so they take the plate's colour, and give a figure over water `waterRise` ripples. Cut all sheets with `--rim <story paper>` so the margins match. For a still review image, compose the same layers on a 1920x1080 canvas.
 
 ## Staging a scene (화면 배치)
 

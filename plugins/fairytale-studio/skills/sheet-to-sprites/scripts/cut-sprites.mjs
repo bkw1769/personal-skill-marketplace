@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 // Cut transparent sprites out of hand-drawn character / prop sheets.
-//   node cut-sprites.mjs <crops.json> --out <dir> [--only name,name] [--boxes] [--no-grow] [--update-crops] [--strict]
+//   node cut-sprites.mjs <crops.json> --out <dir> [--only name,name] [--boxes] [--no-grow] [--update-crops] [--strict] [--rim '#f4efe2']
 // Writes <dir>/<name>.png for every crop, <dir>/sprites.json, <dir>/_contact.png,
 // and with --boxes <dir>/_boxes-<sheet>.png showing every crop rectangle on its sheet
 // (red = rectangle as written, green = rectangle after automatic growth).
 // A rectangle whose drawing runs into its edge is grown on that side (see cutSprite);
 // --update-crops writes the grown rectangles back into crops.json; --strict exits 1 if a
-// sprite is still cut after growing.
+// sprite is still cut after growing. --rim recolours every sprite's paper margin to the story's paper
+// colour (see rim.mjs), so pieces and characters from different sheets match.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { decodePng, encodePng } from './png.mjs';
 import { cutSprite, drawBoxes, contactSheet } from './extract.mjs';
+import { matchRim, parseHex, toHex } from './rim.mjs';
 
 export const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const OPTION_KEYS = new Set(['text', 'largest', 'tol', 'holeMin', 'pad', 'soft', 'grow', 'growMax']);
@@ -41,10 +43,10 @@ export function normalizeCrop(name, entry, sheets) {
 /**
  * Parse argv.
  * @param {string[]} argv
- * @returns {{cropsFile?: string, out?: string, only: string[], boxes: boolean, grow: boolean, updateCrops: boolean, strict: boolean}}
+ * @returns {{cropsFile?: string, out?: string, only: string[], boxes: boolean, grow: boolean, updateCrops: boolean, strict: boolean, rim?: string}}
  */
 export function parseArgs(argv) {
-  const a = { only: /** @type {string[]} */ ([]), boxes: false, grow: true, updateCrops: false, strict: false, cropsFile: undefined, out: undefined };
+  const a = { only: /** @type {string[]} */ ([]), boxes: false, grow: true, updateCrops: false, strict: false, cropsFile: undefined, out: undefined, rim: /** @type {string | undefined} */ (undefined) };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--out') a.out = argv[++i];
     else if (argv[i] === '--only') a.only = argv[++i].split(',').filter(Boolean);
@@ -52,6 +54,7 @@ export function parseArgs(argv) {
     else if (argv[i] === '--no-grow') a.grow = false;
     else if (argv[i] === '--update-crops') a.updateCrops = true;
     else if (argv[i] === '--strict') a.strict = true;
+    else if (argv[i] === '--rim') a.rim = argv[++i];
     else a.cropsFile = argv[i];
   }
   return a;
@@ -66,10 +69,11 @@ export function parseArgs(argv) {
 export function main(argv, io) {
   const args = parseArgs(argv);
   if (!args.cropsFile || !args.out) {
-    io.err('Usage: node cut-sprites.mjs <crops.json> --out <dir> [--only name,name] [--boxes] [--no-grow] [--update-crops] [--strict]');
+    io.err('Usage: node cut-sprites.mjs <crops.json> --out <dir> [--only name,name] [--boxes] [--no-grow] [--update-crops] [--strict] [--rim \'#f4efe2\']');
     return 1;
   }
   try {
+    const rim = args.rim === undefined ? null : parseHex(args.rim);
     const spec = JSON.parse(fs.readFileSync(args.cropsFile, 'utf8'));
     const base = path.dirname(path.resolve(args.cropsFile));
     const sheets = spec.sheets || {};
@@ -90,6 +94,8 @@ export function main(argv, io) {
     for (const [name, c] of /** @type {[string, Crop][]} */ (chosen)) {
       const { grow, growMax, ...opt } = c.options;
       const res = cutSprite(load(c.sheet), c, opt, { grow: args.grow && grow !== false, max: growMax });
+      const matched = rim && !res.empty ? matchRim(res.image, rim) : null;
+      if (matched?.before) res.image = matched.image;
       fs.writeFileSync(path.join(args.out, `${name}.png`), encodePng(res.image));
       sprites.push(res.image);
       const r = res.rect;
@@ -98,6 +104,8 @@ export function main(argv, io) {
       const rec = { name, file: `${name}.png`, sheet: c.sheet, sheet_file: sheets[c.sheet], crop: r, offset: res.offset, width: res.image.width, height: res.image.height, options: c.options, empty: res.empty };
       if (moved) Object.assign(rec, { requested: { x: c.x, y: c.y, w: c.w, h: c.h }, grown: Object.fromEntries(Object.entries(res.grown).filter(([, v]) => v > 0)) });
       if (res.clipped.length) Object.assign(rec, { clipped: res.clipped, blocked_by: res.blockedBy });
+      if (matched?.before) rec.rim = { target: toHex(/** @type {number[]} */ (rim)), before: toHex(matched.before) };
+      else if (matched) io.err(`warning: ${name} has no paper rim to recolour`);
       records.push(rec);
       marks.push(res.clipped.length ? [220, 30, 50] : moved ? [40, 160, 80] : null);
       if (res.empty) io.err(`warning: ${name} has no drawing left after paper removal (check the crop or lower "tol")`);

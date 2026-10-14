@@ -9,7 +9,7 @@ A private-ready Codex plugin marketplace for bkw1769.
 | `fairytale-studio` | `fairytale-art-prompts` | Assemble image prompts for character, expression, prop and location sheets from art-style x era modules. |
 | `fairytale-studio` | `fairytale-assets` | Labeled asset store for art and sound: manifests, controlled tags, license ledger of vetted libraries, searchable index (bundled tool + tests). |
 | `fairytale-studio` | `story-storyboard` | Synopsis to timed storyboard.json (scenes, captions, bubbles, music, sound cues) with a validator and Markdown view. |
-| `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, contact sheet). |
+| `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, paper-rim colour matching, contact sheet). |
 | `fairytale-studio` | `storybook-narration` | Korean/English narration with Qwen3-TTS 1.7B on MLX: design and freeze voices, script/storyboard to lint-checked lines, batch generation with QA and retakes, full.wav + timeline.json (portable tts/ template + line tool). |
 | `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, dev server, recording) and an MP4 probe for checking the output. |
 

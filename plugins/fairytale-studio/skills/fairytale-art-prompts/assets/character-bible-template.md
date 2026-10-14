@@ -2,6 +2,8 @@
 
 Style: <style slug> · Era: <era slug> · Audience: <age> · Version: v<N> · Updated: <date>
 
+Paper: <hex, default #f4efe2> — the one paper tone named in every kit, cut-out and plate prompt, and passed to `sheet-to-sprites` as `--rim` so every cut piece and character has the same paper margin.
+
 Identity sentences are pasted verbatim into every prompt. Edit here first, never inside a prompt.
 
 ## Characters
