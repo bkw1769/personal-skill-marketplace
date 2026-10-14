@@ -3,7 +3,7 @@
 // Story-specific drawing lives in scenes.js; this file reads the storyboard only.
 import {
   W, H, C, INK, PAPER, state, clamp, seg, easeIn, backOut, env, hash, rng,
-  ink, blob, ellipsePts, inkEllipse, handText, makeCanvas, boil,
+  ink, blob, wash, ellipsePts, inkEllipse, handText, makeCanvas, boil,
 } from './util.js';
 import { S, spr, setTint } from './sprites.js';
 import { BG, paper, sky, clouds, sun, moon, ground, nightOverlay, starsField } from './paint.js';
@@ -94,6 +94,17 @@ export function defaultScene(ctx, T, info) {
 }
 
 // ---------- captions, bubbles, quote ----------
+/** Points around a rounded rectangle (for hand-washed paper strips). */
+function roundRectPts(x, y, w, h, r) {
+  const pts = [];
+  const corner = (cx, cy, a0) => { for (let k = 0; k <= 4; k++) { const a = a0 + (k / 4) * (Math.PI / 2); pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  corner(x + w - r, y + r, -Math.PI / 2);
+  corner(x + w - r, y + h - r, 0);
+  corner(x + r, y + h - r, Math.PI / 2);
+  corner(x + r, y + r, Math.PI);
+  return pts;
+}
+
 function drawCaptions(ctx, T) {
   for (const c of SB.captions || []) {
     if (c.kind === 'quote') continue;
@@ -101,13 +112,22 @@ function drawCaptions(ctx, T) {
     if (a <= 0) continue;
     ctx.save();
     ctx.globalAlpha = a;
-    ctx.font = `700 48px ${CAPTION_FONT}`;
+    // A paper strip sized to the text (an ellipse let long lines and the underline poke out at its ends),
+    // with the underline inside the strip just below the last line.
+    const size = 48, lh = size * 1.25;
+    ctx.font = `700 ${size}px ${CAPTION_FONT}`;
     const lines = c.text.split('\n');
     const tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
-    const cy = H - 70 - (lines.length - 1) * 30;
-    blob(ctx, W / 2, cy, tw / 2 + 70, 40 + lines.length * 28, '#fbf6ea', { alpha: 0.92, seed: Math.round(c.start * 10), rough: 0.06, edge: false });
-    ink(ctx, [[W / 2 - tw / 2 - 20, cy + lines.length * 30 + 20], [W / 2 + tw / 2 + 20, cy + lines.length * 30 + 16]], { w: 2, seed: Math.round(c.start * 7), amp: 3, alpha: 0.35 });
-    handText(ctx, c.text, W / 2, cy, { size: 48, color: '#3a2c22', seed: Math.round(c.start * 3), wobble: 0.5, lineHeight: 1.25 });
+    const textH = size + (lines.length - 1) * lh;
+    const padX = 54, padTop = 22, padBottom = 34;
+    const boxW = tw + padX * 2, boxH = textH + padTop + padBottom;
+    const bottom = H - 18;
+    const top = bottom - boxH;
+    const cy = top + padTop + size / 2 + ((lines.length - 1) * lh) / 2;
+    wash(ctx, roundRectPts(W / 2 - boxW / 2, top, boxW, boxH, 26), '#fbf6ea', { alpha: 0.92, seed: Math.round(c.start * 10), amp: 3, edge: false });
+    const uy = top + padTop + textH + 12;
+    ink(ctx, [[W / 2 - tw / 2 - 8, uy + 1], [W / 2 + tw / 2 + 8, uy - 1]], { w: 2, seed: Math.round(c.start * 7), amp: 1.5, alpha: 0.35 });
+    handText(ctx, c.text, W / 2, cy, { size, color: '#3a2c22', seed: Math.round(c.start * 3), wobble: 0.5, lineHeight: 1.25 });
     ctx.restore();
   }
 }
