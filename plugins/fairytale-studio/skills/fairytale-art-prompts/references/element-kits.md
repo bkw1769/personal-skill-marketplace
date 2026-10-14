@@ -193,6 +193,8 @@ Checked on the golden-axe test scenes (2026-10-13): every pose had been drawn fa
 
 Pieces meant to be cropped by the frame: a very wide pond, a foreground meadow bank, trunk clusters cut at the top, corner rock clusters. In the kit sheet sentence name the straight cut sides ("its left side and bottom are straight cut edges") and add to the scale line that the torn rim runs only along natural edges. Paste them with the straight sides placed outside the frame. Golden-axe test sheet: `kit-edge-pieces` (2026-10-13).
 
+Size: a piece shown big must be drawn big. Put large edge pieces one or two per sheet ("filling most of the sheet") so each comes out at 1,000 px or more, and never upscale a piece more than 1.5x in a scene. On `kit-edge-pieces` six pieces shared one sheet, came out 300-550 px and were upscaled 2-2.6x: soft painting, rims two to three times thicker than the characters', ripple lines turned into heavy zigzags. Golden-axe large sheets: `big-pond-wide`, `big-trunks`, `big-meadow-bank`, `big-houses-solo` (2026-10-14).
+
 ## Review checklist for kits
 
 - Exactly the listed pieces, in the listed order, none touching each other or the sheet edge; no text anywhere.

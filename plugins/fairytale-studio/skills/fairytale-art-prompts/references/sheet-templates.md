@@ -105,4 +105,6 @@ Keep the paper sentence identical to the element kits of the same story (see `st
 
 Give every pose that will be used in both directions two slots, `<pose>-right` and `<pose>-left` ("same pose facing left, drawn again, not mirrored: the jacket still closes right over left"), because mirroring a hanbok or robe sprite reverses its closing (see element-kits.md, Direction and gaze). Plan facings from the story's screen geography: travel out = right, return = left, and the side of the frame where each character's targets sit.
 
+If a left slot comes back facing right (golden-axe `cut-dori-left`: the chopping pose copied the attached right-facing cut sheet), regenerate that pose alone on a one-figure sheet: attach the figures that did come out facing left as the reference instead of the right-facing sheet, and spell the direction out by body part ("face, chest, knees and toes point to the LEFT edge; the axe swings over the shoulder toward the right edge"). Leave the wrong figure out of the crop table.
+
 Cut with `sheet-to-sprites` exactly like a kit: `find-pieces.mjs --names <slot names>` then `cut-sprites.mjs`. Seated poses keep their seat (rock, stump) inside the same paper piece; if the seat must be reused alone, make it a separate element piece instead.
