@@ -1,4 +1,4 @@
-import { test, describe, before, after } from 'node:test';
+import { test, describe, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/fairytale-studio/skills/storybook-video/scripts/serve.mjs');
-const { parseRange, resolveServed, parseArgs, start, DEFAULT_ROOT, SERVED_DIRS, SAVE_NAME, createHandler } = await import(SCRIPT);
+const { parseRange, resolveServed, parseArgs, start, DEFAULT_ROOT, SERVED_DIRS, SAVE_NAME, createHandler, loadInfo } = await import(SCRIPT);
 
 
 /** Raw HTTP request so tests control method, path bytes, headers and chunked bodies. */
@@ -152,6 +152,32 @@ describe('server', () => {
     assert.equal(r.body, 'saved clip.webm');
     assert.equal(fs.readFileSync(path.join(root, 'out', 'rec', 'clip.webm'), 'utf8'), 'abcdef');
     assert.equal(fs.existsSync(path.join(root, 'out', 'rec', 'clip.webm.part')), false);
+  });
+  test('GET /__load reports load averages, CPU count and a busy flag', async () => {
+    const r = await request(port, { path: '/__load' });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['content-type'], 'application/json');
+    const j = JSON.parse(r.body);
+    assert.equal(j.load.length, 3);
+    assert.ok(j.cpus >= 1);
+    assert.equal(typeof j.busy, 'boolean');
+  });
+  test('loadInfo: busy above 60 % of the CPUs; a machine reporting no CPUs counts as one', () => {
+    const avg = mock.method(os, 'loadavg', () => [3.333, 1, 1]);
+    const cpus = mock.method(os, 'cpus', () => [{}, {}, {}, {}]);
+    assert.deepEqual(loadInfo(), { load: [3.33, 1, 1], cpus: 4, busy: true });
+    cpus.mock.mockImplementation(() => []);
+    assert.deepEqual(loadInfo(), { load: [3.33, 1, 1], cpus: 1, busy: true });
+    avg.mock.mockImplementation(() => [0.2, 0.2, 0.2]);
+    assert.equal(loadInfo().busy, false);
+    avg.mock.restore(); cpus.mock.restore();
+  });
+  test('POST /save accepts review stills (png, jpg)', async () => {
+    const r = await request(port, { method: 'POST', path: '/save?name=review-13.0s.png', chunks: ['png'] });
+    assert.equal(r.status, 200);
+    assert.equal(fs.readFileSync(path.join(root, 'out', 'rec', 'review-13.0s.png'), 'utf8'), 'png');
+    assert.ok(SAVE_NAME.test('a.JPG'));
+    assert.equal(SAVE_NAME.test('a.gif'), false);
   });
   test('POST /save rejects missing or unsafe names', async () => {
     for (const q of ['', '?name=', '?name=index.html', '?name=..%2Fx.mp4', '?name=.hidden.mp4']) {

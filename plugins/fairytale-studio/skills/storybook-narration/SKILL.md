@@ -191,4 +191,12 @@ Before anything is published, go through `references/publishing.md`. It covers:
 - `references/setup.md`: install, portable drive, troubleshooting.
 - `references/publishing.md`: legal and platform checklist.
 
-Reply to the user in their language. When asking them to listen, send the WAV files and say which line or take each one is.
+Reply to the user in their language. When asking them to listen, never send raw `take-1.wav` files: a player shows only the file name, and several `take-1.wav` from different characters cannot be told apart. Copy them into a `listen/` folder with an order number and the role in the name, then send those:
+
+```text
+out/tts/<id>-<lang>/listen/00-narrator-full-story.wav
+out/tts/<id>-<lang>/listen/01-narrator-slow-storyteller-en-take3.wav
+out/tts/<id>-<lang>/listen/02-dori-en-take1.wav  02-dori-en-take2.wav ...
+```
+
+Say in the reply what each number group is (00 whole story, 01 narrator candidates, 02 Dori, ...) and ask for the choice by those names.

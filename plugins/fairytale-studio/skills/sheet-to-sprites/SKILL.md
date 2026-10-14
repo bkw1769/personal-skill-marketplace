@@ -1,6 +1,6 @@
 ---
 name: sheet-to-sprites
-description: Cut characters, faces, props, hand-lettered labels and torn-paper background element kits (house, jar terrace, wall, tree, mountain pieces on a flat magenta backdrop, found and named automatically) out of hand-drawn concept sheets (watercolor, pen, pencil on paper-colored backgrounds) into transparent PNG sprites with a crop table, a sprites.json manifest and a visual contact sheet, using a bundled Node script with no dependencies. Use this whenever the user wants to 시안에서 캐릭터 잘라줘, 배경 투명하게, 스프라이트로 분리, 누끼, 애니메이션용으로 캐릭터 분리, 배경 요소 잘라줘, 요소 키트 분리, turn a character sheet or model sheet into separate images, remove the paper background from a drawing, or prepare sheet art for a storybook video or game, even if they never say "sprite".
+description: Cut characters, faces, props, hand-lettered labels and torn-paper background element kits (house, jar terrace, wall, tree, mountain pieces on a flat magenta backdrop, found and named automatically) out of hand-drawn concept sheets (watercolor, pen, pencil on paper-colored backgrounds) into transparent PNG sprites with a crop table, a sprites.json manifest and a visual contact sheet, and measure cut sprites (gateway openings, where a colour such as an axe head sits, leftover magenta), using a bundled Node script with no dependencies. Use this whenever the user wants to 시안에서 캐릭터 잘라줘, 배경 투명하게, 스프라이트로 분리, 누끼, 애니메이션용으로 캐릭터 분리, 배경 요소 잘라줘, 요소 키트 분리, turn a character sheet or model sheet into separate images, remove the paper background from a drawing, or prepare sheet art for a storybook video or game, even if they never say "sprite".
 ---
 
 # Sheet to sprites
@@ -42,6 +42,28 @@ node <skill-dir>/scripts/rim.mjs <set>/sprites <set>/cut-sprites --target '#f4ef
 Without `--check` it recolours off rims in place (folders cut before `--rim` existed) and records `rim: {target, before}` in sprites.json. The rim is found by walking in from the transparent outside through pale, low-colour paper pixels; the closed pen outline stops the walk, so white clothing, beards and clouds inside the outline keep their colour. Why: golden-axe v2 kits came out cream (#fcf4e3) and the character sheets pure white (#fdfcfd); side by side in a scene they read as two different papers, and prompts alone do not hold one tone across sheets.
 
 Then cut as below (step 3). Check in `_contact.png` that the white torn rim survives all around and no magenta fringe is left: pink halo → raise `tol` for that crop; rim eaten → lower it. Element sprites are anchored bottom-centre like characters.
+
+## Measuring cut sprites
+
+Lay scenes out from numbers, not from screenshots (golden-axe measured gate openings, the axe-head height and leftover magenta with throwaway code each time):
+
+```bash
+node <skill-dir>/scripts/measure.mjs opening <wall-gateway.png> [--at 0.7]
+```
+
+```bash
+node <skill-dir>/scripts/measure.mjs color <pose.png> --rgb '#6e6e6e' --tol 60 --min-x 0.55 --max-chroma 25
+```
+
+```bash
+node <skill-dir>/scripts/measure.mjs spill <sprites dir> [--strong]
+```
+
+- `opening`: an empty gateway or hole inside a piece, as `[x0, x1, y0, y1]` fractions of the sprite (what storybook-video `pasteRun({opening})` takes).
+- `color`: where a colour sits (an axe head, a notch) as fractions of the sprite; use it to tell the art prompt where a piece must be touched ("the notch about 40 percent up").
+- `spill`: pixels with a magenta cast left after cutting; exit code 2 while any sprite has strong magenta. Pink artwork (a skirt, azaleas) shows as tinted but not strong. Run it after every kit cut.
+
+`--json` gives machine-readable output.
 
 ## Workflow
 

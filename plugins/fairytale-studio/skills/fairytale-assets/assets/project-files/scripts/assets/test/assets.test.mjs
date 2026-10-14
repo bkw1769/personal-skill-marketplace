@@ -406,6 +406,43 @@ describe('cli', () => {
     assert.equal(JSON.parse(r.out[0])[0].id, 'character.cast-lineup.troy-v1');
   });
 
+  test('register adds new sprites of a sprites.json to its manifest, refresh fills and builds', () => {
+    seedValidProject();
+    write('assets/catalog/taxonomy.json', { ...TAXONOMY, kinds: { ...TAXONOMY.kinds, prop: { folder: 'art/props', categories: ['nature'] } } });
+    const sp = 'assets/art/props/kit/sprites';
+    write(`${sp}/gate.png`, 'g'); write(`${sp}/tree.png`, 't');
+    write(`${sp}/sprites.json`, { schema: 'sprites/1', sprites: [{ name: 'gate', file: 'gate.png' }, { name: 'tree', file: 'tree.png' }, { name: 'blank', file: 'blank.png', empty: true }] });
+    let r = io();
+    assert.equal(main(['register', `${sp}/sprites.json`, '--root', root, '--kind', 'prop', '--category', 'nature', '--prefix', 'joseon-', '--story', 'axe', '--source', 'cc0', '--tag', 'story:axe', '--note', 'kit pieces'], r.io), 0);
+    assert.match(r.out[0], /manifest\.json: 2 sprite\(s\) registered \(2 in total\)/);
+    let m = lib.readJson(path.join(root, sp, 'manifest.json'));
+    assert.deepEqual(m.defaults, { kind: 'prop', status: 'candidate', scope: 'story', source: 'cc0', tags: ['story:axe'], notes: 'kit pieces' });
+    assert.deepEqual(m.items[0], { id: 'prop.nature.joseon-gate', category: 'nature', title: 'gate (paper piece)', file: 'gate.png', used_in: ['axe'], status: 'candidate' });
+    write(`${sp}/door.png`, 'd');
+    write(`${sp}/sprites.json`, { schema: 'sprites/1', sprites: [{ name: 'gate', file: 'gate.png' }, { name: 'door', file: 'door.png' }] });
+    r = io();
+    assert.equal(main(['register', `${sp}/sprites.json`, '--root', root, '--kind', 'prop', '--category', 'nature', '--status', 'approved'], r.io), 0);
+    m = lib.readJson(path.join(root, sp, 'manifest.json'));
+    assert.deepEqual(m.items.map((i) => [i.id, i.status, i.used_in]), [['prop.nature.joseon-gate', 'candidate', ['axe']], ['prop.nature.joseon-tree', 'candidate', ['axe']], ['prop.nature.door', 'approved', undefined]]);
+    const sp2 = 'assets/art/characters/c/sprites';
+    write(`${sp2}/hero.png`, 'h');
+    write(`${sp2}/sprites.json`, { schema: 'sprites/1' });
+    r = io();
+    assert.equal(main(['register', `${sp2}/sprites.json`, '--root', root, '--kind', 'character', '--category', 'cast-lineup'], r.io), 0);
+    assert.deepEqual(lib.readJson(path.join(root, sp2, 'manifest.json')).defaults, { kind: 'character', status: 'candidate', scope: 'shared', source: 'project-image-gen', tags: [] });
+    r = io();
+    assert.equal(main(['register', '--root', root, '--kind', 'prop'], r.io), 1);
+    assert.match(r.err[0], /register needs/);
+    r = io();
+    assert.equal(main(['refresh', '--root', root], r.io), 0);
+    assert.match(r.out.find((l) => l.startsWith('Filled')), /Filled 5 item/);
+    assert.match(r.out.at(-1), /Built index of 6 item/); // 3 seeded + gate, tree, door
+    write(`${sp2}/manifest.json`, { schema: lib.MANIFEST_SCHEMA, items: [{ id: 'bad' }] });
+    r = io();
+    assert.equal(main(['refresh', '--root', root], r.io), 1);
+    assert.match(r.err.at(-1), /error\(s\)/);
+  });
+
   test('help and unknown commands print usage', () => {
     let r = io();
     assert.equal(main(['help'], r.io), 0);

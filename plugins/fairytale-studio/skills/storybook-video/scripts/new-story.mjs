@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const TEMPLATE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'template');
-export const ENGINE_FILES = ['index.html', 'js/util.js', 'js/paint.js', 'js/sprites.js', 'js/audio.js', 'js/stage.js', 'js/main.js'];
+export const ENGINE_FILES = ['index.html', 'js/util.js', 'js/paint.js', 'js/sprites.js', 'js/audio.js', 'js/stage.js', 'js/main.js', 'js/collage.js', 'js/mp4mux.js'];
 export const AUTHOR_FILES = ['js/scenes.js', 'js/score.js'];
 
 /**

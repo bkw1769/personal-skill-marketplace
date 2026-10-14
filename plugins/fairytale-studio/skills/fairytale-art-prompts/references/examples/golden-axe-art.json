@@ -1,0 +1,84 @@
+{
+  "title": "The Golden Axe and the Silver Axe",
+  "subtitle": "a Korean folktale",
+  "audience": "3-5",
+  "style": "watercolor-ink",
+  "era": "joseon",
+  "paper": "#f4efe2",
+  "anchor": "golden-axe-cast-v1.png",
+  "palette": "Palette: turquoise/sky blue, warm yellow ochre, leaf green, watery pink/coral, lilac accents and pale brown, unified with the character lineup, plus soft earth tones (straw gold, mud white, stone grey, brown earthenware) and softened persimmon orange.",
+  "out": "../../out/character-designs/2026-10-13-golden-axe-v2",
+  "refsDirs": [
+    "../../assets/art/style-refs/watercolor-ink",
+    "../../out/character-designs/2026-10-08-golden-axe-v1"
+  ],
+  "safety": "Axes are tools, never raised as weapons. No blood, injuries, frightening faces, sharp teeth or glowing eyes. Eyes are simple dots or tiny ovals, no highlights, no lashes.",
+  "sheets": [
+    {
+      "kind": "plate",
+      "name": "plate-pond-day",
+      "location": "mountain pond",
+      "time": "day",
+      "horizon": 56,
+      "sky": "a clear pale sky-blue sky with two soft clouds",
+      "far": "two gentle mountain slopes framing a soft gap in the middle distance, pale green with misty pines, a tiny far waterfall thread on one slope",
+      "ground": "a fresh green waterside meadow with a slightly bluer damp band toward the middle (the pond itself is a separate piece)"
+    },
+    {
+      "kind": "kit",
+      "name": "big-gate-dori",
+      "label": "near: dori front wall, gate closed and open parts",
+      "layer": "near",
+      "big": true,
+      "backing": true,
+      "allowHole": "the one empty gateway opening of the gateway wall",
+      "arrange": "in three rows: the closed wall alone in the top row, the gateway wall alone in the middle row, the two door leaves side by side in the bottom row with a wide gap between them; each wall fills about 95 percent of the sheet width",
+      "scale": "all pieces share one scale: the walls reach a man's chest and are about eight times wider than tall; each door leaf is exactly as tall as the gate opening and as wide as one half of it. Both ends of each wall are straight vertical cut edges with clean straight paper edges, so a wall can run off both sides of the picture; the torn paper rim runs only along the top and bottom. The gateway wall shows the same wall with the gate removed: the opening between the two gateposts is completely empty and shows only the flat magenta backdrop, while a narrow strip of paper painted as the stone threshold runs under the opening so the wall stays one piece.",
+      "refs": [
+        "creature-4.jpg",
+        "nature-2.jpg"
+      ],
+      "pieces": [
+        [
+          "wall-dori-closed",
+          "a long low mud-and-stone wall in front of a humble cottage: round grey and ochre stones set in pale mud under a short golden straw-thatch cap, with a simple brushwood gate (sarip-mun) of two leaves made of thin bundled branches tied tightly together set into the middle of the wall between two gateposts, both doors fully CLOSED and meeting in the middle, the wall continuing evenly on both sides"
+        ],
+        [
+          "wall-dori-gateway",
+          "the same long low mud-and-stone wall with the same two gateposts, but the gateway between the posts is EMPTY: no doors at all"
+        ],
+        [
+          "door-dori-left",
+          "the LEFT door leaf of the same gate on its own, a tall narrow panel of thin bundled branches tied tightly side by side with two straw-rope cross ties, seen straight from the front, flat, drawn as one solid densely made panel with no see-through gaps, no posts, no wall and no ground around it"
+        ],
+        [
+          "door-dori-right",
+          "the RIGHT door leaf of the same gate on its own, the mirror partner of the left leaf, seen straight from the front, flat, drawn as one solid densely made panel with no see-through gaps, no posts, no wall and no ground around it"
+        ]
+      ]
+    },
+    {
+      "kind": "kit",
+      "name": "kit-woodcutter-tree-r3",
+      "label": "near: woodcutter's tree, whole and notched",
+      "layer": "near",
+      "big": true,
+      "arrange": "in one row of two identical trees side by side with a wide gap",
+      "scale": "both pieces are the SAME tree at the same scale and in the same pose, drawn twice: same trunk, same branches, same crown shape and colours.",
+      "refs": [
+        "nature.jpg",
+        "creature-4.jpg"
+      ],
+      "pieces": [
+        [
+          "woodcutter-tree-whole",
+          "a sturdy Korean red pine about two and a half times a man's height, complete from root flare to crown, the trunk straight and thick enough to chop, bark suggested by a few irregular short brush strokes of varied size and direction, never a repeated pattern or stamped symbol, with a BIG broad umbrella-shaped crown: several layered soft green needle clumps on spreading branches, the crown about as wide as the whole tree is tall and taking up the upper half of the tree, the whole crown inside the piece; the trunk is whole and smooth, untouched, with a short strip of grass at its base"
+        ],
+        [
+          "woodcutter-tree-notched",
+          "exactly the same tree as piece 1, identical in every line, except one fresh wedge-shaped axe notch cut into the left side of the trunk HIGH UP, about 40 percent of the way up the tree, just below where the big branches spread (the height where the felling stroke lands), showing pale new wood, and a few pale wood chips on the grass strip at its base"
+        ]
+      ]
+    }
+  ]
+}

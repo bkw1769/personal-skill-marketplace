@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Asset catalog command line. Run from anywhere:
-//   node scripts/assets/cli.mjs <validate|build|fill|find|help> [options]
+//   node scripts/assets/cli.mjs <validate|build|fill|refresh|register|find|help> [options]
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fs from 'node:fs';
@@ -15,6 +15,12 @@ Commands:
   validate            Check every manifest against taxonomy.json and sources.json.
   build               validate, then write assets/catalog/index.json, assets/catalog/INDEX.md, assets/licenses/CREDITS.md.
   fill                Compute sha256, bytes and WAV duration for file items (run after adding or replacing files).
+  refresh             fill, then build (validate + index): the one step after re-cutting or replacing files.
+  register <sprites.json> --kind <k> --category <c> [--prefix <slug->] [--story <id>] [--status candidate]
+                      [--source <id>] [--tag <facet:value>] [--note <text>]
+                      Add every sprite of a sheet-to-sprites manifest that is not catalogued yet to the
+                      manifest.json next to it (created with these defaults if missing). New items are
+                      candidates until a person approves them; then run refresh.
   find [filters]      Search the built index.
      --kind <k> --category <c> --status <s> --scope <s> --tag <facet:value> (repeatable) --text <words> --json
   help                Show this message.
@@ -33,6 +39,7 @@ export function parseArgs(argv) {
   const opts = { tags: [] };
   for (let i = 0; i < rest.length; i++) {
     const key = rest[i].replace(/^--/, '');
+    if (!rest[i].startsWith('--')) { opts._ = rest[i]; continue; }
     if (key === 'json') opts.json = true;
     else if (key === 'tag') opts.tags.push(rest[++i]);
     else opts[key] = rest[++i];
@@ -83,6 +90,44 @@ export function main(argv, io) {
       total += changed;
     }
     io.out(`Filled ${total} item(s).`);
+    return 0;
+  }
+
+  if (cmd === 'refresh') {
+    main(['fill', '--root', projectRoot], io);
+    return main(['build', '--root', projectRoot], io);
+  }
+
+  if (cmd === 'register') {
+    const spritesFile = opts._;
+    if (!spritesFile || !opts.kind || !opts.category) {
+      io.err('register needs <sprites.json> --kind <k> --category <c>');
+      return 1;
+    }
+    const sprites = readJson(path.resolve(projectRoot, spritesFile));
+    const dir = path.dirname(path.resolve(projectRoot, spritesFile));
+    const mf = path.join(dir, 'manifest.json');
+    const manifest = fs.existsSync(mf) ? readJson(mf) : {
+      schema: 'fairytale-asset-manifest/1',
+      defaults: { kind: opts.kind, status: 'candidate', scope: opts.story ? 'story' : 'shared', source: opts.source || 'project-image-gen', tags: opts.tags, ...(opts.note ? { notes: opts.note } : {}) },
+      items: [],
+    };
+    const have = new Set(manifest.items.map((/** @type {any} */ i) => i.file));
+    let added = 0;
+    for (const s of sprites.sprites || []) {
+      if (s.empty || have.has(s.file)) continue;
+      manifest.items.push({
+        id: `${opts.kind}.${opts.category}.${opts.prefix || ''}${s.name}`,
+        category: opts.category,
+        title: `${s.name.replace(/-/g, ' ')}${opts.kind === 'prop' ? ' (paper piece)' : ''}`,
+        file: s.file,
+        ...(opts.story ? { used_in: [opts.story] } : {}),
+        status: opts.status || 'candidate',
+      });
+      added++;
+    }
+    writeJson(mf, manifest);
+    io.out(`${toPosix(path.relative(projectRoot, mf))}: ${added} sprite(s) registered (${manifest.items.length} in total). Next: refresh.`);
     return 0;
   }
 

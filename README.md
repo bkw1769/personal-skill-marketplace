@@ -6,12 +6,12 @@ A private-ready Codex plugin marketplace for bkw1769.
 |---|---|---|
 | `personal-tools` | `personal-project-init` | Scaffold a project with the personal base rules (AGENTS.md, docs, src, out). |
 | `personal-tools` | `docs-sync` | After a task, bring STRUCTURE / DECISIONS / MEMORY / README and links back in line with the files (bundled checker). |
-| `fairytale-studio` | `fairytale-art-prompts` | Assemble image prompts for character, expression, prop and location sheets from art-style x era modules. |
-| `fairytale-studio` | `fairytale-assets` | Labeled asset store for art and sound: manifests, controlled tags, license ledger of vetted libraries, searchable index (bundled tool + tests). |
+| `fairytale-studio` | `fairytale-art-prompts` | Assemble image prompts for character, expression, prop, location, plate and torn-paper element-kit sheets from art-style x era modules; one JSON spec per story -> all prompts and a Codex batch (bundled assembler + tests). |
+| `fairytale-studio` | `fairytale-assets` | Labeled asset store for art and sound: manifests, controlled tags, license ledger of vetted libraries, searchable index, one-step sprite registration and refresh (bundled tool + tests). |
 | `fairytale-studio` | `story-storyboard` | Synopsis to timed storyboard.json (scenes, captions, bubbles, music, sound cues) with a validator and Markdown view. |
-| `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, paper-rim colour matching, contact sheet). |
+| `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, magenta key, paper-rim colour matching, contact sheet) and measure them (openings, colour positions, leftover magenta). |
 | `fairytale-studio` | `storybook-narration` | Korean/English narration with Qwen3-TTS 1.7B on MLX: design and freeze voices, script/storyboard to lint-checked lines, batch generation with QA and retakes, full.wav + timeline.json (portable tts/ template + line tool). |
-| `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, dev server, recording) and an MP4 probe for checking the output. |
+| `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, recorded narration with ducking, collage helpers, frame-by-frame MP4 export, real-time recording with a pre-check, review stills, dev server) plus an MP4 probe and a picture/sound sync check. |
 
 The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-narration → storybook-video.
 

@@ -136,7 +136,7 @@ describe('main', () => {
   test('from-text writes lines and lint passes them', () => {
     const dir = tmp();
     const story = path.join(dir, 's.txt');
-    const out = path.join(dir, 'lines.jsonl');
+    const out = path.join(dir, 'out', 'tts', 'story-ko', 'lines.jsonl'); // folder does not exist yet
     fs.writeFileSync(story, '옛날 옛적에 마을이 있었어요.\n\n[fox] "안녕! 나는 숲속의 여우야."\n');
     const a = io();
     assert.equal(m.main(['from-text', story, '--voice', 'narrator=n-ko', '--voice', 'fox=f-ko', '--out', out], a.io), 0);

@@ -30,6 +30,10 @@ peaks; // every window should be above ~0.02 unless the storyboard asks for sile
 
 Frames match the storyboard: load the file in a `<video>`, seek to the middle of each scene, draw each frame into a canvas grid and look at it (or screenshot it). Use canvas capture rather than screenshots of a hidden or background tab, which do not repaint.
 
+## 2b. Picture against sound
+
+`probe-mp4` passed a take whose picture ended about 1 s behind its sound (recorded at load about 20). In the page, `await __sync(url, times)` decodes frames of the saved video and matches each to frames drawn by `renderFrame` within ±1 s; `ok` means the best offset is 0 (±0.1 s) everywhere. Pick times spread over the whole story, including the last 20 s, and avoid stills with no motion (they match any offset). The frame-by-frame export (`__export`) cannot drift; check it anyway after engine changes.
+
 ## 3. People
 
 Peak levels only prove there is sound. Ask the user to watch and listen once: caption timing against narration, effects landing on the action, overall loudness (the master compressor keeps peaks under about 0.9).

@@ -21,6 +21,8 @@ Then add these scripts to the project's package.json (create a minimal one with 
 "assets:validate": "node scripts/assets/cli.mjs validate",
 "assets:build": "node scripts/assets/cli.mjs build",
 "assets:fill": "node scripts/assets/cli.mjs fill",
+"assets:refresh": "node scripts/assets/cli.mjs refresh",
+"assets:register": "node scripts/assets/cli.mjs register",
 "assets:find": "node scripts/assets/cli.mjs find"
 ```
 
@@ -56,16 +58,20 @@ Two forms exist:
 1. **Source.** Find the origin in `assets/catalog/sources.json`. For a new source, verify the license on the official page first, then add an entry with `license`, `commercial_ok`, `attribution_required`, `redistribute_ok`, `policy` (`allowed` / `restricted` / `blocked`) and `conditions`. Downloading files needs the user's explicit OK (file name, source, size) each time.
 2. **Raw copy.** Unzip or clone into `assets/_vendor/<source-id>/<pack>/` untouched (gitignored). Set `"downloaded": true` on that pack.
 3. **Curate.** Copy only the files worth reusing into the kind folder (layout in `assets/README.md`), renamed to kebab-case. Ten well-labeled sounds beat five hundred unlabeled ones.
-4. **Label.** Add items to the folder's `manifest.json` (`"schema": "fairytale-asset-manifest/1"`, shared values in `defaults`). Every item needs `id` `<kind>.<category>.<slug>`, `title`, `file` or `impl`, and useful tags: `mood:`/`use:` for audio, `era:`/`style:` for art, `story:`/`character:` for story items. New label values go into `assets/catalog/taxonomy.json` first.
-5. **Fill and build.**
+4. **Label.** Cut sprites (sheet-to-sprites `sprites.json`) are registered in one step; it adds every sprite not catalogued yet to the `manifest.json` next to it as a `candidate` and never touches existing items:
 
 ```bash
-node scripts/assets/cli.mjs fill
+node scripts/assets/cli.mjs register assets/art/props/joseon/<kit>/sprites/sprites.json --kind prop --category nature --prefix joseon- --story <story-id>
 ```
 
+Other files: add items to the folder's `manifest.json` (`"schema": "fairytale-asset-manifest/1"`, shared values in `defaults`). Every item needs `id` `<kind>.<category>.<slug>`, `title`, `file` or `impl`, and useful tags: `mood:`/`use:` for audio, `era:`/`style:` for art, `story:`/`character:` for story items. New label values go into `assets/catalog/taxonomy.json` first.
+5. **Fill and build.** One command after adding, replacing or re-cutting any file (golden-axe re-cut a kit five times in a day; each time validate failed on the changed hashes until fill and build ran):
+
 ```bash
-node scripts/assets/cli.mjs build
+node scripts/assets/cli.mjs refresh
 ```
+
+It runs `fill` (hash, size, WAV length) then `build` (validate, index, credits); both stay available alone.
 
 `build` refuses to write the index while any error remains. Errors include:
 - unknown tag, missing file or changed hash

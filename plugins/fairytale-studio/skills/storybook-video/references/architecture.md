@@ -15,10 +15,12 @@
 |---|---|---|
 | `index.html` | engine | Canvas 1920x1080, start overlay, control bar (play, seek, narration, record, fullscreen). Fonts: Gaegu (captions), Nanum Pen Script (bubbles) from Google Fonts; falls back to system fonts after 4 s. |
 | `story.config.js` | author | `storyboard`, `sprites` (one URL or a list: characters plus element kits), optional `narration: { audio, timeline }` and `mix: { music, duck, voice, master }`, and `saveName` for recordings. |
-| `js/main.js` | engine | Loads config, storyboard, sprites and recorded narration; player (play/pause/seek, keyboard: Space, arrows), narration (recorded voice on the audio clock, or browser speech without it), MediaRecorder, review hooks (`?still&t=`, `__sheet`, `__mix`). |
+| `js/main.js` | engine | Loads config, storyboard, sprites and recorded narration; player (play/pause/seek, keyboard: Space, arrows), narration (recorded voice on the audio clock, or browser speech without it), MediaRecorder, review hooks (`?still&t=`, `__sheet`, `__mix`, `__capture`, `__sync`), the pre-recording check (`__preflight`) and the frame-by-frame export (`__export`). |
 | `js/stage.js` | engine | Scene lookup, paint-blot transitions, captions, quote, bubbles, paper grain, default animatic scene, narration lines, `bob()`. |
 | `js/audio.js` | engine | `Synth` (Web Audio instruments and effects, recorded `voice` and `duck` events, mix levels), score helpers `seq/chords/arps/perc`, `autoScore()`, `cuesToEvents()`, `narrationEvents()` (voice_lines -> events), offline level tools `renderRange`, `kWeight`, `integratedLoudness`, `peakOf`, `speechToBedDb`. |
 | `js/paint.js` | engine | Generic watercolor painters and pre-painted canvases (`BG.clouds/sun/moon/ships/tents/grain`). |
+| `js/collage.js` | engine | `pasteRun` (long pieces past the frame, open gates from leaves), `stateAt` (piece states over time). |
+| `js/mp4mux.js` | engine | MP4 writer for the frame-by-frame export (H.264 + AAC from WebCodecs, fast start, no dependencies). |
 | `js/sprites.js` | engine | Loads sprites.json + PNGs into `S`, draws with `spr()`. |
 | `js/util.js` | engine | Maths and easing, seeded random, `ink` (wobbly pen), `wash` (watercolor fill), `blob`, `ellipsePts`, `rectPts`, `handText`, palette `C`, `INK`, `PAPER`, `W`, `H`. |
 | `js/scenes.js` | author | `SCENES = { <scene id>: (ctx, T, info) => {...} }` plus `sfxWord`. |

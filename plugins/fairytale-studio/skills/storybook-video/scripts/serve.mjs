@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Local static server for browser prototypes and storybook videos. Serves only allow-listed
 // top-level folders of the project, supports HTTP Range (needed for <video> seeking), and
-// accepts recorded videos on POST /save into one output folder. Loopback only.
+// accepts recorded videos and review stills (png/jpg) on POST /save into one output folder, and
+// reports the machine's load on GET /__load (the player checks it before a real-time recording). Loopback only.
 //   node serve.mjs [--port 8765] [--host 127.0.0.1] [--root <dir>] [--serve prototypes,stories,assets,out]
 //                  [--save-dir out] [--home /stories/]
 // --serve lists the top-level folders under root that may be read; "*" serves everything under root.
 import http from 'node:http';
+import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -13,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 /** Project root when --root is not given: the current working directory (npm scripts run at the root). */
 export const DEFAULT_ROOT = process.cwd();
 export const SERVED_DIRS = ['prototypes', 'stories', 'assets', 'out'];
-export const SAVE_NAME = /^[a-z0-9][a-z0-9._-]*\.(mp4|webm)$/i;
+export const SAVE_NAME = /^[a-z0-9][a-z0-9._-]*\.(mp4|webm|png|jpg)$/i;
 export const MAX_SAVE_BYTES = 1024 * 1024 * 1024;
 export const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -39,6 +41,17 @@ export const TYPES = {
  * @property {string} home      Path that "/" redirects to.
  * @property {number} [maxSaveBytes]
  */
+
+/**
+ * Machine load for the player's pre-recording check: 1/5/15-minute load averages and CPU count.
+ * A real-time recording made while load1 is above the CPU count drifted about 1 s out of sync.
+ * @returns {{load: number[], cpus: number, busy: boolean}}
+ */
+export function loadInfo() {
+  const load = os.loadavg().map((x) => Math.round(x * 100) / 100);
+  const cpus = os.cpus().length || 1;
+  return { load, cpus, busy: load[0] > cpus * 0.6 };
+}
 
 /**
  * Parse a single-range "bytes=a-b" header against a file size.
@@ -145,6 +158,10 @@ export function createHandler(opts) {
     const url = new URL(/** @type {string} */ (req.url), 'http://localhost');
     if (req.method === 'POST' && url.pathname === '/save') {
       handleSave(req, res, url.searchParams.get('name'), opts);
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/__load') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(loadInfo()));
       return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {

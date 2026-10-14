@@ -265,7 +265,12 @@ export function main(argv, io) {
   warnings.forEach((w) => io.err(`warning: ${w}`));
   if (o.cmd !== 'lint' && !errors.length) {
     const body = lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
-    if (o.out) { fs.writeFileSync(o.out, body); io.out(`Wrote ${o.out}`); } else io.out(body.trimEnd());
+    if (o.out) {
+      // Create the output folder (out/tts/<id>-<lang>/ usually does not exist yet).
+      fs.mkdirSync(path.dirname(path.resolve(o.out)), { recursive: true });
+      fs.writeFileSync(o.out, body);
+      io.out(`Wrote ${o.out}`);
+    } else io.out(body.trimEnd());
   }
   io.out(`${lines.length} line(s), ${errors.length} error(s), ${warnings.length} warning(s).`);
   return errors.length ? 1 : 0;
