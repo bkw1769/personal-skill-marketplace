@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'plugins/fairytale-studio/skills/story-storyboard');
 const SCRIPT = path.join(SKILL, 'scripts/storyboard.mjs');
-const { validate, render, main, readChars, countWords, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE, norm, spokenItems, matchSpeech, retime } = await import(SCRIPT);
+const { validate, render, main, readChars, countWords, fmt, bandFor, SCHEMA, AUDIENCE, DEFAULT_AUDIENCE, norm, spokenItems, matchSpeech, retime, srt, srtTime } = await import(SCRIPT);
 
 const base = () => ({
   schema: SCHEMA,
@@ -190,6 +190,26 @@ describe('render', () => {
   });
 });
 
+describe('srt', () => {
+  test('srtTime formats hours, minutes, seconds and milliseconds, never negative', () => {
+    assert.equal(srtTime(0), '00:00:00,000');
+    assert.equal(srtTime(83.7166), '00:01:23,717');
+    assert.equal(srtTime(3723.004), '01:02:03,004');
+    assert.equal(srtTime(-1), '00:00:00,000');
+  });
+  test('captions and bubbles in time order, overlaps trimmed to the next start, lines cleaned', () => {
+    const sb = { ...base(), captions: [{ start: 1, end: 5, text: ' one \n two ' }, { start: 4.9, end: 6, text: 'three' }], bubbles: [{ start: 2, end: 3, speaker: 'girl', text: 'hi' }] };
+    const out = srt(sb);
+    assert.equal(out, '1\n00:00:01,000 --> 00:00:01,950\none\ntwo\n\n2\n00:00:02,000 --> 00:00:03,000\nhi\n\n3\n00:00:04,900 --> 00:00:06,000\nthree\n');
+    // a line that starts almost together with the next keeps at least 0.3 s; speaker names from the cast or the id
+    const close = { ...base(), cast: [{ id: 'girl', name: 'Girl' }, { id: 'ody' }], captions: [{ start: 1, end: 3, text: 'a' }], bubbles: [{ start: 1.1, end: 2, speaker: 'girl', text: 'b' }, { start: 2.5, end: 3, speaker: 'ody', text: 'c' }, { start: 4, end: 5, speaker: 'x', text: 'd' }] };
+    const lines = srt(close, { speakers: true, gap: 0.1 }).split('\n');
+    assert.equal(lines[1], '00:00:01,000 --> 00:00:01,300');
+    assert.deepEqual([lines[6], lines[10], lines[14]], ['Girl: b', 'ody: c', 'x: d']);
+    assert.equal(srt({ ...base(), captions: undefined, bubbles: undefined, cast: undefined }), '');
+  });
+});
+
 describe('cli', () => {
   const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sb-'));
   test('validate returns 0 for clean, 1 for errors, prints summary and findings', () => {
@@ -219,6 +239,18 @@ describe('cli', () => {
     assert.match(r.out[0], /^# T/);
     fs.writeFileSync(path.join(d, 'bad.json'), '{}');
     assert.equal(main(['render', path.join(d, 'bad.json')], io().io), 1);
+  });
+  test('srt writes subtitles or prints them; speaker names on request', () => {
+    const d = tmp();
+    fs.writeFileSync(path.join(d, 'ok.json'), JSON.stringify(base()));
+    let r = io();
+    assert.equal(main(['srt', path.join(d, 'ok.json'), '--out', path.join(d, 'x.srt')], r.io), 0);
+    assert.match(fs.readFileSync(path.join(d, 'x.srt'), 'utf8'), /^1\n00:00:01,000 --> 00:00:05,000\n안녕하세요\n/);
+    r = io();
+    assert.equal(main(['srt', path.join(d, 'ok.json'), '--speakers', 'yes'], r.io), 0);
+    assert.match(r.out[0], /소녀: 좋아!/);
+    fs.writeFileSync(path.join(d, 'bad.json'), '{}');
+    assert.equal(main(['srt', path.join(d, 'bad.json')], io().io), 1);
   });
   test('usage and unreadable files', () => {
     let r = io();

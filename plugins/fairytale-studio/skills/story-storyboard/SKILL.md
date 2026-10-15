@@ -43,6 +43,12 @@ Ask only for what is missing and cannot be inferred:
 
    Recorded lines are matched to captions and bubbles by their text (letters and digits only, so punctuation edits made for TTS still match; split and merged lines are handled). Each scene keeps its lead-in and the pause after every line (question pauses survive), lasts as long as its speech plus a tail but never less than the band's minimum scene, and cues and unspoken bubbles move with the line before them. Spoken items get `voice_lines` (the recorded line ids) for the video's audio track. Validate afterwards: reading-speed warnings now mean the voice itself is faster than the band (golden-axe: the narrator spoke 150-200 wpm against 120 for 3-5) - slow the voice or add pauses, not the captions.
 
+8. **Subtitles for upload** after the final re-time: captions and bubbles in time order as a SubRip file for YouTube (overlapping lines end just before the next one starts; `--speakers yes` puts the cast name before dialogue):
+
+   ```bash
+   node <skill-dir>/scripts/storyboard.mjs srt storyboard.json --out <video>.srt
+   ```
+
 ## Files
 
 - Data format with every field: `references/storyboard-format.md`.

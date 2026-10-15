@@ -339,6 +339,40 @@ export function retime(sb, timeline, opt = {}) {
 const round = (x) => Math.round(x * 100) / 100;
 
 /**
+ * SubRip time stamp: HH:MM:SS,mmm.
+ * @param {number} t seconds
+ * @returns {string}
+ */
+export function srtTime(t) {
+  const ms = Math.max(0, Math.round(t * 1000));
+  const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')},${String(ms % 1000).padStart(3, '0')}`;
+}
+
+/**
+ * Subtitles (SubRip) from the words on screen: captions and bubbles in time order. A line that runs into the
+ * next one ends `gap` seconds before it starts (video players show one cue at a time more cleanly), but never
+ * shorter than 0.3 s. With `speakers`, bubble lines get the speaker's cast name in front ("Dori: ...").
+ * @param {any} sb storyboard
+ * @param {{gap?: number, speakers?: boolean}} [opt]
+ * @returns {string}
+ */
+export function srt(sb, opt = {}) {
+  const gap = opt.gap ?? 0.05;
+  const names = new Map((sb.cast || []).map((c) => [c.id, c.name || c.id]));
+  const items = [
+    ...(sb.captions || []).map((c) => ({ start: c.start, end: c.end, text: c.text })),
+    ...(sb.bubbles || []).map((b) => ({ start: b.start, end: b.end, text: opt.speakers ? `${names.get(b.speaker) ?? b.speaker}: ${b.text}` : b.text })),
+  ].sort((a, b) => a.start - b.start);
+  return items.map((it, i) => {
+    const next = items[i + 1];
+    const end = next && next.start < it.end ? Math.max(it.start + 0.3, next.start - gap) : it.end;
+    const text = String(it.text).split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+    return `${i + 1}\n${srtTime(it.start)} --> ${srtTime(end)}\n${text}\n`;
+  }).join('\n');
+}
+
+/**
  * CLI entry.
  * @param {string[]} argv
  * @param {{out: (s: string) => void, err: (s: string) => void}} io
@@ -349,8 +383,8 @@ export function main(argv, io) {
   /** @type {Record<string, string>} */
   const o = {};
   for (let i = 0; i < rest.length; i += 2) o[rest[i].replace(/^--/, '')] = rest[i + 1];
-  if (!['validate', 'render', 'retime'].includes(cmd) || !file || (cmd === 'retime' && (!o.timeline || !o.out))) {
-    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n] [--out file.md]\n       node storyboard.mjs retime <storyboard.json> --timeline <timeline.json> --out <storyboard.json> [--min-gap 0.3] [--tail 0.8] [--keep-length yes]');
+  if (!['validate', 'render', 'retime', 'srt'].includes(cmd) || !file || (cmd === 'retime' && (!o.timeline || !o.out))) {
+    io.err('Usage: node storyboard.mjs <validate|render> <storyboard.json> [--audience 3-5|6-8|9-10] [--max-cps n] [--max-wpm n] [--out file.md]\n       node storyboard.mjs srt <storyboard.json> [--out file.srt] [--speakers yes]\n       node storyboard.mjs retime <storyboard.json> --timeline <timeline.json> --out <storyboard.json> [--min-gap 0.3] [--tail 0.8] [--keep-length yes]');
     return 1;
   }
   let sb;
@@ -385,7 +419,7 @@ export function main(argv, io) {
     return errors.length ? 1 : 0;
   }
   if (errors.length) return 1;
-  const md = render(sb);
+  const md = cmd === 'srt' ? srt(sb, { speakers: o.speakers === 'yes' }) : render(sb);
   if (o.out) {
     fs.writeFileSync(o.out, md);
     io.out(`Wrote ${o.out}`);
