@@ -14,6 +14,7 @@ export const STATUSES = ['verified', 'single-source', 'disputed', 'rejected'];
 export const BLOCKED_STATUSES = new Set(['disputed', 'rejected']);
 export const MAX_EXCERPT = 300;
 export const DEFAULT_MAX_AGE = 3;
+export const IN_FORCE_TYPES = new Set(['law', 'standard']);
 
 const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,41 +23,76 @@ const URL_RE = /^https?:\/\/\S+$/;
 
 const SMALL_UNIT = { 십: 10, 백: 100, 천: 1000 };
 const BIG_UNIT = { 만: 1e4, 억: 1e8, 조: 1e12 };
-const DIGIT_RE = /(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?([십백천]?)([만억조]?)/gu;
+// A minus sign counts only at the start of a word ("-9mm", "(-5도)"), not in "3-4호기".
+// 할 right after digits is tenths (9할 = 90, compared with a percent value).
+const DIGIT_RE = /(?<![\d.])(?:(?<![\p{L}\p{N}])([-\u2212]))?(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?(?:(할)(?!인)|([십백천]?)([만억조]?))/gu;
+// Full dates: 1992.10.26, 1992. 10. 26, 2026-10-06, 2026/10/06.
+const DATE_RE = /(?<![\d.])(\d{4})(\.\s?|-|\/)(\d{1,2})\2(\d{1,2})(?![\d])/gu;
+// Full-width digits and signs (１９９２, －５) read as ASCII; one code unit each, so indexes hold.
+const FULL_WIDTH_RE = /[\uff10-\uff19\uff0b-\uff0e]/gu;
 const NATIVE = { 두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10, 스무: 20, 서른: 30, 마흔: 40, 쉰: 50 };
 const COUNTERS = ['배', '번', '개', '명', '채', '곳', '칸', '대', '층', '마리', '가지', '시간', '살', '해', '달', '줄', '겹', '장', '척', '군데', '차례', '가구', '세대', '그루', '톤', '권', '쌍'];
 const NATIVE_RE = new RegExp(`(?<![가-힣])(${Object.keys(NATIVE).join('|')}) (${COUNTERS.join('|')})(?![가-힣]*째)`, 'gu');
 const HALF_RE = /(?<![가-힣])절반/gu;
-const UNIT_TAIL_RE = /^[^\s\d,.!?·/()]{0,3}/u;
+const UNIT_TAIL_RE = /^[^\s\d,.!?·/()~\-\u2212]{0,3}/u;
+// Particles trimmed from the unit shown in messages ("1978년에" -> "1978년"). 도 stays: 5도 is degrees.
+const PARTICLE_RE = /(?:으로|에서|에게|까지|부터|처럼|보다|은|는|이|가|을|를|에|의|와|과|로|만|랑)$/u;
 
 /**
  * Find the numbers a reader sees in a Korean or English text: digits (with thousands
- * commas, decimals and Korean units such as 천/만/억/조, so "2조 5,000억" is one number),
- * native Korean counts written with a space before a counter ("두 배", "세 번") and 절반.
+ * commas, decimals, a leading minus sign and Korean units such as 천/만/억/조, so
+ * "2조 5,000억" and "1천 2백" are one number each), 할 after digits (9할 = 90), full
+ * dates (1992.10.26, 2026-10-06; value = the year, parts = [year, month, day]), native
+ * Korean counts written with a space before a counter ("두 배", "세 번") and 절반.
+ * Full-width digits (１９９２) count as digits.
  * @param {string} text
- * @returns {{value: number, raw: string, index: number}[]} in text order
+ * @returns {{value: number, raw: string, index: number, parts?: number[]}[]} in text order
  */
 export function extractNumbers(text) {
+  const norm = text.replace(FULL_WIDTH_RE, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
   const found = [];
-  for (const m of text.matchAll(DIGIT_RE)) {
-    const [raw, int, frac = '', small, big] = m;
-    const value = Number(int.replace(/,/g, '') + frac) * (SMALL_UNIT[small] || 1) * (BIG_UNIT[big] || 1);
-    const prev = found[found.length - 1];
-    // "1만 5천" / "2조 5,000억": a smaller group right after a big unit adds to it.
-    if (prev && prev.big && /^\s*$/.test(text.slice(prev.end, m.index)) && value < prev.big) {
-      prev.value += value;
-      prev.raw = text.slice(prev.index, m.index + raw.length);
+  let digits = norm;
+  for (const m of norm.matchAll(DATE_RE)) {
+    const parts = [m[1], m[3], m[4]].map(Number);
+    if (parts[1] < 1 || parts[1] > 12 || parts[2] < 1 || parts[2] > 31) continue;
+    found.push({ value: parts[0], raw: text.slice(m.index, m.index + m[0].length), index: m.index, parts });
+    digits = digits.slice(0, m.index) + ' '.repeat(m[0].length) + digits.slice(m.index + m[0].length);
+  }
+  const groups = [];
+  for (const m of digits.matchAll(DIGIT_RE)) {
+    const [raw, sign, int, frac = '', tenth, small, big] = m;
+    const unit = (SMALL_UNIT[small] || 1) * (BIG_UNIT[big] || 1);
+    const value = (sign ? -1 : 1) * Number(int.replace(/,/g, '') + frac) * (tenth ? 10 : unit);
+    const prev = groups[groups.length - 1];
+    // "1만 5천" / "2조 5,000억" / "1천 2백": a smaller group right after a unit adds to it.
+    if (prev && prev.unit > 1 && !sign && /^\s*$/.test(digits.slice(prev.end, m.index)) && value < prev.unit) {
+      prev.value += prev.value < 0 ? -value : value;
       prev.end = m.index + raw.length;
-      prev.big = BIG_UNIT[big];
+      prev.unit = unit;
       continue;
     }
-    found.push({ value, raw, index: m.index, end: m.index + raw.length, big: BIG_UNIT[big] });
+    groups.push({ value, index: m.index, end: m.index + raw.length, unit: tenth ? 1 : unit });
   }
-  // Show digits with the unit that follows them ("68cm", "30%", "1978년").
-  for (const f of found) f.raw += UNIT_TAIL_RE.exec(text.slice(f.end))[0];
-  for (const m of text.matchAll(NATIVE_RE)) found.push({ value: NATIVE[m[1]], raw: m[0], index: m.index });
-  for (const m of text.matchAll(HALF_RE)) found.push({ value: 0.5, raw: m[0], index: m.index });
-  return found.sort((a, b) => a.index - b.index).map(({ value, raw, index }) => ({ value, raw, index }));
+  // Show digits with the unit that follows them ("68cm", "30%", "1978년"), without particles.
+  for (const g of groups) {
+    let tail = UNIT_TAIL_RE.exec(norm.slice(g.end))[0];
+    while (PARTICLE_RE.test(tail)) tail = tail.replace(PARTICLE_RE, '');
+    found.push({ value: g.value, raw: text.slice(g.index, g.end) + tail, index: g.index });
+  }
+  for (const m of norm.matchAll(NATIVE_RE)) found.push({ value: NATIVE[m[1]], raw: m[0], index: m.index });
+  for (const m of norm.matchAll(HALF_RE)) found.push({ value: 0.5, raw: m[0], index: m.index });
+  return found.sort((a, b) => a.index - b.index);
+}
+
+/**
+ * Whether a number found in a text equals one of the given values; a date matches
+ * when its year, month and day each do.
+ * @param {{value: number, parts?: number[]}} found an entry from extractNumbers
+ * @param {number[]} values
+ * @returns {boolean}
+ */
+export function matchesValue(found, values) {
+  return (found.parts || [found.value]).every((p) => values.some((v) => sameNumber(v, p)));
 }
 
 /**
@@ -118,8 +154,15 @@ export function checkLedgers(sources, facts, opt = {}) {
     if (!str(s.accessed) || !validDay(s.accessed)) errors.push(`${at}: accessed must be a YYYY-MM-DD date`);
     else if (s.accessed > today) warnings.push(`${at}: accessed ${s.accessed} is after today (${today})`);
     if (s.published !== undefined && !(str(s.published) && PARTIAL_DATE_RE.test(s.published))) errors.push(`${at}: published must be YYYY, YYYY-MM or YYYY-MM-DD`);
-    if (s.archive_url === undefined) warnings.push(`${at}: no archive_url (pages change; save a web.archive.org copy)`);
-    else if (!str(s.archive_url) || !URL_RE.test(s.archive_url)) errors.push(`${at}: archive_url must be an http(s) address`);
+    if (s.archive_url === undefined) {
+      if (s.archive_failed === undefined) warnings.push(`${at}: no archive_url (pages change; save a web.archive.org copy, or record the failed attempt in archive_failed)`);
+    } else if (!str(s.archive_url) || !URL_RE.test(s.archive_url)) errors.push(`${at}: archive_url must be an http(s) address`);
+    if (s.archive_failed !== undefined && !str(s.archive_failed)) errors.push(`${at}: archive_failed must say when and how saving failed`);
+    if (s.in_force !== undefined) {
+      if (!str(s.in_force) || !validDay(s.in_force)) errors.push(`${at}: in_force must be the YYYY-MM-DD day you confirmed the text is still in force`);
+      else if (!IN_FORCE_TYPES.has(s.type)) errors.push(`${at}: in_force is only for ${[...IN_FORCE_TYPES].join(' and ')} sources`);
+      else if (s.in_force > today) warnings.push(`${at}: in_force ${s.in_force} is after today (${today})`);
+    }
   });
 
   if (!isObj(facts) || facts.schema !== FACTS_SCHEMA) errors.push(`facts: schema must be "${FACTS_SCHEMA}"`);
@@ -137,6 +180,9 @@ export function checkLedgers(sources, facts, opt = {}) {
     if (!STATUSES.includes(c.status)) errors.push(`${at}: status must be one of ${STATUSES.join(', ')}`);
 
     const nums = c.numbers === undefined ? [] : c.numbers;
+    const good = Array.isArray(nums) ? nums.filter((n) => isObj(n) && typeof n.value === 'number') : [];
+    // Is n among the found numbers (a date counts by its year, month and day), or its say among the texts?
+    const appears = (n, found, texts) => (str(n.say) && texts.some((t) => t.includes(n.say))) || found.some((t) => (t.parts || [t.value]).some((p) => sameNumber(p, n.value)));
     if (!Array.isArray(nums)) errors.push(`${at}: numbers must be a list`);
     else {
       nums.forEach((n, j) => {
@@ -144,24 +190,23 @@ export function checkLedgers(sources, facts, opt = {}) {
         else if (n.say !== undefined && !str(n.say)) errors.push(`${at}: numbers[${j}].say must be text`);
       });
       if (str(c.text)) {
-        const good = nums.filter((n) => isObj(n) && typeof n.value === 'number');
         const { text } = blank(c.text, good.map((n) => n.say).filter(str));
         const inText = extractNumbers(text);
-        for (const n of good) {
-          if (!(str(n.say) && c.text.includes(n.say)) && !inText.some((t) => sameNumber(t.value, n.value))) warnings.push(`${at}: number ${n.value} does not appear in its text`);
-        }
+        for (const n of good) if (!appears(n, inText, [c.text])) warnings.push(`${at}: number ${n.value} does not appear in its text`);
         for (const t of inText) {
-          if (!good.some((n) => sameNumber(n.value, t.value))) warnings.push(`${at}: "${t.raw}" in the text is not listed in numbers`);
+          if (!matchesValue(t, good.map((n) => n.value))) warnings.push(`${at}: "${t.raw}" in the text is not listed in numbers`);
         }
       }
     }
 
     const refs = c.sources === undefined ? [] : c.sources;
+    const forceYears = [];
     if (!Array.isArray(refs)) errors.push(`${at}: sources must be a list`);
     else {
       if (refs.length === 0 && c.status !== 'rejected') errors.push(`${at}: needs at least one source`);
       const types = [];
       const publishers = new Set();
+      const excerpts = refs.filter((r) => isObj(r) && str(r.excerpt)).map((r) => r.excerpt);
       refs.forEach((r, j) => {
         if (!isObj(r) || !str(r.id)) return errors.push(`${at}: sources[${j}].id is required`);
         const s = byId.get(r.id);
@@ -170,6 +215,7 @@ export function checkLedgers(sources, facts, opt = {}) {
         if (!str(r.locator)) warnings.push(`${at}: source ${r.id} has no locator (page, table, article or section)`);
         if (r.excerpt !== undefined && String(r.excerpt).length > MAX_EXCERPT) warnings.push(`${at}: excerpt from ${r.id} is longer than ${MAX_EXCERPT} characters (quote only the line you need)`);
         types.push(s.type);
+        if (IN_FORCE_TYPES.has(s.type) && str(s.in_force) && validDay(s.in_force)) forceYears.push(Number(s.in_force.slice(0, 4)));
         if (!PRIMARY_TYPES.has(s.type) && s.type !== 'encyclopedia') publishers.add(String(s.publisher).trim());
       });
       const primary = types.some((t) => PRIMARY_TYPES.has(t));
@@ -177,12 +223,18 @@ export function checkLedgers(sources, facts, opt = {}) {
         errors.push(`${at}: "verified" needs one primary source (${[...PRIMARY_TYPES].join('/')}) or secondary sources from two different publishers`);
       }
       if (types.length && types.every((t) => t === 'encyclopedia')) warnings.push(`${at}: only encyclopedia sources; find the source they cite`);
+      if (excerpts.length) {
+        const inExcerpts = excerpts.flatMap(extractNumbers);
+        const missing = good.filter((n) => !appears(n, inExcerpts, excerpts)).map((n) => n.value);
+        if (missing.length) warnings.push(`${at}: not in any excerpt: ${missing.join(', ')} (quote the line that gives each number)`);
+      }
     }
 
     if (c.as_of !== undefined && !(str(c.as_of) && PARTIAL_DATE_RE.test(c.as_of))) errors.push(`${at}: as_of must be YYYY, YYYY-MM or YYYY-MM-DD`);
     else if (c.as_of === undefined && Array.isArray(nums) && nums.length) warnings.push(`${at}: has numbers but no as_of (the year the figure describes)`);
-    else if (c.as_of !== undefined && Number(today.slice(0, 4)) - Number(c.as_of.slice(0, 4)) > maxAge && !c.historical) {
-      warnings.push(`${at}: figure is from ${c.as_of}, more than ${maxAge} years old; look for a newer one or set "historical": true`);
+    // A rule confirmed in force (source in_force) is as new as that confirmation.
+    else if (c.as_of !== undefined && !c.historical && Number(today.slice(0, 4)) - Math.max(Number(c.as_of.slice(0, 4)), ...forceYears) > maxAge) {
+      warnings.push(`${at}: figure is from ${c.as_of}, more than ${maxAge} years old; look for a newer one, set "historical": true, or for a law or standard still in force record the day you checked as "in_force" on its source`);
     }
   });
   for (const id of byId.keys()) if (!cited.has(id)) warnings.push(`source ${id}: not cited by any claim`);
@@ -191,51 +243,78 @@ export function checkLedgers(sources, facts, opt = {}) {
 
 /**
  * Collect the on-screen text items that must be traced: storyboard captions, bubbles
- * and overlays, then the publish title and description.
+ * and overlays (top level, then nested in scenes[]), then the publish title,
+ * description and hashtags. Publish items share publish.not_facts (shared: true).
  * @param {any} storyboard parsed storyboard.json or null
  * @param {any} publish parsed publish.json or null
- * @returns {{where: string, text: string, claims: any, notFacts: any}[]}
+ * @returns {{where: string, text: string, claims: any, notFacts: any, shared?: boolean}[]}
  */
-export function screenItems(storyboard, publish) {
+export function screenItems(storyboard, publish, thumbnail = null) {
   const items = [];
   const sb = isObj(storyboard) ? storyboard : {};
-  for (const kind of ['captions', 'bubbles', 'overlays']) {
-    (Array.isArray(sb[kind]) ? sb[kind] : []).forEach((it, i) => {
-      if (!isObj(it)) return;
-      const text = [it.text, it.label].filter(str).join(' ');
-      if (!text) return;
-      const at = typeof it.start === 'number' ? ` @${it.start}s` : '';
-      items.push({ where: `${kind.slice(0, -1)} ${i}${at}`, text, claims: it.claims, notFacts: it.not_facts });
-    });
-  }
+  const collect = (holder, prefix) => {
+    for (const kind of ['captions', 'bubbles', 'overlays']) {
+      (Array.isArray(holder[kind]) ? holder[kind] : []).forEach((it, i) => {
+        if (!isObj(it)) return;
+        const text = [it.text, it.label].filter(str).join(' ');
+        if (!text) return;
+        const at = typeof it.start === 'number' ? ` @${it.start}s` : '';
+        items.push({ where: `${prefix}${kind.slice(0, -1)} ${i}${at}`, text, claims: it.claims, notFacts: it.not_facts });
+      });
+    }
+  };
+  collect(sb, '');
+  (Array.isArray(sb.scenes) ? sb.scenes : []).forEach((sc, k) => {
+    if (isObj(sc)) collect(sc, `scene ${str(sc.id) ? sc.id : k} `);
+  });
   if (isObj(publish)) {
-    const title = Array.isArray(publish.title) ? publish.title.filter(str).join(' / ') : publish.title;
-    if (str(title)) items.push({ where: 'publish title', text: title, claims: publish.title_claims, notFacts: publish.not_facts });
-    const desc = Array.isArray(publish.description) ? publish.description.filter(str).join('\n') : publish.description;
-    if (str(desc)) items.push({ where: 'publish description', text: desc, claims: '*', notFacts: publish.not_facts });
+    const lines = (v, sep) => (Array.isArray(v) ? v.filter(str).join(sep) : v);
+    const add = (name, text, claims) => {
+      if (str(text)) items.push({ where: `publish ${name}`, text, claims, notFacts: publish.not_facts, shared: true });
+    };
+    add('title', lines(publish.title, ' / '), publish.title_claims);
+    add('description', lines(publish.description, '\n'), '*');
+    add('hashtags', lines(publish.hashtags, ' '), '*');
+  }
+  if (isObj(thumbnail)) {
+    // Thumbnail texts (shorts-thumbnail thumbnail.json) carry their own claims, like captions.
+    for (const part of ['headline', 'caption']) {
+      const t = thumbnail[part];
+      if (isObj(t) && str(t.text)) items.push({ where: `thumbnail ${part}`, text: t.text, claims: t.claims, notFacts: thumbnail.not_facts });
+    }
   }
   return items;
 }
 
 /**
- * Trace every number on screen to a claim listed on the same item. The description may
- * use any claim that the storyboard or title already uses, plus publish.description_claims.
+ * Trace every number on screen to a claim listed on the same item. The description and
+ * hashtags may use any claim that the storyboard or title already uses, plus
+ * publish.description_claims.
  * @param {any} facts parsed facts.json
  * @param {any} storyboard parsed storyboard.json or null
  * @param {any} publish parsed publish.json or null
+ * @param {any} [thumbnail] parsed thumbnail.json or null
  * @returns {{errors: string[], warnings: string[], used: string[]}} used = claim ids in order of first use
  */
-export function trace(facts, storyboard, publish) {
+export function trace(facts, storyboard, publish, thumbnail = null) {
   const errors = [];
   const warnings = [];
   const claims = new Map((isObj(facts) && Array.isArray(facts.claims) ? facts.claims : []).filter((c) => isObj(c) && str(c.id)).map((c) => [c.id, c]));
   const used = [];
   const warnedSingle = new Set();
-  const items = screenItems(storyboard, publish);
+  const items = screenItems(storyboard, publish, thumbnail);
   if (!items.length) warnings.push('nothing to trace: no captions, overlays, title or description found');
   if (!isObj(facts) || !isObj(facts.review) || !str(facts.review.by) || !str(facts.review.on)) {
     warnings.push('facts: no review {by, on}; a person must read the ledger before publishing');
   }
+
+  let extra = [];
+  if (isObj(publish) && publish.description_claims !== undefined) {
+    if (Array.isArray(publish.description_claims)) extra = publish.description_claims;
+    else errors.push('publish: description_claims must be a list of claim ids');
+  }
+  let sharedMissing = null;
+  const once = (list, msg) => { if (!list.includes(msg)) list.push(msg); };
 
   const resolve = (ids, where) => {
     const out = [];
@@ -253,39 +332,48 @@ export function trace(facts, storyboard, publish) {
   for (const it of items) {
     let ids;
     if (it.claims === '*') {
-      // Blocked claims were already reported where they were used.
+      // Blocked claims were already reported where they were used. description_claims
+      // are resolved once; later items find them in used.
       ids = used.filter((id) => !BLOCKED_STATUSES.has(claims.get(id).status));
-      if (isObj(publish) && publish.description_claims !== undefined) {
-        if (!Array.isArray(publish.description_claims)) { errors.push('publish: description_claims must be a list of claim ids'); }
-        else ids.push(...publish.description_claims.filter((id) => !ids.includes(id)));
-      }
+      ids.push(...extra.filter((id) => !ids.includes(id)));
+      extra = [];
     } else if (it.claims === undefined) ids = [];
     else if (!Array.isArray(it.claims)) { errors.push(`${it.where}: claims must be a list of claim ids`); ids = []; }
     else ids = it.claims;
     const refs = resolve(ids, it.where);
 
+    const nums = refs.flatMap((c) => (Array.isArray(c.numbers) ? c.numbers : [])).filter((n) => isObj(n) && typeof n.value === 'number');
+    const values = nums.map((n) => n.value);
     let notFacts = [];
     if (it.notFacts !== undefined) {
-      if (Array.isArray(it.notFacts) && it.notFacts.every(str)) notFacts = it.notFacts;
-      else errors.push(`${it.where}: not_facts must be a list of phrases`);
+      if (Array.isArray(it.notFacts) && it.notFacts.every(str)) notFacts = [...new Set(it.notFacts)];
+      else once(errors, `${it.shared ? 'publish' : it.where}: not_facts must be a list of phrases`);
+    }
+    for (const p of notFacts) {
+      if (nums.some((n) => n.say === p) || extractNumbers(p).some((t) => matchesValue(t, values))) {
+        warnings.push(`${it.where}: not_facts phrase "${p}" is a number of its claims (${ids.join(', ')}); trace it instead of hiding it`);
+      }
     }
     const nf = blank(it.text, notFacts);
-    nf.missing.forEach((p) => warnings.push(`${it.where}: not_facts phrase "${p}" is not in the text`));
-    const nums = refs.flatMap((c) => (Array.isArray(c.numbers) ? c.numbers : [])).filter((n) => isObj(n) && typeof n.value === 'number');
+    // A shared publish.not_facts phrase only needs to occur in one publish item.
+    if (it.shared) sharedMissing = sharedMissing ? sharedMissing.filter((p) => nf.missing.includes(p)) : nf.missing;
+    else nf.missing.forEach((p) => warnings.push(`${it.where}: not_facts phrase "${p}" is not in the text`));
     const said = blank(nf.text, nums.map((n) => n.say).filter(str)).text;
     for (const t of extractNumbers(said)) {
-      if (nums.some((n) => sameNumber(n.value, t.value))) continue;
+      if (matchesValue(t, values)) continue;
       const short = it.text.length > 40 ? `${it.text.slice(0, 40)}...` : it.text;
       errors.push(refs.length
         ? `${it.where} "${short}": "${t.raw}" is not a number of its claims (${ids.join(', ')})`
         : `${it.where} "${short}": "${t.raw}" has no claim; add the claim id to "claims" or the phrase to "not_facts"`);
     }
   }
+  (sharedMissing || []).forEach((p) => warnings.push(`publish: not_facts phrase "${p}" is in none of the title, description or hashtags`));
   return { errors, warnings, used };
 }
 
 /**
- * Source list for the video description, in order of first use.
+ * Source list for the video description, in order of first use. Non-ASCII characters in
+ * URLs are percent-encoded so the links work when pasted into YouTube.
  * @param {any} sources parsed sources.json
  * @param {any} facts parsed facts.json
  * @param {string[]|null} claimIds claims to cite; null = every claim that is not rejected
@@ -303,19 +391,20 @@ export function cite(sources, facts, claimIds, opt = {}) {
   const lines = order.map((id) => {
     const s = byId.get(id);
     const date = s.published || s.accessed;
-    return opt.lang === 'en' ? `- ${s.publisher}, "${s.title}" (${date}) ${s.url}` : `- ${s.publisher}, 「${s.title}」 (${date}) ${s.url}`;
+    const url = String(s.url).replace(/[^\x00-\x7f]+/gu, encodeURIComponent);
+    return opt.lang === 'en' ? `- ${s.publisher}, "${s.title}" (${date}) ${url}` : `- ${s.publisher}, 「${s.title}」 (${date}) ${url}`;
   });
   return [opt.lang === 'en' ? 'Sources' : '출처', ...lines].join('\n');
 }
 
 /**
- * Empty ledgers for a new episode.
+ * Empty ledgers for a new episode. No review: the person who reads the ledger adds it.
  * @returns {{sources: object, facts: object}}
  */
 export function templates() {
   return {
     sources: { schema: SOURCES_SCHEMA, sources: [] },
-    facts: { schema: FACTS_SCHEMA, review: { by: '', on: '' }, claims: [] },
+    facts: { schema: FACTS_SCHEMA, claims: [] },
   };
 }
 
@@ -348,7 +437,8 @@ export const USAGE = `usage: facts.mjs <init|check|trace|cite> <episode-dir> [op
   trace  check, then trace every on-screen number to a claim
   cite   print the source list for the description
 options: --storyboard <file> (default storyboard.json, then storyboard.estimate.json)
-         --publish <file> (default publish.json)  --today YYYY-MM-DD  --max-age <years>
+         --publish <file> (default publish.json)  --thumbnail <file> (default thumbnail.json)
+         --today YYYY-MM-DD  --max-age <years>
          --lang ko|en  --out <file>`;
 
 /**
@@ -383,7 +473,7 @@ export function main(argv, io) {
     return 0;
   }
 
-  let sources, facts, storyboard = null, publish = null;
+  let sources, facts, storyboard = null, publish = null, thumbnail = null;
   try {
     sources = readJson(srcFile);
     facts = readJson(factFile);
@@ -391,6 +481,8 @@ export function main(argv, io) {
     if (sbFile) storyboard = readJson(sbFile);
     const pubFile = opts.publish || firstExisting(path.join(dir, 'publish.json'));
     if (pubFile) publish = readJson(pubFile);
+    const thumbFile = opts.thumbnail || firstExisting(path.join(dir, 'thumbnail.json'));
+    if (thumbFile) thumbnail = readJson(thumbFile);
   } catch (e) {
     io.err(`error: ${e.message}`);
     return 1;
@@ -400,12 +492,12 @@ export function main(argv, io) {
   const errors = [...checked.errors];
   const warnings = [...checked.warnings];
   let used = null;
-  if (cmd !== 'check' && (storyboard || publish)) {
-    const t = trace(facts, storyboard, publish);
+  if (cmd !== 'check' && (storyboard || publish || thumbnail)) {
+    const t = trace(facts, storyboard, publish, thumbnail);
     errors.push(...t.errors);
     warnings.push(...t.warnings);
     used = t.used;
-  } else if (cmd === 'trace') errors.push('nothing to trace: no storyboard.json, storyboard.estimate.json or publish.json');
+  } else if (cmd === 'trace') errors.push('nothing to trace: no storyboard.json, storyboard.estimate.json, publish.json or thumbnail.json');
 
   errors.forEach((e) => io.err(`error: ${e}`));
   warnings.forEach((w) => io.err(`warning: ${w}`));

@@ -9,11 +9,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/shortform-studio/skills/shorts-research/scripts/facts.mjs');
 const F = await import(SCRIPT);
-const { extractNumbers, sameNumber, blank, checkLedgers, screenItems, trace, cite, templates, parseArgs, main, SOURCES_SCHEMA, FACTS_SCHEMA, USAGE } = F;
+const { extractNumbers, matchesValue, sameNumber, blank, checkLedgers, screenItems, trace, cite, templates, parseArgs, main, SOURCES_SCHEMA, FACTS_SCHEMA, USAGE } = F;
 
 const TODAY = '2026-10-19';
+const NOARCH = 'source molit: no archive_url (pages change; save a web.archive.org copy, or record the failed attempt in archive_failed)';
 const src = (o = {}) => ({ id: 'molit', title: '하자 판정 현황', publisher: '국토교통부', url: 'https://example.go.kr/a', type: 'official', published: '2025-10', accessed: '2026-10-18', archive_url: 'https://web.archive.org/x', ...o });
-const claim = (o = {}) => ({ id: 'c-rank', text: '결로 판정이 누수보다 두 배 많았다', numbers: [{ value: 2, say: '두 배' }], sources: [{ id: 'molit', locator: '표 3', excerpt: '결로' }], as_of: '2025', status: 'verified', ...o });
+const claim = (o = {}) => ({ id: 'c-rank', text: '결로 판정이 누수보다 두 배 많았다', numbers: [{ value: 2, say: '두 배' }], sources: [{ id: 'molit', locator: '표 3', excerpt: '결로가 누수보다 두 배' }], as_of: '2025', status: 'verified', ...o });
 const ledgers = (s = [src()], c = [claim()]) => ({ sources: { schema: SOURCES_SCHEMA, sources: s }, facts: { schema: FACTS_SCHEMA, review: { by: 'ian', on: TODAY }, claims: c } });
 const check = (s, c, opt = { today: TODAY }) => { const l = ledgers(s, c); return checkLedgers(l.sources, l.facts, opt); };
 const io = () => { const out = [], err = []; return { out, err, io: { out: (s) => out.push(s), err: (s) => err.push(s) } }; };
@@ -36,13 +37,39 @@ describe('extractNumbers', () => {
     assert.deepEqual(vals('1만, 5천'), [10000, 5000]);
     assert.deepEqual(vals('30 40'), [30, 40]);
     assert.equal(extractNumbers('1만 5천 개')[0].raw, '1만 5천');
-    assert.deepEqual(extractNumbers('68cm 강물, 30%, 1978년에, 3·4호기').map((n) => n.raw), ['68cm', '30%', '1978년에', '3', '4호기']);
+    assert.deepEqual(extractNumbers('68cm 강물, 30%, 1978년에, 3·4호기').map((n) => n.raw), ['68cm', '30%', '1978년', '3', '4호기']);
   });
   test('native counts with a space, 절반, ordinals and words skipped', () => {
     assert.deepEqual(vals('두 배, 세 번, 열 개, 스무 채'), [2, 3, 10, 20]);
     assert.deepEqual(vals('주민 절반은'), [0.5]);
     assert.deepEqual(vals('세 번째 집, 세대 갈등, 두배, 한 집만, 가세 번'), []);
     assert.deepEqual(extractNumbers('6층 두 배').map((n) => n.index), [0, 3]);
+  });
+  test('small units join, minus signs, full-width digits and 할', () => {
+    assert.deepEqual(vals('1천 2백 명, 3백 50'), [1200, 350]);
+    assert.deepEqual(vals('-9mm, (-5도), −3, 3-4호기, 10-20%, A-5'), [-9, -5, -3, 3, 4, 10, 20, 5]);
+    assert.deepEqual(vals('-1만 5천, 1만 -5천'), [-15000, 10000, -5000]);
+    assert.deepEqual(vals('１９９２년 －５도 １,０００명'), [1992, -5, 1000]);
+    assert.equal(extractNumbers('１９９２년에')[0].raw, '１９９２년');
+    assert.deepEqual(vals('타율 3할, 9할 5, 30% 할인, 3할인'), [30, 90, 5, 30, 3]);
+  });
+  test('full dates are one number with parts; impossible dates are not', () => {
+    const d = extractNumbers('1992.10.26 시행, 2026-10-06, 1992. 7. 25., 2026/1/2');
+    assert.deepEqual(d.map((n) => [n.raw, n.value, n.parts]), [
+      ['1992.10.26', 1992, [1992, 10, 26]], ['2026-10-06', 2026, [2026, 10, 6]], ['1992. 7. 25', 1992, [1992, 7, 25]], ['2026/1/2', 2026, [2026, 1, 2]],
+    ]);
+    assert.deepEqual(vals('2014.12 개정, 2026.13.01, 2026.00.10, 2026.01.00, 2026.01.32'), [2014.12, 2026.13, 2026, 2026.01, 2026.01]);
+    assert.deepEqual(vals('2026-10.06'), [2026, 10.06]);
+  });
+  test('particles are trimmed from the unit shown', () => {
+    assert.deepEqual(extractNumbers('1978년에서 2곳을 4층만을 3배로 5도 2이').map((n) => n.raw), ['1978년', '2곳', '4층', '3배', '5도', '2']);
+  });
+  test('matchesValue compares plain numbers and every part of a date', () => {
+    const [date] = extractNumbers('1992.10.26');
+    assert.ok(matchesValue(date, [26, 10, 1992]));
+    assert.ok(!matchesValue(date, [1992, 10]));
+    assert.ok(matchesValue({ value: 3 }, [1, 3]));
+    assert.ok(!matchesValue({ value: 3 }, []));
   });
   test('sameNumber tolerates float noise only', () => {
     assert.ok(sameNumber(0.1 + 0.2, 0.3));
@@ -92,7 +119,7 @@ describe('checkLedgers', () => {
     assert.deepEqual(r.errors, ['source molit: duplicate id']);
     assert.deepEqual(r.warnings, [
       'source molit: accessed 2026-12-01 is after today (2026-10-19)',
-      'source molit: no archive_url (pages change; save a web.archive.org copy)',
+      NOARCH,
       'source unused: not cited by any claim',
     ]);
   });
@@ -121,7 +148,7 @@ describe('checkLedgers', () => {
   });
   test('numbers must match the claim text', () => {
     const w = check(undefined, [claim({ text: '튜브 높이 76cm, 강물 68cm', numbers: [{ value: 76 }, { value: 9 }] })]).warnings;
-    assert.deepEqual(w, ['claim c-rank: number 9 does not appear in its text', 'claim c-rank: "68cm" in the text is not listed in numbers']);
+    assert.deepEqual(w, ['claim c-rank: number 9 does not appear in its text', 'claim c-rank: "68cm" in the text is not listed in numbers', 'claim c-rank: not in any excerpt: 76, 9 (quote the line that gives each number)']);
     assert.deepEqual(check(undefined, [claim({ numbers: undefined, as_of: undefined, text: '결로가 많다' })]).warnings, []);
     assert.deepEqual(check(undefined, [claim({ text: '' })]).warnings, []);
   });
@@ -139,13 +166,42 @@ describe('checkLedgers', () => {
       'claim c-rank: source w has no locator (page, table, article or section)',
       'claim c-rank: excerpt from w2 is longer than 300 characters (quote only the line you need)',
       'claim c-rank: only encyclopedia sources; find the source they cite',
+      'claim c-rank: not in any excerpt: 2 (quote the line that gives each number)',
     ]);
+  });
+  test('every number must be in some excerpt (value, date part or say form)', () => {
+    const ex = (excerpts, numbers, text = '1992년 10월 26일 3층') => check(undefined, [claim({ text, numbers, sources: excerpts.map((e) => ({ id: 'molit', locator: 'p', excerpt: e })) })]).warnings;
+    const n = [{ value: 1992 }, { value: 10 }, { value: 26 }, { value: 3 }];
+    assert.deepEqual(ex(['1992.10.26 시행', '3층 이상'], n), []);
+    assert.deepEqual(ex(['3층 이상', undefined], n), ['claim c-rank: not in any excerpt: 1992, 10, 26 (quote the line that gives each number)']);
+    assert.deepEqual(ex(['결로가 누수보다 두 배'], [{ value: 2, say: '두 배' }], '두 배'), []);
+    assert.deepEqual(ex(['결로가 누수의 2배'], [{ value: 2, say: '두 배' }], '두 배'), []);
+    assert.deepEqual(ex([undefined], n), [], 'no excerpt, nothing to compare');
+    assert.deepEqual(check(undefined, [claim({ numbers: 'x', sources: [{ id: 'molit', locator: 'p', excerpt: '1' }] })]).warnings, [], 'bad numbers list');
+  });
+  test('archive_failed records a failed save; in_force is for laws and standards', () => {
+    assert.deepEqual(check([src({ archive_url: undefined, archive_failed: '2026-10-19 web.archive.org HTTP 523' })], [claim()]), { errors: [], warnings: [] });
+    assert.deepEqual(check([src({ archive_failed: '' })], [claim()]).errors, ['source molit: archive_failed must say when and how saving failed']);
+    const law = (o) => src({ type: 'law', ...o });
+    assert.deepEqual(check([law({ in_force: '2026-10-19' })], [claim()]), { errors: [], warnings: [] });
+    assert.deepEqual(check([law({ in_force: '2026-1-1' })], [claim()]).errors, ['source molit: in_force must be the YYYY-MM-DD day you confirmed the text is still in force']);
+    assert.deepEqual(check([law({ in_force: 7 })], [claim()]).errors, ['source molit: in_force must be the YYYY-MM-DD day you confirmed the text is still in force']);
+    assert.deepEqual(check([src({ in_force: '2026-10-19' })], [claim()]).errors, ['source molit: in_force is only for law and standard sources']);
+    assert.deepEqual(check([law({ in_force: '2026-12-01' })], [claim()]).warnings, ['source molit: in_force 2026-12-01 is after today (2026-10-19)']);
   });
   test('as_of and stale figures', () => {
     assert.deepEqual(check(undefined, [claim({ as_of: undefined })]).warnings, ['claim c-rank: has numbers but no as_of (the year the figure describes)']);
     assert.match(check(undefined, [claim({ as_of: '2020' })]).warnings[0], /from 2020, more than 3 years old/);
     assert.deepEqual(check(undefined, [claim({ as_of: '2020', historical: true })]).warnings, []);
     assert.deepEqual(check(undefined, [claim({ as_of: '2020' })], { today: TODAY, maxAge: 10 }).warnings, []);
+  });
+  test('a law or standard confirmed in force is not stale', () => {
+    const cites = ['molit', 'std', 'news'].map((id) => ({ id, locator: 'p', excerpt: '두 배' }));
+    const old = check([src({ type: 'law' }), src({ id: 'std', type: 'standard', in_force: '2026-10-01' }), src({ id: 'news', type: 'news', publisher: '연합뉴스' })], [claim({ as_of: '2020', sources: cites })]);
+    assert.deepEqual(old, { errors: [], warnings: [] });
+    assert.match(check([src({ type: 'law', in_force: '2021-01-01' })], [claim({ as_of: '2020' })]).warnings[0], /from 2020, more than 3 years old; .*"in_force" on its source/);
+    assert.match(check([src({ type: 'law', in_force: 'bad' })], [claim({ as_of: '2020' })]).warnings[0], /more than 3 years old/);
+    assert.match(check([src({ in_force: '2026-10-19' })], [claim({ as_of: '2020' })]).warnings[0], /more than 3 years old/, 'in_force on an official source does not count');
   });
 });
 
@@ -162,8 +218,8 @@ describe('screenItems and trace', () => {
     assert.deepEqual(items, [
       { where: 'caption 0 @1s', text: 'a', claims: ['x'], notFacts: undefined },
       { where: 'overlay 0', text: '수압', claims: undefined, notFacts: undefined },
-      { where: 'publish title', text: '줄1 / 줄2', claims: ['t'], notFacts: ['n'] },
-      { where: 'publish description', text: 'd1\nd2', claims: '*', notFacts: ['n'] },
+      { where: 'publish title', text: '줄1 / 줄2', claims: ['t'], notFacts: ['n'], shared: true },
+      { where: 'publish description', text: 'd1\nd2', claims: '*', notFacts: ['n'], shared: true },
     ]);
     assert.deepEqual(screenItems(null, { title: '제목', description: 'd' }).map((i) => i.text), ['제목', 'd']);
     assert.deepEqual(screenItems(null, { title: '' }), []);
@@ -221,6 +277,60 @@ describe('screenItems and trace', () => {
     assert.ok(trace(null, null, null).warnings.length === 2);
     assert.ok(trace({ review: { by: 'x', on: '' }, claims: [null, { id: 'k', text: '6', numbers: 'no', status: 'verified' }] }, { captions: [{ text: '6개', claims: ['k'] }] }, null).errors[0].includes('"6개" is not a number'));
   });
+
+  test('screenItems reads captions nested in scenes and publish hashtags', () => {
+    const items = screenItems({ scenes: [{ id: 's1', captions: [{ start: 2, text: '76cm', claims: ['c-tube'] }], overlays: [{ label: '2배' }] }, null, { bubbles: [{ text: '말' }] }] }, { hashtags: ['#1978년', '', '#건축'] });
+    assert.deepEqual(items.map((i) => [i.where, i.text, i.claims]), [
+      ['scene s1 caption 0 @2s', '76cm', ['c-tube']],
+      ['scene s1 overlay 0', '2배', undefined],
+      ['scene 2 bubble 0', '말', undefined],
+      ['publish hashtags', '#1978년 #건축', '*'],
+    ]);
+    assert.deepEqual(screenItems({ scenes: 'x' }, { hashtags: '#쇼츠' }).map((i) => i.where), ['publish hashtags']);
+  });
+
+  test('nested captions and hashtags are traced; hashtags share the description claims', () => {
+    const sb = { scenes: [{ id: 's1', captions: [{ start: 0, text: '76cm 튜브', claims: ['c-tube'] }, { start: 1, text: '99m' }] }] };
+    const r = trace(facts(), sb, { hashtags: ['#76cm', '#두배', '#1978년', '#30년'], description_claims: ['c-one', 'c-none'], description: '1978년' });
+    assert.deepEqual(r.errors, [
+      'scene s1 caption 1 @1s "99m": "99m" has no claim; add the claim id to "claims" or the phrase to "not_facts"',
+      'publish description: unknown claim "c-none"',
+      'publish hashtags "#76cm #두배 #1978년 #30년": "30년" is not a number of its claims (c-tube, c-one)',
+    ]);
+    assert.deepEqual(r.used, ['c-tube', 'c-one']);
+    assert.deepEqual(trace(facts(), null, { hashtags: '#1978년', description_claims: ['c-one'] }).errors, []);
+  });
+
+  test('dates, negatives and full-width digits on screen match claim numbers', () => {
+    const f = ledgers(undefined, [claim({ id: 'c-date', text: '1992년 10월 26일 시행, -5도', numbers: [{ value: 1992 }, { value: 10 }, { value: 26 }, { value: -5 }] })]).facts;
+    const r = trace(f, { captions: [{ text: '1992.10.26 시행', claims: ['c-date'] }, { text: '１９９２년 -5도', claims: ['c-date'] }, { text: '1992.10.27', claims: ['c-date'] }, { text: '5도', claims: ['c-date'] }] }, null);
+    assert.deepEqual(r.errors, [
+      'caption 2 "1992.10.27": "1992.10.27" is not a number of its claims (c-date)',
+      'caption 3 "5도": "5도" is not a number of its claims (c-date)',
+    ]);
+  });
+
+  test('not_facts: a hidden claim number warns; publish not_facts need only occur once', () => {
+    const sb = { captions: [
+      { text: '76cm 튜브, 1층', claims: ['c-tube'], not_facts: ['76cm 튜브', '1층'] },
+      { text: '결로가 두 배', claims: ['c-rank'], not_facts: ['두 배', '두 배'] },
+    ] };
+    const pub = { title: '1층 거실', title_claims: ['c-tube'], description: '두 배, 3층', hashtags: ['#3층'], not_facts: ['1층', '3층', '9층', '76cm'] };
+    const r = trace(facts(), sb, pub);
+    assert.deepEqual(r.errors, []);
+    assert.deepEqual(r.warnings, [
+      'caption 0: not_facts phrase "76cm 튜브" is a number of its claims (c-tube); trace it instead of hiding it',
+      'caption 1: not_facts phrase "두 배" is a number of its claims (c-rank); trace it instead of hiding it',
+      'publish title: not_facts phrase "76cm" is a number of its claims (c-tube); trace it instead of hiding it',
+      'publish description: not_facts phrase "76cm" is a number of its claims (c-tube, c-rank); trace it instead of hiding it',
+      'publish hashtags: not_facts phrase "76cm" is a number of its claims (c-tube, c-rank); trace it instead of hiding it',
+      'publish: not_facts phrase "9층" is in none of the title, description or hashtags',
+      'publish: not_facts phrase "76cm" is in none of the title, description or hashtags',
+    ]);
+    const bad = trace(facts(), null, { title: '제목', description: '설명', not_facts: '1층' });
+    assert.deepEqual(bad.errors, ['publish: not_facts must be a list of phrases']);
+    assert.deepEqual(bad.warnings, []);
+  });
 });
 
 describe('cite and templates', () => {
@@ -235,9 +345,14 @@ describe('cite and templates', () => {
     assert.equal(cite(l.sources, l.facts, null, { lang: 'en' }), 'Sources\n- 국토교통부, "하자 판정 현황" (2025-10) https://example.go.kr/a\n- 연합뉴스, "기사" (2026-10-18) https://example.go.kr/a');
     assert.equal(cite({}, {}, null), '출처');
   });
-  test('templates are valid empty ledgers', () => {
+  test('cite percent-encodes non-ASCII in URLs and leaves existing escapes alone', () => {
+    const l = ledgers([src({ url: 'https://www.law.go.kr/법령/건축법시행령/제46조?a=%20&b=ㆍ' })]);
+    assert.equal(cite(l.sources, l.facts, null), '출처\n- 국토교통부, 「하자 판정 현황」 (2025-10) https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%EA%B1%B4%EC%B6%95%EB%B2%95%EC%8B%9C%ED%96%89%EB%A0%B9/%EC%A0%9C46%EC%A1%B0?a=%20&b=%E3%86%8D');
+  });
+  test('templates are valid empty ledgers without a placeholder review', () => {
     const t = templates();
     assert.deepEqual(checkLedgers(t.sources, t.facts, { today: TODAY }), { errors: [], warnings: [] });
+    assert.equal('review' in t.facts, false);
   });
 });
 
@@ -261,7 +376,7 @@ describe('cli', () => {
     const o = io();
     assert.equal(main(['init', d], o.io), 0);
     assert.match(o.out[0], /Wrote .*sources\.json and .*facts\.json/);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(d, 'research/facts.json'), 'utf8')).schema, FACTS_SCHEMA);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(d, 'research/facts.json'), 'utf8')), { schema: FACTS_SCHEMA, claims: [] });
     const o2 = io();
     assert.equal(main(['init', d], o2.io), 1);
     assert.match(o2.err[0], /already exists/);
@@ -276,7 +391,7 @@ describe('cli', () => {
     assert.deepEqual(o.out, ['0 error(s), 0 warning(s); 1 sources, 1 claims.']);
     o = io();
     assert.equal(main(['trace', d, '--today', TODAY], o.io), 1);
-    assert.deepEqual(o.err, ['error: nothing to trace: no storyboard.json, storyboard.estimate.json or publish.json']);
+    assert.deepEqual(o.err, ['error: nothing to trace: no storyboard.json, storyboard.estimate.json, publish.json or thumbnail.json']);
     o = io();
     assert.equal(main(['cite', d, '--today', TODAY], o.io), 0);
     assert.match(o.out[0], /^출처\n- 국토교통부/);
@@ -331,6 +446,39 @@ describe('cli', () => {
     write(d, 'research/facts.json', l.facts);
     const o = io();
     assert.equal(main(['check', d, '--today', TODAY], o.io), 0);
-    assert.deepEqual(o.err, ['warning: source molit: no archive_url (pages change; save a web.archive.org copy)']);
+    assert.deepEqual(o.err, [`warning: ${NOARCH}`]);
+  });
+});
+
+describe('thumbnail tracing', () => {
+  const F2 = F;
+  test('screenItems reads headline and caption with their own claims', () => {
+    const items = F2.screenItems(null, null, { headline: { text: '9mm', claims: ['c-a'] }, caption: { text: '1층 벽' }, not_facts: ['1층'] });
+    assert.deepEqual(items, [
+      { where: 'thumbnail headline', text: '9mm', claims: ['c-a'], notFacts: ['1층'] },
+      { where: 'thumbnail caption', text: '1층 벽', claims: undefined, notFacts: ['1층'] },
+    ]);
+    assert.deepEqual(F2.screenItems(null, null, { headline: 'x', caption: { text: '' } }), []);
+    assert.deepEqual(F2.screenItems(null, null, 'x'), []);
+  });
+  test('trace checks thumbnail numbers', () => {
+    const facts = { review: { by: 'a', on: '2026-10-19' }, claims: [{ id: 'c-a', text: '9mm 판', numbers: [{ value: 9 }], status: 'verified' }] };
+    assert.deepEqual(F2.trace(facts, null, null, { headline: { text: '9mm', claims: ['c-a'] } }).errors, []);
+    assert.match(F2.trace(facts, null, null, { headline: { text: '12mm', claims: ['c-a'] } }).errors[0], /^thumbnail headline "12mm": "12mm" is not a number of its claims/);
+  });
+  test('cli picks up thumbnail.json and --thumbnail', () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'facts-th-'));
+    const l = ledgers();
+    fs.mkdirSync(path.join(d, 'research'));
+    fs.writeFileSync(path.join(d, 'research/sources.json'), JSON.stringify(l.sources));
+    fs.writeFileSync(path.join(d, 'research/facts.json'), JSON.stringify(l.facts));
+    fs.writeFileSync(path.join(d, 'thumbnail.json'), JSON.stringify({ headline: { text: '두 배', claims: ['c-rank'] } }));
+    let o = io();
+    assert.equal(main(['trace', d, '--today', TODAY], o.io), 0);
+    assert.match(o.out[0], /1 used on screen/);
+    fs.writeFileSync(path.join(d, 'other.json'), JSON.stringify({ headline: { text: '3배' } }));
+    o = io();
+    assert.equal(main(['trace', d, '--today', TODAY, '--thumbnail', path.join(d, 'other.json')], o.io), 1);
+    assert.match(o.err.join('\n'), /thumbnail headline "3배"/);
   });
 });
