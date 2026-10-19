@@ -39,6 +39,8 @@ Pick one line per character and adapt the colors to the character bible.
 | Magpie (kkachi) | black-and-white magpie with a long tail, bird of good news; small and lively |
 | Rabbit / turtle | simple bean-shaped animals in the style of `veg.jpg`, at most one human item (a tiny gat, a scarf) |
 
+Men's jeogori, as in Kim Hong-do's genre paintings (public domain, a good reference image): hip-length and loose over the trousers, the collar crossing with a thin white dongjeong strip, closed by one short goreum bow on the wearer's right chest; baji tied at the ankles with daenim. Never a belt or sash tied over the jacket: it turns a commoner or a thief into a martial-arts or ninja figure (tiger-persimmon r5-r8). Write it into the identity sentence and attach a Danwon painting as a clothing reference when a sheet keeps adding a belt.
+
 ## Architecture and locations
 
 | Location | Lines |
