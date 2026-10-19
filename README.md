@@ -13,6 +13,7 @@ A private-ready Codex plugin marketplace for bkw1769.
 | `fairytale-studio` | `storybook-narration` | Korean/English narration with Qwen3-TTS 1.7B on MLX: design and freeze voices, script/storyboard to lint-checked lines, batch generation with QA and retakes, full.wav + timeline.json (portable tts/ template + line tool). |
 | `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, recorded narration with ducking, collage helpers, frame-by-frame MP4 export, real-time recording with a pre-check, review stills, dev server) plus an MP4 probe and a picture/sound sync check. |
 | `shortform-studio` | `shorts-research` | Informational shorts: topic scoring, source ledger and claim ledger, and a checker that traces every on-screen number (captions, overlays, title, description, hashtags) to a claim and prints the description's source list (bundled checker + tests). |
+| `shortform-studio` | `shorts-thumbnail` | 9:16 Shorts thumbnail from the episode's own art using patterns measured on 1M+ view explainer Shorts: spec checker (parts, text length, safe area, mark count; tested) and a browser renderer with a phone-grid preview; numbers traced by shorts-research. |
 
 The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-narration → storybook-video.
 

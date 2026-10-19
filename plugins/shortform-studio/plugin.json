@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "shortform-studio",
-  "version": "0.1.0",
-  "description": "Skills for informational YouTube shorts: topic scoring, source and claim ledgers, and a checker that traces every on-screen number to a source.",
+  "version": "0.2.0",
+  "description": "Skills for informational YouTube shorts: topic scoring, source and claim ledgers with a checker that traces every on-screen number, and thumbnails designed from patterns of 1M+ view explainer Shorts.",
   "author": {
     "name": "bkw1769"
   },
@@ -22,7 +22,8 @@
         "defaultPrompt": [
           "아파트 결로 주제로 쇼츠 자료 조사해줘.",
           "이 쇼츠 대본 숫자 출처 검사해줘.",
-          "설명란에 넣을 출처 목록 만들어줘."
+          "설명란에 넣을 출처 목록 만들어줘.",
+          "이 쇼츠 썸네일 만들어줘."
         ]
       }
     }

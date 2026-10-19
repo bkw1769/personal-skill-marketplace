@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>쇼츠 썸네일</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #1b1b1b; color: #eee; font: 15px "Noto Sans KR", sans-serif; display: flex; gap: 24px; padding: 16px; align-items: flex-start; }
+  #big { height: calc(100vh - 32px); width: auto; aspect-ratio: 9 / 16; box-shadow: 0 6px 30px #000; }
+  aside { display: flex; flex-direction: column; gap: 12px; }
+  #tile { width: 180px; height: 320px; border-radius: 10px; }
+  button { font: 700 15px "Noto Sans KR", sans-serif; padding: 8px 14px; border-radius: 8px; border: 0; cursor: pointer; }
+  code { color: #9cf; }
+</style>
+</head>
+<body>
+<canvas id="big"></canvas>
+<aside>
+  <div>피드 크기 미리보기 (180px)</div>
+  <canvas id="tile" width="180" height="320"></canvas>
+  <button id="save">PNG로 저장</button>
+  <div id="status"></div>
+  <div>쿼리: <code>?spec=/path/thumbnail.json&amp;name=episode-thumbnail</code></div>
+</aside>
+<script type="module">
+// Usage: serve the project with scripts/dev-server/serve.mjs (POST /save writes PNGs to --save-dir) and open
+// .../index.html?spec=<url of thumbnail.json>&name=<file name without .png>. Console: await __saveThumb().
+import { drawThumbnail, loadImage } from './thumb.js';
+const q = new URLSearchParams(location.search);
+const specUrl = new URL(q.get('spec'), location.href);
+const spec = await (await fetch(specUrl)).json();
+const size = spec.size || { width: 1080, height: 1920 };
+const big = document.getElementById('big');
+big.width = size.width; big.height = size.height;
+try { await Promise.race([document.fonts.load('900 80px "Noto Sans KR"'), new Promise((r) => setTimeout(r, 4000))]); } catch (e) { /* system font */ }
+const im = await loadImage(new URL(spec.image, specUrl).href);
+drawThumbnail(big.getContext('2d'), spec, im);
+const tile = document.getElementById('tile').getContext('2d');
+tile.imageSmoothingQuality = 'high';
+tile.drawImage(big, 0, 0, 180, 320);
+const name = (q.get('name') || 'thumbnail').replace(/[^a-z0-9._-]/gi, '-') + '.png';
+window.__saveThumb = async () => {
+  const blob = await new Promise((r) => big.toBlob(r, 'image/png'));
+  const res = await fetch('/save?name=' + encodeURIComponent(name), { method: 'POST', body: blob });
+  const msg = res.ok ? `saved ${name} (${Math.round(blob.size / 1024)} KB)` : `save failed: ${res.status}`;
+  document.getElementById('status').textContent = msg;
+  return msg;
+};
+document.getElementById('save').onclick = () => window.__saveThumb();
+document.title = 'ready';
+</script>
+</body>
+</html>
