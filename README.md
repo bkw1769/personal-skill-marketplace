@@ -12,6 +12,7 @@ A private-ready Codex plugin marketplace for bkw1769.
 | `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, magenta key, paper-rim colour matching, contact sheet) and measure them (openings, colour positions, leftover magenta). |
 | `fairytale-studio` | `storybook-narration` | Korean/English narration with Qwen3-TTS 1.7B on MLX: design and freeze voices, script/storyboard to lint-checked lines, batch generation with QA and retakes, full.wav + timeline.json (portable tts/ template + line tool). |
 | `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, recorded narration with ducking, collage helpers, frame-by-frame MP4 export, real-time recording with a pre-check, review stills, dev server) plus an MP4 probe and a picture/sound sync check. |
+| `shortform-studio` | `shorts-research` | Informational shorts: topic scoring, source ledger and claim ledger, and a checker that traces every on-screen number (captions, overlays, title, description) to a claim and prints the description's source list (bundled checker + tests). |
 
 The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-narration → storybook-video.
 
@@ -21,6 +22,7 @@ The fairytale skills chain: art prompts → (image generation) → sheet-to-spri
 codex plugin marketplace add /Volumes/BAE_DATA/BAE_DATA/developer/personal-skill-marketplace
 codex plugin add personal-tools@bkw1769-personal
 codex plugin add fairytale-studio@bkw1769-personal
+codex plugin add shortform-studio@bkw1769-personal
 ```
 
 Start a new chat after installation. Use the personal project initialization skill to create a project scaffold.

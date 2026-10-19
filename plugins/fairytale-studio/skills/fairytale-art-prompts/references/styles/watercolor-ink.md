@@ -57,6 +57,8 @@ Expressions then come from the same parts: pupils move and shrink for fright, cr
 
 Learned on tiger-persimmon (2026-10-19): `round-pupil` (white eyes with pupils) on a resting face reads as vacant googly eyes, keep it for fright moments or very cartoonish side characters; `button` eyes set wide apart with an "o" mouth make a baby look shocked, small `dot` eyes set close together and low on a big round face with a wide smile read as a happy baby. A proud or boastful character reads best with `bean` eyes under lifted brows.
 
+References for faces: for an animal, look at photos of the real animal (CC0 or public domain; attached as shape-only references) and simplify its real features: a tiger has smallish almond amber eyes with round pupils and a white fur patch above each eye. Do not take eyes from another artist's stylization (the user rejected minhwa goggle eyes for the tiger). For babies use the picture-book baby proportions (Lorenz's baby schema): big high forehead, eyes set low on or below the middle of the face, about one eye-width apart, room below for the cheeks.
+
 Lines to add when faces drift: `each character keeps its own face type from the character bible: <name> <eye type>, <name> <eye type>` and `no two characters share the same eyes`.
 
 ## Negatives (paste into Constraints)

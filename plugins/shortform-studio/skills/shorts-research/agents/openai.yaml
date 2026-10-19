@@ -1,0 +1,3 @@
+interface:
+  display_name: "숏폼 자료 조사"
+  short_description: "정보형 쇼츠의 주제를 고르고 출처·사실 장부를 만들어 화면의 모든 숫자를 출처까지 추적합니다"
