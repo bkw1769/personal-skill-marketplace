@@ -56,4 +56,4 @@ Ask only for what is missing and cannot be inferred:
 - Writing and timing rules learned from the first video: `references/writing-rules.md`.
 - Full worked example (19 scenes, 21 captions, 7 bubbles, 317 cues): `references/example-troy-storyboard.json`. Made before the age research: against the 6-8 band it raises 9 warnings (3 minutes is short, 8 captions read faster than 5 syllables/s), which shows what the band rules change.
 
-Save the storyboard next to the story's other inputs (for example `stories/<story-id>/storyboard.json` and `storyboard.md`). Reply to the user in their language with the scene table summary and any remaining warnings.
+Save the storyboard next to the story's other inputs (for example `<project>/stories/<story-id>/storyboard.json` and `storyboard.md`, where `<project>` is `src/<project>` in a multi-project workspace or `.` in a single-project repo). Reply to the user in their language with the scene table summary and any remaining warnings.

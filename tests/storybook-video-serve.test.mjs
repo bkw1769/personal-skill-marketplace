@@ -48,7 +48,7 @@ describe('parseRange', () => {
 describe('resolveServed', () => {
   const root = path.resolve('/proj');
   test('allows only listed top-level folders and maps trailing slash to index.html', () => {
-    assert.deepEqual(SERVED_DIRS, ['prototypes', 'stories', 'assets', 'out']);
+    assert.deepEqual(SERVED_DIRS, ['src', 'prototypes', 'stories', 'assets', 'out']);
     assert.equal(resolveServed(root, '/prototypes/a/'), path.join(root, 'prototypes', 'a', 'index.html'));
     assert.equal(resolveServed(root, '/assets/x.png'), path.join(root, 'assets', 'x.png'));
     assert.equal(resolveServed(root, '/docs/MEMORY.md'), null);
@@ -71,7 +71,7 @@ describe('parseArgs', () => {
     assert.equal(host, '127.0.0.1');
     assert.equal(opts.root, DEFAULT_ROOT);
     assert.equal(opts.saveDir, path.join(DEFAULT_ROOT, 'out'));
-    assert.equal(opts.home, '/stories/');
+    assert.equal(opts.home, '/src/');
     assert.deepEqual(opts.serve, SERVED_DIRS);
   });
   test('overrides', () => {

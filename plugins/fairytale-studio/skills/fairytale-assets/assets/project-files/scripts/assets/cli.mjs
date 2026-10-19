@@ -4,7 +4,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fs from 'node:fs';
-import { loadCatalog, buildIndex, renderIndexMd, renderCredits, findManifests, readJson, writeJson, fillManifest, findItems, toPosix } from './lib.mjs';
+import { loadCatalog, buildIndex, renderIndexMd, renderCredits, findManifests, assetRoots, readJson, writeJson, fillManifest, findItems, toPosix } from './lib.mjs';
 
 /** Project root when --root is not given: the current working directory (npm scripts run at the root). */
 export const DEFAULT_ROOT = process.cwd();
@@ -80,7 +80,7 @@ export function main(argv, io) {
 
   if (cmd === 'fill') {
     let total = 0;
-    for (const mf of findManifests(path.join(projectRoot, 'assets'))) {
+    for (const mf of assetRoots(projectRoot).flatMap((r) => findManifests(r))) {
       const manifest = readJson(mf);
       const changed = fillManifest(manifest, path.dirname(mf));
       if (changed) {

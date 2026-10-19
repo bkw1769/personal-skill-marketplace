@@ -5,7 +5,7 @@ description: Find, reuse and register shared production assets for storybook / f
 
 # Fairy-tale assets
 
-`assets/` in the project is the single shared store. Every file there is labeled in the `manifest.json` of its folder; the catalog tool turns all manifests into `assets/catalog/index.json`, which is what to query. Human rules for the store are in `assets/README.md`.
+`assets/` at the workspace root is the shared store. In a multi-project workspace each project may also keep its own store at `src/<project>/assets/` (story characters and anything only that project uses); both use the same manifests and the same `assets/catalog/` taxonomy and source ledger. Every file is labeled in the `manifest.json` of its folder; the catalog tool reads `assets/` and every `src/*/assets/` into one `assets/catalog/index.json` (index paths start with `assets/` or `src/<project>/assets/`), which is what to query. Human rules for the store are in `assets/README.md`.
 
 ## 0. Set up a project that has no catalog yet
 
@@ -104,7 +104,7 @@ Voice sources in `sources.json`:
 
 ## Related skills
 
-- `fairytale-art-prompts` generates sheets into `out/`; approved sets move into the store with their prompts.json, crops.json and a manifest: character cut-out sheets to `assets/art/characters/<story>/<set>/` (sprites in its `sprites/`, category `cutout-sheet` / `sprite`), far background plates to `assets/art/backgrounds/<era>/`, torn-paper kit sheets to `assets/art/props/<era>/<set>/` (pieces in its `sprites/`). Re-cut the sprites inside the store (`cut-sprites.mjs crops.json --out sprites --rim <story paper>`) so sprites.json points at the copied sheets; sheets made later and not yet seen by the user stay `candidate`. Videos then load sprites and plates from `assets/`, not `out/`.
+- `fairytale-art-prompts` generates sheets into `<project>/out/`; approved sets move into the store with their prompts.json, crops.json and a manifest: character cut-out sheets to `<project>/assets/art/characters/<story>/<set>/` (sprites in its `sprites/`, category `cutout-sheet` / `sprite`), far background plates to `assets/art/backgrounds/<era>/`, torn-paper kit sheets to `assets/art/props/<era>/<set>/` (pieces in its `sprites/`). Re-cut the sprites inside the store (`cut-sprites.mjs crops.json --out sprites --rim <story paper>`) so sprites.json points at the copied sheets; sheets made later and not yet seen by the user stay `candidate`. Videos then load sprites and plates from `assets/`, not `out/`.
 - `sheet-to-sprites` cuts sprites; register them in `sprites/` under the set (category `sprite`).
 - `storybook-narration` designs, freezes and approves voices into `assets/audio/voices/`.
 - `storybook-video` plays synth sounds by name and can play registered samples; see its sound-design reference.

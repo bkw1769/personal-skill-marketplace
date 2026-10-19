@@ -9,8 +9,10 @@ A browser page that draws every frame from the storyboard and plays synthesized 
 
 ## 1. Scaffold
 
+**Project layout.** `<project>` below is the project folder: `src/<project>` in a multi-project workspace (one folder per product under `src/`, with the shared `assets/`, `tts/` and `scripts/` at the workspace root), or `.` in a single-project repo. Project-only files (stories, story characters, outputs in `<project>/out/`) live under `<project>/`; shared voices, music, instruments and era art stay in the root `assets/`.
+
 ```bash
-node <skill-dir>/scripts/new-story.mjs stories/<story>/video --storyboard stories/<story>/storyboard.json --sprites <characters>/sprites.json --sprites <kits>/sprites.json --narration out/tts/<story>-<lang>
+node <skill-dir>/scripts/new-story.mjs <project>/stories/<story>/video --storyboard <project>/stories/<story>/storyboard.json --sprites <characters>/sprites.json --sprites <kits>/sprites.json --narration <project>/out/tts/<story>-<lang>
 ```
 
 This copies the template, writes `story.config.js` with relative URLs, and warns about cast members with no sprite. `--sprites` repeats (character poses plus background element kits; all names land in one sprite table). `--narration` points at the storybook-narration output folder (`full.wav` + `timeline.json`); the storyboard must have been re-timed to it (story-storyboard `retime`, which writes `voice_lines`), and the page then plays the recorded voice instead of browser speech, with the music ducked under every line. Engine files (`index.html`, `js/{main,stage,audio,paint,sprites,util}.js`) can later be refreshed with `--update-engine`; author files (`story.config.js`, `js/scenes.js`, `js/score.js`) are never overwritten.
@@ -18,7 +20,7 @@ This copies the template, writes `story.config.js` with relative URLs, and warns
 ## 2. Serve and look
 
 ```bash
-node <skill-dir>/scripts/serve.mjs --serve stories,assets,out --home /stories/<story>/video/ --save-dir out
+node <skill-dir>/scripts/serve.mjs --serve src,stories,assets,out --home /<project>/stories/<story>/video/ --save-dir <project>/out/<story>-video
 ```
 
 The page must come over HTTP (sprites are images, the storyboard is fetched), and the page, storyboard and sprites must all be under the served root. The server binds 127.0.0.1, supports HTTP Range (needed to review the recorded video) and accepts recordings on `POST /save`. If the project already has its own dev server with these properties, use that.
@@ -50,7 +52,7 @@ Start with the auto score; replace it scene by scene in `js/score.js` when the s
 **Stills first.** After any change, save stills of only the changed moments and get them approved before making a video (a full recording takes the length of the story and can fail under load):
 
 ```js
-await __capture([13.5, 138, 150], 'review-gate')   // -> out/<save dir>/review-gate-0m13_5s.png ...
+await __capture([13.5, 138, 150], 'review-gate')   // -> <save dir>/review-gate-0m13_5s.png ...
 ```
 
 Send those files (named by time) and wait for an OK.
@@ -63,13 +65,13 @@ Send those files (named by time) and wait for an OK.
 Then verify:
 
 ```bash
-node <skill-dir>/scripts/probe-mp4.mjs out/<saveName>.mp4 --expect-duration <storyboard duration> --tolerance 1 --expect-size 1920x1080 --require-audio
+node <skill-dir>/scripts/probe-mp4.mjs <save dir>/<saveName>.mp4 --expect-duration <storyboard duration> --tolerance 1 --expect-size 1920x1080 --require-audio
 ```
 
 The probe cannot see drift. Always check picture against sound in the saved file:
 
 ```js
-await __sync('/out/<save dir>/<saveName>.mp4', [5, 60, 120, 200, 235])   // ok: true, worst offset 0
+await __sync('/<save dir>/<saveName>.mp4', [5, 60, 120, 200, 235])   // ok: true, worst offset 0
 ```
 
 It matches each frame of the video against frames drawn at nearby story times; the best offset must stay at 0 (±0.1 s) to the end. Also check frame rate and that audio is not silent; the full checklist is `references/output-verify.md`. You cannot hear the result, so ask the user to listen to it before calling it done.

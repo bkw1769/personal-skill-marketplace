@@ -148,6 +148,7 @@ describe('expandManifest', () => {
     assert.equal(items[1].kind, 'sfx');
     assert.equal(items[1].dir, 'audio/sfx/cartoon');
     assert.equal(items[1].manifest, 'assets/audio/sfx/cartoon/manifest.json');
+    assert.equal(items[1].root, 'assets');
   });
   test('handles a manifest with neither defaults nor items', () => {
     assert.deepEqual(lib.expandManifest({}, path.join(root, 'assets', 'manifest.json'), path.join(root, 'assets'), root), []);
@@ -228,6 +229,11 @@ describe('validateItem', () => {
     assert.match(errs({ impl: 'x.js#y' }), /exactly one of file or impl/);
     assert.match(errs({ file: 'missing.wav' }), /file not found: missing\.wav/);
   });
+  test('a file under a project assets root is looked up there', () => {
+    write('src/fairy/assets/audio/sfx/cartoon/zip.wav', 'zip');
+    assert.equal(errs({ file: 'zip.wav', root: 'src/fairy/assets' }), '');
+    assert.match(errs({ file: 'zip.wav' }), /file not found: zip\.wav/);
+  });
   test('sha256 checked only when present and checkHash is on', () => {
     assert.match(errs({ sha256: 'deadbeef' }), /sha256 mismatch/);
     assert.equal(errs({ sha256: sha(Buffer.from('pop')) }), '');
@@ -243,7 +249,35 @@ describe('validateItem', () => {
   });
 });
 
+describe('assetRoots', () => {
+  test('shared assets only when there is no src folder', () => {
+    assert.deepEqual(lib.assetRoots(root), [path.join(root, 'assets')]);
+  });
+  test('adds src/<project>/assets for projects that have one, sorted', () => {
+    write('src/zeta/assets/x.txt', 'x');
+    write('src/alpha/assets/x.txt', 'x');
+    write('src/noassets/readme.md', 'x');
+    write('src/file.txt', 'x');
+    assert.deepEqual(lib.assetRoots(root), [path.join(root, 'assets'), path.join(root, 'src/alpha/assets'), path.join(root, 'src/zeta/assets')]);
+  });
+});
+
 describe('loadCatalog', () => {
+  test('project assets roots are catalogued with the shared ones', () => {
+    seedValidProject();
+    write('src/fairy/assets/art/characters/dori/sheet.png', 'png');
+    write('src/fairy/assets/art/characters/dori/manifest.json', {
+      schema: lib.MANIFEST_SCHEMA,
+      items: [{ id: 'character.cast-lineup.dori', kind: 'character', category: 'cast-lineup', title: 'Dori', status: 'candidate', scope: 'story', source: 'cc0', tags: ['story:golden-axe'], file: 'sheet.png' }],
+    });
+    const { items, errors, sources } = lib.loadCatalog({ projectRoot: root });
+    assert.deepEqual(errors, []);
+    assert.equal(items.length, 4);
+    const dori = lib.buildIndex(items, sources).find((e) => e.id === 'character.cast-lineup.dori');
+    assert.equal(dori.path, 'src/fairy/assets/art/characters/dori/sheet.png');
+    assert.equal(dori.manifest, 'src/fairy/assets/art/characters/dori/manifest.json');
+    assert.equal(dori.root, undefined);
+  });
   test('valid project loads with no errors and skips vendor manifests', () => {
     seedValidProject();
     const { items, errors } = lib.loadCatalog({ projectRoot: root });
@@ -283,8 +317,9 @@ describe('index, find and rendering', () => {
     assert.equal(index[2].path, undefined);
     assert.equal(index[2].attribution_required, true);
     const sources = new Map(SOURCES.map((s) => [s.id, s]));
-    const [over] = lib.buildIndex([{ id: 'a', source: 'cc0', license: 'custom', dir: 'd' }], sources);
+    const [over] = lib.buildIndex([{ id: 'a', source: 'cc0', license: 'custom', dir: 'd', file: 'f.wav' }], sources);
     assert.equal(over.license, 'custom');
+    assert.equal(over.path, 'assets/d/f.wav');
   });
 
   test('findItems filters by every criterion', () => {

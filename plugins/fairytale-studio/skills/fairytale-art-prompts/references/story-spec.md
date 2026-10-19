@@ -3,7 +3,7 @@
 One JSON file per story describes every sheet; `scripts/assemble-prompts.mjs` pastes the module blocks around it and writes the prompts and `batch.json`, and `scripts/run-batch.sh` generates the images. No story needs its own prompt script (golden-axe had a 500-line one in a handoff folder, which nobody could reuse). Worked example: `examples/golden-axe-art.json` (a plate, the gate states and the whole/notched tree).
 
 ```bash
-node <skill-dir>/scripts/assemble-prompts.mjs stories/<id>/art.json
+node <skill-dir>/scripts/assemble-prompts.mjs <project>/stories/<id>/art.json
 ```
 
 ```bash

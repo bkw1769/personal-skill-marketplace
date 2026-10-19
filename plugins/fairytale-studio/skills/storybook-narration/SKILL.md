@@ -88,11 +88,11 @@ Then listen, `pick` and `approve`, as for a designed voice. A variant can only c
 **Convert the script into lines.** `scripts/narration-lines.mjs` (Node 22.8+) does this from a tagged text file or from a storyboard made by the story-storyboard skill:
 
 ```bash
-node <skill-dir>/scripts/narration-lines.mjs from-text stories/<id>/script-ko.txt --lang ko --voice narrator=narrator-ko --voice grandma=grandma-ko --prefix ko --voices-dir assets/audio/voices --out out/tts/<id>-ko/lines.jsonl
+node <skill-dir>/scripts/narration-lines.mjs from-text <project>/stories/<id>/script-ko.txt --lang ko --voice narrator=narrator-ko --voice grandma=grandma-ko --prefix ko --voices-dir assets/audio/voices --out <project>/out/tts/<id>-ko/lines.jsonl
 ```
 
 ```bash
-node <skill-dir>/scripts/narration-lines.mjs from-storyboard stories/<id>/storyboard.json --lang ko --voice narrator=narrator-ko --voice fox=fox-ko --voices-dir assets/audio/voices --out out/tts/<id>-ko/lines.jsonl
+node <skill-dir>/scripts/narration-lines.mjs from-storyboard <project>/stories/<id>/storyboard.json --lang ko --voice narrator=narrator-ko --voice fox=fox-ko --voices-dir assets/audio/voices --out <project>/out/tts/<id>-ko/lines.jsonl
 ```
 
 **Script format** (text file):
@@ -103,7 +103,7 @@ node <skill-dir>/scripts/narration-lines.mjs from-storyboard stories/<id>/storyb
 
 **Put every piece of dialogue on its own `[speaker]` line**, even when one voice reads everything. In that case, map all speakers to the same voice: `--voice narrator=narrator-ko --voice deer=narrator-ko`. This keeps lines short, keeps the speaker in `timeline.json` for captions and bubbles, and makes it easy to give the character its own voice later. The converter warns when quoted dialogue sits inside a narration paragraph.
 
-**Where to write the cleaned script.** Raw input from the user is usually messy. Write a cleaned TTS script next to the story, `stories/<id>/script-<lang>.txt`, and convert that. Leave the original as it is. Fix later problems in that script and re-convert; edit `lines.jsonl` directly only for quick `pause_after` tweaks.
+**Where to write the cleaned script.** Raw input from the user is usually messy. Write a cleaned TTS script next to the story, `<project>/stories/<id>/script-<lang>.txt`, and convert that. Leave the original as it is. Fix later problems in that script and re-convert; edit `lines.jsonl` directly only for quick `pause_after` tweaks.
 
 **What the converter produces:**
 - One sentence per line, because the model skips or repeats words on long inputs.
@@ -123,7 +123,7 @@ node <skill-dir>/scripts/narration-lines.mjs from-storyboard stories/<id>/storyb
 Each of these is a known way this model misreads or truncates. `references/script-writing.md` has the rewriting rules with examples. Conversion already lints. Run `lint` separately only after editing `lines.jsonl` by hand:
 
 ```bash
-node <skill-dir>/scripts/narration-lines.mjs lint out/tts/<id>-ko/lines.jsonl --lang ko --voices-dir assets/audio/voices
+node <skill-dir>/scripts/narration-lines.mjs lint <project>/out/tts/<id>-ko/lines.jsonl --lang ko --voices-dir assets/audio/voices
 ```
 
 Keep Korean and English as separate line files and output folders: one per channel.
@@ -131,7 +131,7 @@ Keep Korean and English as separate line files and output folders: one per chann
 ## 3. Generate
 
 ```bash
-tts/bin/tts batch out/tts/<id>-ko/lines.jsonl --out-dir out/tts/<id>-ko
+tts/bin/tts batch <project>/out/tts/<id>-ko/lines.jsonl --out-dir <project>/out/tts/<id>-ko
 ```
 
 **Per line**, the tool clones from the frozen voice with the checkpoint's own sampling settings and a token cap sized to the text. It then runs the QA checks:
@@ -194,9 +194,9 @@ Before anything is published, go through `references/publishing.md`. It covers:
 Reply to the user in their language. When asking them to listen, never send raw `take-1.wav` files: a player shows only the file name, and several `take-1.wav` from different characters cannot be told apart. Copy them into a `listen/` folder with an order number and the role in the name, then send those:
 
 ```text
-out/tts/<id>-<lang>/listen/00-narrator-full-story.wav
-out/tts/<id>-<lang>/listen/01-narrator-slow-storyteller-en-take3.wav
-out/tts/<id>-<lang>/listen/02-dori-en-take1.wav  02-dori-en-take2.wav ...
+<project>/out/tts/<id>-<lang>/listen/00-narrator-full-story.wav
+<project>/out/tts/<id>-<lang>/listen/01-narrator-slow-storyteller-en-take3.wav
+<project>/out/tts/<id>-<lang>/listen/02-dori-en-take1.wav  02-dori-en-take2.wav ...
 ```
 
 Say in the reply what each number group is (00 whole story, 01 narrator candidates, 02 Dori, ...) and ask for the choice by those names.

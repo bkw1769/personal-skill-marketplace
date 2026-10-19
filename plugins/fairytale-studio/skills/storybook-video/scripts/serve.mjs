@@ -3,8 +3,8 @@
 // top-level folders of the project, supports HTTP Range (needed for <video> seeking), and
 // accepts recorded videos and review stills (png/jpg) on POST /save into one output folder, and
 // reports the machine's load on GET /__load (the player checks it before a real-time recording). Loopback only.
-//   node serve.mjs [--port 8765] [--host 127.0.0.1] [--root <dir>] [--serve prototypes,stories,assets,out]
-//                  [--save-dir out] [--home /stories/]
+//   node serve.mjs [--port 8765] [--host 127.0.0.1] [--root <dir>] [--serve src,prototypes,stories,assets,out]
+//                  [--save-dir out] [--home /src/]
 // --serve lists the top-level folders under root that may be read; "*" serves everything under root.
 import http from 'node:http';
 import os from 'node:os';
@@ -14,7 +14,8 @@ import { pathToFileURL } from 'node:url';
 
 /** Project root when --root is not given: the current working directory (npm scripts run at the root). */
 export const DEFAULT_ROOT = process.cwd();
-export const SERVED_DIRS = ['prototypes', 'stories', 'assets', 'out'];
+// src/ holds one folder per project in a multi-project workspace (src/<project>/...); prototypes/ and stories/ are the single-project layout.
+export const SERVED_DIRS = ['src', 'prototypes', 'stories', 'assets', 'out'];
 export const SAVE_NAME = /^[a-z0-9][a-z0-9._-]*\.(mp4|webm|png|jpg)$/i;
 export const MAX_SAVE_BYTES = 1024 * 1024 * 1024;
 export const TYPES = {
@@ -208,7 +209,7 @@ export function parseArgs(argv) {
       root,
       serve: a.serve ? a.serve.split(',').filter(Boolean) : SERVED_DIRS,
       saveDir: path.resolve(root, a['save-dir'] || 'out'),
-      home: a.home || '/stories/',
+      home: a.home || '/src/',
     },
   };
 }

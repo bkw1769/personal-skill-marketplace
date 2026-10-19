@@ -5,14 +5,14 @@ Recording is real time, so a 3-minute story takes about 3 minutes. Do not call t
 ## 1. Container, size, duration, frame rate
 
 ```bash
-node <skill-dir>/scripts/probe-mp4.mjs out/<name>.mp4 --expect-duration <storyboard duration> --tolerance 1 --expect-size 1920x1080 --require-audio
+node <skill-dir>/scripts/probe-mp4.mjs <save dir>/<name>.mp4 --expect-duration <storyboard duration> --tolerance 1 --expect-size 1920x1080 --require-audio
 ```
 
 - Reads fragmented MP4 from MediaRecorder (Chrome) without ffprobe. Exit code 1 on any failed expectation; `--json` for machine-readable output.
 - Duration is usually 0.1-0.6 s longer than the storyboard (the recorder stops 0.6 s after the end).
 - `fps` is the average. 30 means no drops; below 24 means the scenes are too heavy for real-time capture (see animation-patterns.md) and motion will look jerky.
 - WebM files (Firefox, older Chrome) are not parsed; check them in the browser (step 2).
-- If ffprobe is installed, `ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,avg_frame_rate out/<name>.mp4` is an independent second opinion.
+- If ffprobe is installed, `ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,avg_frame_rate <save dir>/<name>.mp4` is an independent second opinion.
 
 ## 2. In the browser (same server)
 
@@ -21,7 +21,7 @@ Serve the output folder with HTTP Range support. Without Range, `<video>` report
 Audio is not silent, per 10-second window:
 
 ```js
-const buf = await (await fetch('/out/<name>.mp4')).arrayBuffer();
+const buf = await (await fetch('/<save dir>/<name>.mp4')).arrayBuffer();
 const audio = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(buf);
 const d = audio.getChannelData(0), win = audio.sampleRate * 10, peaks = [];
 for (let i = 0; i < d.length; i += win) { let p = 0; for (let j = i; j < Math.min(d.length, i + win); j++) p = Math.max(p, Math.abs(d[j])); peaks.push(+p.toFixed(2)); }

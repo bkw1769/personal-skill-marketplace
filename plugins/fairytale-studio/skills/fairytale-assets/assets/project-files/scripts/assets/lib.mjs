@@ -1,4 +1,5 @@
-// Asset catalog library: reads per-folder manifest.json files under assets/,
+// Asset catalog library: reads per-folder manifest.json files under assets/ (shared) and
+// src/<project>/assets/ (one project only),
 // validates labels against catalog/taxonomy.json and catalog/sources.json,
 // and builds the flat index that people and agents query.
 import fs from 'node:fs';
@@ -35,6 +36,7 @@ const NON_COMMERCIAL = /\bNC\b|non-?commercial|research[- ]only/i;
  * @property {string} [consent]  Project-relative path of a signed consent record (sources with requires_consent).
  * @property {string} manifest  Manifest path relative to the project root.
  * @property {string} dir       Folder of the manifest relative to the assets root.
+ * @property {string} [root]    The assets root relative to the project root (`assets` or `src/<project>/assets`).
  */
 
 /**
@@ -79,6 +81,24 @@ export function findManifests(assetsRoot) {
 }
 
 /**
+ * Every assets root of a project: the shared `assets/` first, then `src/<project>/assets/` for each
+ * project folder that has one, sorted by name.
+ * @param {string} projectRoot
+ * @returns {string[]} Absolute paths.
+ */
+export function assetRoots(projectRoot) {
+  const roots = [path.join(projectRoot, 'assets')];
+  const src = path.join(projectRoot, 'src');
+  if (fs.existsSync(src)) {
+    for (const entry of fs.readdirSync(src, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const dir = path.join(src, entry.name, 'assets');
+      if (entry.isDirectory() && fs.existsSync(dir)) roots.push(dir);
+    }
+  }
+  return roots;
+}
+
+/**
  * Merge manifest defaults into each item and attach location fields.
  * @param {{defaults?: Object, items?: Object[]}} manifest
  * @param {string} manifestPath Absolute path of the manifest.
@@ -91,7 +111,7 @@ export function expandManifest(manifest, manifestPath, assetsRoot, projectRoot) 
   const dir = toPosix(path.relative(assetsRoot, path.dirname(manifestPath)));
   const rel = toPosix(path.relative(projectRoot, manifestPath));
   return (manifest.items || []).map((raw) => {
-    const item = { ...defaults, ...raw, manifest: rel, dir };
+    const item = { ...defaults, ...raw, manifest: rel, dir, root: toPosix(path.relative(projectRoot, assetsRoot)) };
     item.tags = [...new Set([...(defaults.tags || []), ...(raw.tags || [])])];
     return /** @type {Item} */ (item);
   });
@@ -189,7 +209,7 @@ export function validateItem(item, ctx) {
 
   if (Boolean(item.file) === Boolean(item.impl)) err('exactly one of file or impl is required');
   if (item.file) {
-    const abs = path.join(ctx.assetsRoot, item.dir, item.file);
+    const abs = path.join(item.root ? path.join(ctx.projectRoot, item.root) : ctx.assetsRoot, item.dir, item.file);
     if (!fs.existsSync(abs)) err(`file not found: ${item.file}`);
     else if (ctx.checkHash && item.sha256 && hashFile(abs) !== item.sha256) err('sha256 mismatch (file changed; run fill after review)');
   }
@@ -215,10 +235,12 @@ export function loadCatalog({ projectRoot, checkHash = true }) {
   /** @type {Item[]} */
   const items = [];
   const errors = [];
-  for (const mf of findManifests(assetsRoot)) {
-    const manifest = readJson(mf);
-    if (manifest.schema !== MANIFEST_SCHEMA) errors.push(`${toPosix(path.relative(projectRoot, mf))}: schema must be ${MANIFEST_SCHEMA}`);
-    items.push(...expandManifest(manifest, mf, assetsRoot, projectRoot));
+  for (const root of assetRoots(projectRoot)) {
+    for (const mf of findManifests(root)) {
+      const manifest = readJson(mf);
+      if (manifest.schema !== MANIFEST_SCHEMA) errors.push(`${toPosix(path.relative(projectRoot, mf))}: schema must be ${MANIFEST_SCHEMA}`);
+      items.push(...expandManifest(manifest, mf, root, projectRoot));
+    }
   }
   const seen = new Set();
   for (const item of items) {
@@ -241,8 +263,9 @@ export function buildIndex(items, sources) {
       const src = sources.get(item.source);
       const entry = { ...item, source_name: src.name, source_policy: src.policy };
       for (const f of LICENSE_FIELDS) if (entry[f] === undefined) entry[f] = src[f];
-      if (item.file) entry.path = `assets/${item.dir}/${item.file}`;
+      if (item.file) entry.path = `${item.root || 'assets'}/${item.dir}/${item.file}`;
       delete entry.dir;
+      delete entry.root;
       return entry;
     })
     .sort((a, b) => a.id.localeCompare(b.id));

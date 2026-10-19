@@ -4,9 +4,9 @@ Every generated sheet is recorded so it can be reproduced or extended later with
 
 ## Folder
 
-`out/character-designs/<YYYY-MM-DD>-<story-slug>-v<N>/` containing the images, `prompts.json`, `README.md` and `character-bible.md`.
+`<project>/out/character-designs/<YYYY-MM-DD>-<story-slug>-v<N>/` (`<project>` = `src/<project>` in a multi-project workspace, `.` otherwise) containing the images, `prompts.json`, `README.md` and `character-bible.md`.
 
-`out/` is the drafting area and is gitignored. When the user approves a set, promote it to the shared asset store `assets/art/characters/<story-slug>/<set>/` (images, `prompts.json`, `README.md`, `character-bible.md`) and register it with a `manifest.json`, following the `fairytale-assets` skill. Cut sprites go in `sprites/` under that set.
+`out/` is the drafting area and is gitignored. When the user approves a set, promote it to the project's asset store `<project>/assets/art/characters/<story-slug>/<set>/` (story characters belong to one project; era backgrounds and kit pieces that other stories can reuse go to the shared root `assets/`) (images, `prompts.json`, `README.md`, `character-bible.md`) and register it with a `manifest.json`, following the `fairytale-assets` skill. Cut sprites go in `sprites/` under that set.
 
 The Troy set predates this convention and now lives only in `assets/art/characters/troy/2026-10-07-v1/` (the video prototype reads it from there); the `saved_path` values in its prompts.json still show the original `out/character-designs/` location. Style reference photos live in `assets/art/style-refs/watercolor-ink/`; the Troy prompts.json still shows their old names (`docs/resouse/creature 1.jpg`, now `creature-1.jpg`).
 
