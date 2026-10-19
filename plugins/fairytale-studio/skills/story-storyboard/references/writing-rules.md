@@ -2,6 +2,16 @@
 
 Learned while turning a four-beat synopsis into the 3-minute Troy storybook, and revised with the age research of 2026-10-08. Numbers that depend on the audience band (speed, pauses, sentence length, cast, scene length, questions) are in `audience-profiles.md`; this file holds the craft rules behind them.
 
+## Faithful to the source tale
+
+A traditional tale is retold, not rewritten. Its plot, its characters, who does what and why, and how it ends stay as in the commonly told version.
+
+- **Never change the story on your own.** Do not replace, add or remove a character or a plot event, change a character's role or motive, or change the ending, even to make it gentler for the audience band. Golden rule from 곶감과 호랑이 (2026-10-19): draft 1 turned the cow thief into a farmer looking for his own calf "so 3-5 year-olds see no crime"; that lost the double misunderstanding at the heart of the joke and the thief's light lesson, and the user restored the original.
+- **Adapt how it is shown, not what happens.** Allowed without asking: wording and narration style, pacing and scene split, comic staging and the look of a character (a thief can be silly and clumsy instead of menacing), keeping harm off screen and showing cause and result (see Adapting for children), a short closing line that states the moral the tale already has.
+- **Anything beyond that is a proposal.** Show the user the original beat and the proposed change side by side, with the reason and what is lost, and wait for a decision. This includes new endings or epilogues (an apology scene, a reunion), new named characters, a recurring channel mascot that appears in the tale, and dropped scenes.
+- **Choose and name the version.** Folk tales exist in variants; use the most widely told one (school textbooks, major picture books, encyclopedias of folk culture) and name it in the synopsis. If variants disagree on a beat that matters, ask.
+- **Write it down.** Every synopsis has a "Changes from the original" table (beat · original · ours · why · approved by the user: yes/pending). The storyboard copies approved ones into `notes.adaptations`; pending ones are not timed until approved.
+
 ## Facts first
 
 - Check every proper noun and relation in the synopsis before timing. The Troy synopsis said "그리스의 왕자 파리스"; Paris is a prince of Troy. Fix it, and record the fix in `notes.fact_checks` so the user sees it.
