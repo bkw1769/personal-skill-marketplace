@@ -55,6 +55,8 @@ The style block's default face is "slightly asymmetrical dot or small oval eyes,
 
 Expressions then come from the same parts: pupils move and shrink for fright, crescents for joy, brows tilt for worry. An expression sheet keeps each character's face type and changes only these parts.
 
+Learned on tiger-persimmon (2026-10-19): `round-pupil` (white eyes with pupils) on a resting face reads as vacant googly eyes, keep it for fright moments or very cartoonish side characters; `button` eyes set wide apart with an "o" mouth make a baby look shocked, small `dot` eyes set close together and low on a big round face with a wide smile read as a happy baby. A proud or boastful character reads best with `bean` eyes under lifted brows.
+
 Lines to add when faces drift: `each character keeps its own face type from the character bible: <name> <eye type>, <name> <eye type>` and `no two characters share the same eyes`.
 
 ## Negatives (paste into Constraints)
