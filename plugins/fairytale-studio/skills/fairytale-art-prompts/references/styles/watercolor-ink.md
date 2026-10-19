@@ -41,6 +41,22 @@ Palette: turquoise/sky blue, warm yellow ochre, leaf green, watery pink/coral, l
 
 Eras may add one or two tilt colors (see the era file); keep the total small so the set still reads as one family. Assign each main character two or three named colors in the character bible and never swap them.
 
+## Face vocabulary (one face type per character)
+
+The style block's default face is "slightly asymmetrical dot or small oval eyes, minimal eyebrows and tiny mouths". Used for everyone, it makes a whole cast look like one person in different clothes. Give each main character its own face type from this list, write it into the character's identity sentence in the character bible, and never give two main characters the same eye type. Everything stays inside the naive hand-drawn language: simple shapes, a few pen strokes, no glossy anime eyes.
+
+| Part | Types (pick one per character) |
+|---|---|
+| Eyes | `dot` small black dots · `bean` short vertical black ovals · `round-pupil` round white eyes with a small black pupil dot (lets the character look sideways or widen in fright) · `crescent` upward arcs, smiling closed eyes · `half-lid` round eyes with a heavy upper lid line, sleepy or sly · `slit` narrow sideways ovals with pupils shoved to one side, shifty · `line` short straight lines, calm or dozing · `button` big solid round black eyes, babies and small animals |
+| Brows | none · short dashes · thick bushy strokes · high arches (surprise, vanity) · one raised (sly) |
+| Nose | none · single dot · small triangle (animals) · round button · long line with a bump in profile |
+| Mouth | tiny line · small "u" smile · wide closed grin · round open "o" · crooked half-smile · wobbly line |
+| Cheeks | none · soft pink blush dots · freckles · stubble dots |
+
+Expressions then come from the same parts: pupils move and shrink for fright, crescents for joy, brows tilt for worry. An expression sheet keeps each character's face type and changes only these parts.
+
+Lines to add when faces drift: `each character keeps its own face type from the character bible: <name> <eye type>, <name> <eye type>` and `no two characters share the same eyes`.
+
 ## Negatives (paste into Constraints)
 
 Character, expression, turnaround, prop and location sheets use this line. Element-kit sheets replace it with the torn-paper collage negatives (`torn-paper-collage.md`), because there the paper piece is the point.
@@ -59,3 +75,4 @@ No photorealism, no 3D, no cut-paper collage, no digital gradients, no polished 
 | Paired characters overlap and cannot be cut apart (seen on Troy citizens) | `every figure stands apart with clear paper between them, even in pairs` |
 | Hair tufts, helmet plumes and horse ears reach into the row above or the title band, so crop boxes cut them (seen on the Troy cast sheet) | `leave clear paper above the highest point of every figure: hair, plumes, ears and raised hands` |
 | Faces gain detailed eyes or lashes | `eyes are simple dots or tiny ovals, no highlights, no lashes` |
+| Every character has the same dot eyes and tiny mouth, so the cast reads as one face (golden-axe and tiger-persimmon lineups) | give each a face type from the Face vocabulary in its identity sentence and add `no two characters share the same eyes` |

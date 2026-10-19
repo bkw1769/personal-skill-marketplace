@@ -54,7 +54,7 @@ If the requested style or era has no file yet, create it first from the skeleton
 
 ## Review checklist
 
-- Same face, hair, outfit colors and accessory as the anchor for every repeated character.
+- Same face, hair, outfit colors and accessory as the anchor for every repeated character; each character keeps its own face type (Face vocabulary in the style module) and no two share the same eyes.
 - Style holds: wobbly pen line, transparent wash with blooms, visible paper, dot eyes. Reject glossy, vector, anime or 3D drift.
 - Era holds: no anachronisms from the era module's banned list.
 - Captions legible and exactly as listed; no extra text.

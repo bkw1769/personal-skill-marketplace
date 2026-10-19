@@ -13,6 +13,7 @@ Identity sentences are pasted verbatim into every prompt. Edit here first, never
 - Silhouette: <tall-thin / short-round / ...>
 - Signature colors: <color 1>, <color 2> (not used as main colors by anyone else)
 - Signature accessory: <one item>
+- Face: <eye type · brows · nose · mouth · cheeks from the Face vocabulary in the style module; no two main characters share an eye type>
 - Identity sentence:
 
 ```text
