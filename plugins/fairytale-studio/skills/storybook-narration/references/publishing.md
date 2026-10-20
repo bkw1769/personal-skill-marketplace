@@ -41,6 +41,7 @@ The tool's `design` command never takes a real recording, so this is a manual, d
 - **Korea AI Basic Act** (in force 2026-01-22). The labeling duty falls on "AI business operators" who provide AI products or services to users. A creator who uses TTS as a tool for their own videos is generally read as a user, not an operator. An app that synthesizes speech for its users at runtime can be an operator. Fines (up to KRW 30M) have a grace period of at least one year.
 - **Default anyway.** Say near the start of the audio or video, and in the description, that the voices are AI-generated (for example "이 동화의 목소리는 AI로 만들었습니다." / "Voices in this story are AI-generated."). It costs nothing and covers the stricter readings.
 - **YouTube altered/synthetic content.** Disclosure is required when content makes a real person appear to say something. A fictional narrator voice does not need the label, but the description note above is still recommended.
+- **TikTok and Instagram AI labels.** Both read C2PA content credentials (which image models such as OpenAI's can embed) and label uploads automatically; Instagram also reads IPTC metadata. Turn the label on by hand (TikTok: More options > AI-generated content; Instagram: Advanced settings > AI label) so the post never carries an automatic label that contradicts it. The shortform-studio `shorts-publish` sheets set this.
 
 ## Platform risks
 

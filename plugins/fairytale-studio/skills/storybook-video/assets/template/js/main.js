@@ -368,6 +368,8 @@ window.__export = exportVideo;
 window.__record = record;
 
 // Review stills saved next to the recordings (POST /save): send these for approval before recording.
+// With saveName '<id>/<id>' they go to <save dir>/<id>/review/.
+const SAVE_FOLDER = (CONFIG.saveName || '').replace(/[^/]*$/, '');
 window.__capture = async (times, prefix = 'review') => {
   const off = document.createElement('canvas');
   off.width = W; off.height = H;
@@ -378,7 +380,7 @@ window.__capture = async (times, prefix = 'review') => {
     renderFrame(g, t);
     const blob = await new Promise((r) => off.toBlob(r, 'image/png'));
     const m = Math.floor(t / 60), sec = (t - m * 60).toFixed(1).replace('.', '_');
-    const name = `${safe}-${m}m${sec}s.png`;
+    const name = `${SAVE_FOLDER ? SAVE_FOLDER + 'review/' : ''}${safe}-${m}m${sec}s.png`;
     const r = await fetch(`/save?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob });
     if (!r.ok) throw new Error(`save ${name} failed (${r.status})`);
     names.push(name);

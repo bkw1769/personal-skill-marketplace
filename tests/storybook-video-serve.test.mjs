@@ -180,11 +180,18 @@ describe('server', () => {
     assert.equal(SAVE_NAME.test('a.gif'), false);
   });
   test('POST /save rejects missing or unsafe names', async () => {
-    for (const q of ['', '?name=', '?name=index.html', '?name=..%2Fx.mp4', '?name=.hidden.mp4']) {
+    for (const q of ['', '?name=', '?name=index.html', '?name=..%2Fx.mp4', '?name=.hidden.mp4', '?name=a%2F..%2Fx.mp4']) {
       const r = await request(port, { method: 'POST', path: '/save' + q, chunks: ['x'] });
       assert.equal(r.status, 400, q);
     }
     assert.ok(SAVE_NAME.test('troy-horse.MP4'));
+  });
+  test('POST /save writes into sub-folders and creates them', async () => {
+    const r = await request(port, { method: 'POST', path: '/save?name=' + encodeURIComponent('ep-1/review/still-0m1_0s.png'), chunks: ['p'] });
+    assert.equal(r.status, 200);
+    assert.equal(fs.readFileSync(path.join(root, 'out', 'rec', 'ep-1', 'review', 'still-0m1_0s.png'), 'utf8'), 'p');
+    for (const bad of ['a/../x.mp4', '../x.mp4', './x.mp4', '/x.mp4', 'a/.h/x.mp4', 'a//x.mp4', 'a/b/c/d/x.mp4', 'a\\x.mp4']) assert.equal(SAVE_NAME.test(bad), false, bad);
+    assert.ok(SAVE_NAME.test('a/b/c/x.mp4'));
   });
   test('POST /save reports write errors and cleans up', async () => {
     fs.mkdirSync(path.join(root, 'out', 'rec', 'busy.mp4.part'), { recursive: true });

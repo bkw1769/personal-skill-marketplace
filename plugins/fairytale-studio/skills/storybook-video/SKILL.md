@@ -57,7 +57,7 @@ await __capture([13.5, 138, 150], 'review-gate')   // -> <save dir>/review-gate-
 
 Send those files (named by time) and wait for an OK.
 
-**Make the video.** Two buttons, both saving `<saveName>.mp4` into the save folder:
+**Make the video.** Two buttons, both saving `<saveName>.mp4` into the save folder. `saveName` may hold folders (`<id>/<id>` saves to `<save dir>/<id>/<id>.mp4`; up to three, created on save), which keeps each video's takes, review stills and upload files in one folder:
 
 - **정밀 저장** (`await __export()`): frame-by-frame. Every frame is drawn from its exact time and encoded with WebCodecs, the sound is rendered offline from the same events, and both are written into one MP4 (`js/mp4mux.js`). It does not depend on machine load or on the page being visible, picture and sound cannot drift, and it runs faster than real time (12 s of golden-axe in 5 s at load 40). Use it by default.
 - **영상 저장** (real time, MediaRecorder): plays from 0 and records. Before starting it checks the machine (`/__load` on the dev server), that the audio actually started and that the audio clock runs at real speed, and refuses with the reason on the overlay when one fails (`__preflight` keeps the result; `__record(true)` forces it). Each of these spoiled a golden-axe take: a scripted click while the page was visible left the audio suspended; at load 25 the take ran at half speed; at load about 20 it passed the probe but ended 1 s out of sync. Press it with a real click.

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Local static server for browser prototypes and storybook videos. Serves only allow-listed
 // top-level folders of the project, supports HTTP Range (needed for <video> seeking), and
-// accepts recorded videos and review stills (png/jpg) on POST /save into one output folder, and
+// accepts recorded videos and review stills (png/jpg) on POST /save into one output folder (or up to
+// three sub-folders of it, e.g. name=tactile-paving/review/x.png), and
 // reports the machine's load on GET /__load (the player checks it before a real-time recording). Loopback only.
 //   node serve.mjs [--port 8765] [--host 127.0.0.1] [--root <dir>] [--serve src,prototypes,stories,assets,out]
 //                  [--save-dir out] [--home /src/]
@@ -16,7 +17,8 @@ import { pathToFileURL } from 'node:url';
 export const DEFAULT_ROOT = process.cwd();
 // src/ holds one folder per project in a multi-project workspace (src/<project>/...); prototypes/ and stories/ are the single-project layout.
 export const SERVED_DIRS = ['src', 'prototypes', 'stories', 'assets', 'out'];
-export const SAVE_NAME = /^[a-z0-9][a-z0-9._-]*\.(mp4|webm|png|jpg)$/i;
+// Each path part starts with a letter or digit, so ".." and hidden names cannot pass.
+export const SAVE_NAME = /^(?:[a-z0-9][a-z0-9._-]*\/){0,3}[a-z0-9][a-z0-9._-]*\.(mp4|webm|png|jpg)$/i;
 export const MAX_SAVE_BYTES = 1024 * 1024 * 1024;
 export const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -84,7 +86,7 @@ export function resolveServed(root, urlPath, serve = SERVED_DIRS) {
 }
 
 /**
- * Handle POST /save: stream the body to saveDir/<name>, enforcing the name pattern and size cap.
+ * Handle POST /save: stream the body to saveDir/<name> (sub-folders are created), enforcing the name pattern and size cap.
  * @param {http.IncomingMessage} req
  * @param {http.ServerResponse} res
  * @param {string | null} name
@@ -110,7 +112,7 @@ export function handleSave(req, res, name, opts) {
     ws.destroy();
     fs.rm(tmp, { force: true }, () => res.writeHead(code).end(msg));
   };
-  fs.mkdirSync(opts.saveDir, { recursive: true });
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
   const ws = fs.createWriteStream(tmp);
   req.on('data', (chunk) => {
     received += chunk.length;
