@@ -108,6 +108,28 @@ export function numberRows(storyboard, facts, sources) {
 }
 
 /**
+ * On-screen numbers that facts.mjs trace cannot see, because it reads only an overlay's text and label:
+ * a timer's count, a number's sub line, a card title, compare items, stage rows, buckle labels.
+ * A person compares these with the ledger by hand.
+ * @param {any} storyboard
+ * @returns {{at: number|null, kind: string, texts: string[], claims: string[]}[]}
+ */
+export function handCheckRows(storyboard) {
+  const out = [];
+  for (const o of Array.isArray(storyboard.overlays) ? storyboard.overlays : []) {
+    if (!isObj(o)) continue;
+    const texts = [];
+    if (o.kind === 'timer' && o.to !== undefined) texts.push(`${o.to}${o.unit ?? '초'}`);
+    texts.push(...[o.sub, o.title, o.skin, o.flesh].filter(str));
+    for (const it of Array.isArray(o.items) ? o.items : []) if (isObj(it)) texts.push(...[it.label, it.text].filter(str));
+    for (const r of Array.isArray(o.rows) ? o.rows : []) if (isObj(r)) texts.push([r.name, r.text].filter(str).join(' '));
+    const shown = texts.filter((s) => /\d/.test(s));
+    if (shown.length) out.push({ at: typeof o.start === 'number' ? o.start : null, kind: o.kind, texts: shown, claims: lines(o.claims) });
+  }
+  return out;
+}
+
+/**
  * Build the three sheets. Nothing is written here.
  * @param {{id: string, publish: any, facts: any, sources: any, storyboard: any, thumbnail?: any,
  *   channel?: any, video: string, cover: string, videoExists: boolean, coverExists: boolean,
@@ -174,6 +196,7 @@ export function build(input) {
 
   const reviewed = isObj(facts.review) && str(facts.review.by) && str(facts.review.on);
   const singles = t.used.filter((cid) => facts.claims.find((c) => c.id === cid)?.status === 'single-source');
+  const hand = handCheckRows(storyboard);
   const checks = (platform) => [
     '',
     '## 올리기 전 확인',
@@ -181,6 +204,7 @@ export function build(input) {
     reviewed ? `- [x] 사실 장부 검토: ${facts.review.by}, ${facts.review.on}` : '- [ ] **사실 장부 검토 기록이 없다.** 사람이 `research/facts.json`을 읽고 `review {by, on}`을 남겨야 올릴 수 있다.',
     ...singles.map((cid) => `- [ ] \`${cid}\`는 출처가 하나뿐이다. 문장에서 범위를 좁혀 말했는지 확인한다.`),
     '- [x] 화면·제목·설명·해시태그·썸네일의 숫자 추적: 오류 0',
+    ...(hand.length ? [`- [ ] 화면 숫자 ${hand.length}곳은 추적 검사가 읽지 못한다(카드 줄, 막대 문구, 타이머 숫자 등). ${platform === 'youtube' ? '아래 "직접 대조할 화면 숫자" 표' : 'youtube.md의 "직접 대조할 화면 숫자" 표'}를 \`research/facts.json\`과 대조한다.`] : []),
     input.videoExists ? `- [x] 영상 파일 있음: \`${input.video}\`` : `- [ ] **영상 파일이 없다:** \`${input.video}\``,
     ...(platform === 'tiktok' && duration !== null
       ? [duration > LIMITS.rewardsSeconds ? `- [x] 길이 ${secs}: 틱톡 수익화(1분 초과) 길이 조건을 채운다` : `- [ ] 길이 ${secs}: 1분 이하라 틱톡 수익화(Creator Rewards) 대상이 아니다`]
@@ -210,6 +234,10 @@ export function build(input) {
     ...(rows.length
       ? ['', '화면에 나오는 숫자와 근거:', '', '| 화면 | 시각 | 근거 |', '|---|---|---|',
         ...rows.map((r) => `| ${r.text} | ${r.at === null ? '-' : mmss(r.at)} | ${r.basis.slice(0, MAX_BASIS).join('; ') || r.claims.join(', ')}${r.basis.length > MAX_BASIS ? ` 외 ${r.basis.length - MAX_BASIS}곳` : ''} |`)]
+      : []),
+    ...(hand.length
+      ? ['', '직접 대조할 화면 숫자 (추적 검사가 읽지 못함):', '', '| 화면 | 시각 | 종류 | 주장 |', '|---|---|---|---|',
+        ...hand.map((h) => `| ${h.texts.join(' / ')} | ${h.at === null ? '-' : mmss(h.at)} | ${h.kind} | ${h.claims.join(', ') || '**없음**'} |`)]
       : []),
   ];
   const tiktok = [

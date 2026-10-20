@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "shortform-studio",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Skills for informational YouTube shorts: topic scoring, source and claim ledgers with a checker that traces every on-screen number, thumbnails designed from patterns of 1M+ view explainer Shorts, and upload sheets for YouTube Shorts, TikTok and Instagram Reels generated from one publish.json, and code motion graphics for the stills (sprite layers walking over an empty plate, animated diagram overlays pinned to the picture) with a checker for overlay limits, timing and engine copies.",
   "author": {
     "name": "bkw1769"

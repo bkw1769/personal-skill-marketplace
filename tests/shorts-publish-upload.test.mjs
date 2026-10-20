@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/shortform-studio/skills/shorts-publish/scripts/upload.mjs');
 const U = await import(SCRIPT);
-const { lines, mmss, pickHashtags, numberRows, build, parseArgs, main, MARK, CHANNEL_SCHEMA, LIMITS, USAGE } = U;
+const { lines, mmss, pickHashtags, numberRows, handCheckRows, build, parseArgs, main, MARK, CHANNEL_SCHEMA, LIMITS, USAGE } = U;
 
 const sources = () => ({
   schema: 'shorts-sources/1',
@@ -93,6 +93,34 @@ describe('helpers', () => {
     const many = { sources: Array.from({ length: 5 }, (_, i) => ({ id: `s${i}`, locator: `p${i}` })) };
     const r = build(input({ facts: facts({ claims: [{ ...facts().claims[0], sources: many.sources }] }), storyboard: { duration: 65, captions: [{ start: 2, text: '30cm', claims: ['c-size'] }] }, publish: publish({ description: ['한 장은 30cm입니다.'] }) }));
     assert.match(r.files['youtube.md'], /\| 30cm \| 0:02 \| s0 p0; s1 p1; s2 p2 외 2곳 \|/);
+  });
+  test('handCheckRows lists numbers trace cannot read', () => {
+    const sb = { overlays: [
+      null,
+      { kind: 'stages', start: 21.35, title: '일 최저기온 기준', rows: [{ name: '관심', text: '영하 5도 위' }, null, { name: '주의' }], claims: ['c-stages'] },
+      { kind: 'compare', start: 14.48, items: [{ label: '물', value: 100 }, { label: '얼음', text: '+9%' }, 7] },
+      { kind: 'timer', start: 3, to: 27 },
+      { kind: 'timer', to: 36, unit: 's', claims: ['c-36'] },
+      { kind: 'timer' },
+      { kind: 'number', start: 5, text: '41%', sub: '공공병원 111곳 조사' },
+      { kind: 'buckle', skin: '피부 2층', flesh: '속살' },
+      { kind: 'keyword', text: '동파', sub: '겨울' },
+    ] };
+    assert.deepEqual(handCheckRows(sb), [
+      { at: 21.35, kind: 'stages', texts: ['관심 영하 5도 위'], claims: ['c-stages'] },
+      { at: 14.48, kind: 'compare', texts: ['+9%'], claims: [] },
+      { at: 3, kind: 'timer', texts: ['27초'], claims: [] },
+      { at: null, kind: 'timer', texts: ['36s'], claims: ['c-36'] },
+      { at: 5, kind: 'number', texts: ['공공병원 111곳 조사'], claims: [] },
+      { at: null, kind: 'buckle', texts: ['피부 2층'], claims: [] },
+    ]);
+    assert.deepEqual(handCheckRows({}), []);
+    const r = build(input({ storyboard: { duration: 65, captions: storyboard().captions.slice(0, 4), overlays: [sb.overlays[1], sb.overlays[3], sb.overlays[4]] } }));
+    assert.deepEqual(r.errors, []);
+    assert.match(r.files['youtube.md'], /- \[ \] 화면 숫자 3곳은 추적 검사가 읽지 못한다.*아래 "직접 대조할 화면 숫자" 표를/);
+    assert.match(r.files['youtube.md'], /\| 관심 영하 5도 위 \| 0:21 \| stages \| c-stages \|\n\| 27초 \| 0:03 \| timer \| \*\*없음\*\* \|\n\| 36s \| - \| timer \| c-36 \|/);
+    assert.match(r.files['tiktok.md'], /youtube\.md의 "직접 대조할 화면 숫자" 표를/);
+    assert.doesNotMatch(build(input({ storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) })).files['youtube.md'], /직접 대조/);
   });
   test('parseArgs', () => {
     assert.deepEqual(parseArgs(['ep', '--out', 'o', '--force']), { dir: 'ep', opts: { out: 'o', force: true } });

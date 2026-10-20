@@ -66,6 +66,7 @@ node <skill-dir>/scripts/upload.mjs src/shorts/episodes/<id> --out src/shorts/ou
 
 - `--video` and `--thumbnail` default to `<id>.mp4` and `<id>-thumbnail.png` next to the upload folder.
 - **Exit 1** means nothing was written. Fix the errors it prints: an untraced number, a missing title or description, a length over a platform limit, a video over 3 minutes, a hand-written sheet in the way.
+- **Numbers trace cannot read** (stage card rows, compare labels, timer counts, a number's sub line, buckle labels) get an unchecked box in every sheet and a table "직접 대조할 화면 숫자" in `youtube.md`. Read each against `research/facts.json` with the user; a row without claims is marked **없음**.
 - **Warnings** still write the sheets. They become unchecked boxes in the checklist: no fact review, a single-source claim, a missing video file, no cover frame.
 
 ## After running
