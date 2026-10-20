@@ -141,6 +141,27 @@ For overlay-only motion, make one clean base still and let code draw the change.
 - Restyling an existing plate is also an EDIT that keeps the composition, so measured coordinates still fit (pruney-fingers soft wrinkles).
 - Dials and displays stay blank in every prompt (no digits). Code adds a digit when the line needs one (crosswalk l08 countdown `9`).
 
+## Changed-state still (for reveal)
+
+When a line says that something changes state (freezes, rusts, fills, lights up), draw the changed state as a second still and let `reveal` spread it over the first (design rule 13). It must be an EDIT of the base still, so the two line up pixel for pixel.
+
+- Attach the base still as the only input and call it the EDIT TARGET. Do not attach the style hero: the base already carries the style, and a second image invites a new composition.
+- Ask to reproduce the exact image (same camera, framing, size, materials, light) and change ONLY the state.
+- Name every fixed element and where it is, as for the empty plate. Named things stay put.
+- Describe the change as handmade model material (matte hoarfrost crust, fern frost on the glass, short clear icicles), thicker on upper edges.
+- Forbid what would read as a different event: cracks, broken glass, spray, lines, arrows, text.
+
+Water meter `box-frozen` (EDIT of `box-empty`, prompt `art/prompts/box-frozen.txt`), shortened:
+
+```text
+Use your image generation tool to create ONE new image. Input image: the EDIT TARGET. Reproduce this exact image - same camera, same framing, same 1024x1536 portrait size, same miniature-diorama materials, lighting and tilt-shift look - and change ONLY one thing: everything inside the open water-meter box is now frozen solid in deep winter.
+Keep in exactly the same place and shape: the beige plaster wall, the grey metal box frame and its open door on the left with its two brass hinges, the vertical pipe on the left, the bent pipe across the top, the pipe on the right, the brass nuts and fittings, the round meter body in the centre and its round glass cover with plain tick marks, the snow along the bottom edge.
+The frozen look (made by hand like the rest of the model, matte, not glossy CGI): a thin crust of white hoarfrost and tiny feathery ice crystals on the pipes, fittings and meter body; the glass cover fogged pale white-blue with fern-like frost growing from its rim; a few short clear icicles under the horizontal pipe; frost along the inner edges of the box frame.
+Do NOT draw cracks, broken glass, burst pipes, water spray, lines or arrows; the meter is frozen but intact. Absolutely no text, letters, numbers, digits, logos or watermarks. No people.
+```
+
+Run it with Codex directly (`codex exec ... -i art/<base>.png - < art/prompts/<name>.txt`, then `codex-image.mjs` on the log), because the episode's `run.sh` attaches the hero instead of the base. Before wiring it in, put the two stills side by side and check that the frame, pipes and door line up; then record the input in `sources.txt`.
+
 ## Pitfalls
 
 - run.sh attaches the hero; the edit and the sheet need the shot with people. Record the input in `sources.txt`.

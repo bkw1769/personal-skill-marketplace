@@ -56,7 +56,7 @@ Commands run from the project root.
    | a time or duration | `timer`, or `signal-bar` when no timer is on screen |
    | an amount | `number` (counts up), `compare` for before/after |
    | flow or direction | `arrow-flow`, `pulse-path` |
-   | spreading, freezing, a state change | `reveal` (a second, changed still fading in), `frost` (veins drawn on top), or a new kind |
+   | spreading, freezing, a state change | `reveal` (a second, changed still fading in; design rule 13), `frost` (veins drawn on top) only when no changed picture can be made, or a new kind |
    | graded levels (forecast stages, warning levels) | `stages` |
    | pressure, constriction | `squeeze` |
    | "this part" | `ring`, `label` with a pointer |
@@ -100,7 +100,7 @@ Commands run from the project root.
    ```
 
    - In `script.json`: unknown kinds and missing required fields (its `KINDS` table mirrors the engine), fractions outside 0..1, run times (`grow`, `count`, `dur`, `period`) that are not above 0, a counted `number` or `tape` text that draws NaN or 0, a timer `to` that is not a whole number or sits on a `plate: true` timer, picture-pointing kinds without `plate: true` (a warning), shot images without `art/<image>.png`, sprites missing from `art/sprites/sprites.json` or marked empty there, chunk indexes out of range, and numbers shown without `claims` (a warning; this covers keyword, label, arrow, dim and squeeze texts and buckle labels too).
-   - In the storyboard, when one exists: more diagram overlays on screen at once than `--max-overlays` (default 2, the user's limit; unknown kinds are not drawn, so not counted), two "time" overlays together, a layer `t` walked in under 0.3 s (fitMotion folds a late start to nothing) or ending later than 0.3 s before the cut, timers and signal bars that leave under 0.3 s of their end state, a repeated overlay that blinks off between lines, a `plate: true` overlay on screen over two pictures, consecutive layered shots with the same plate, framing and cast, and a stale storyboard (its overlay kinds differ from the script's, kind by kind, or it is older than the script). A hand-written storyboard (scene ids that are not `<line>-<n>`, like the crosswalk motion test) is checked with the script rules instead and never called stale.
+   - In the storyboard, when one exists: more diagram overlays on screen at once than `--max-overlays` (default 2, the user's limit; unknown kinds are not drawn, so not counted), two "time" overlays together, a layer `t` walked in under 0.3 s (fitMotion folds a late start to nothing) or ending later than 0.3 s before the cut, timers and signal bars that leave under 0.3 s of their end state, a `grow` (tape, frost, compare, reveal) longer than the overlay is on screen, so the cut comes first (fitMotion trims `dur`, never `grow`), a repeated overlay that blinks off between lines, a `plate: true` overlay on screen over two pictures, consecutive layered shots with the same plate, framing and cast, and a stale storyboard (its overlay kinds differ from the script's, kind by kind, or it is older than the script). A hand-written storyboard (scene ids that are not `<line>-<n>`, like the crosswalk motion test) is checked with the script rules instead and never called stale.
    - In every page whose `story.config.js` loads that storyboard: its `js/scenes.js` must draw every kind used, have `onFrame` when anything is `plate: true` and `layerAt` when there are layers; its `story.config.js` must list every shot image in `plates` and load the sprites manifest. Pages that load another storyboard are checked with `--storyboard` for that file.
    - Override files with `--script`, `--storyboard`, `--sprites` (repeatable). Exit 0 = no errors (warnings still print), 1 = errors or an unreadable file, 2 = usage. Fix every error before building.
 
@@ -150,7 +150,7 @@ Commands run from the project root.
 
 10. **Add an overlay kind when needed.** Write it as a function in the `OVERLAY` object of `src/shorts/_engine/video/js/scenes.js`; draw randomness from `rng(o.seed)` re-created every frame, so every frame and every export agree; reuse the positional names `onFrame` already pins (`from`, `to`, `box`, `x`+`y`, `paths`, `r`, `gap`) or add new ones there; name a run time `dur` so `fitMotion` fits it; add the kind to the checker's `KINDS` table with a test; copy the new `js/` into the episode's pages (step 5). Full steps: `references/overlays.md`.
 
-## Design rules (from the user, 2026-10-20)
+## Design rules (from the user, 2026-10-20 and 2026-10-21)
 
 1. **At most two diagram overlays on screen at once, never two with the same meaning** (checked). The 8.4 s test with tape, timer and signal-bar was too busy, and timer and signal-bar both said "time". Captions and walking sprites do not count.
 2. **The picture never contradicts the caption.** An elder still on the road under `다 건널 시간을 줍니다` read as a mistake. A figure that does not make it belongs only on the line that is about that (the twist, crosswalk l13). Known exception: crosswalk l04's child is still mid-road at the cut (v 0.45); it passed because that caption claims nothing about everyone crossing.
@@ -164,6 +164,7 @@ Commands run from the project root.
 10. **Measure, never guess, coordinates.** The balcony dim line sat 7% off until it was measured on a grid.
 11. **Test cuts are not for publishing.** The crosswalk motion test used unverified 30m/30초.
 12. **One session per episode folder.** Two sessions in crosswalk-green-time overwrote each other's configs.
+13. **Show a change of state with a changed picture, not lines drawn on it** (user, 2026-10-21). Frost veins drawn over the water meter read as odd; the user asked for "only the feeling of freezing". Make a second still of the changed state as an EDIT of the base still (`references/art-for-layers.md`, Changed-state still) and spread it in with `reveal`; keep it as the next line's shot. Drawn kinds (`frost`, `pulse-path`, `squeeze`) stay for what a picture cannot show: a hidden flow, a force, a mechanism.
 
 ## Related skills
 

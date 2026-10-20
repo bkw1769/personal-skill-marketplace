@@ -10,7 +10,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/shortform-studio/skills/shorts-motion/scripts/motion.mjs');
 const T = await import(SCRIPT);
 const {
-  KINDS, TIME_KINDS, MOTION_KINDS, PIN_KINDS, SCRIPT_SCHEMA, MAX_OVERLAYS, FIT_PAD, MIN_MOVE, BLINK, CAMERA, MOVES, STILLS, BANDS, TIMED, USAGE,
+  KINDS, TIME_KINDS, MOTION_KINDS, PIN_KINDS, SCRIPT_SCHEMA, MAX_OVERLAYS, FIT_PAD, MIN_MOVE, GROW, BLINK, CAMERA, MOVES, STILLS, BANDS, TIMED, USAGE,
   shownText, checkScript, checkHandWritten, onScreen, checkStoryboard, builtFrom, captureName, stills, camera, toFrame, bandsHit, pngSize,
   spriteNames, engineKinds, configPlates, configSprites, usage, parseArgs, main,
 } = T;
@@ -670,6 +670,26 @@ describe('checkStoryboard', () => {
       'overlay at 20.00s: timer has no dur, so it runs the whole 1.00s and never shows its end state',
       `overlay at 22.00s: timer dur 0.20s leaves 0.20s of its 0.40s for the end state (fitMotion leaves 0.30s); ${trim}`,
     ]);
+  });
+  test('grow-driven overlays cut before they finish', () => {
+    const sb = { scenes: [], overlays: [
+      { kind: 'reveal', image: 'box-frozen', start: 12.29, end: 13.49, grow: 1.8 },
+      { kind: 'reveal', image: 'box-frozen', start: 20, end: 21.6 },
+      { kind: 'frost', box: [0.1, 0.1, 0.5, 0.5], start: 30, end: 31 },
+      { kind: 'tape', from: [0.1, 0.5], to: [0.9, 0.5], start: 40, end: 40.5, grow: 0.01 },
+      { kind: 'compare', items: [], start: 50, end: 50.5 },
+      { kind: 'compare', items: [], start: 60, end: 61, grow: 'slow' },
+      { kind: 'number', text: '36개', start: 70, end: 70.2 },
+    ] };
+    const { errors, warnings } = checkStoryboard(sb, 2);
+    assert.deepEqual(errors, []);
+    const cut = 'so the cut comes before it finishes; shorten grow or start it earlier (fitMotion does not trim grow)';
+    assert.deepEqual(warnings, [
+      `overlay at 12.29s: reveal grows for 1.80s but is on screen 1.20s, ${cut}`,
+      `overlay at 30.00s: frost grows for 2.00s but is on screen 1.00s, ${cut}`,
+      `overlay at 50.00s: compare grows for 0.90s but is on screen 0.50s, ${cut}`,
+    ]);
+    assert.deepEqual(GROW, { tape: 1.2, frost: 2, compare: 0.9, reveal: 1.6 });
   });
   test('too many overlays and the same idea twice', () => {
     const sb = { scenes: [], overlays: [

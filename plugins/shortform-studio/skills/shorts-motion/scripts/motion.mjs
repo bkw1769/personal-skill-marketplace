@@ -4,7 +4,7 @@
 // fractions, run times the engine divides by, counted texts that draw NaN, frame-anchored overlays that point
 // at the picture, sprite layers against the sprites manifest, chunk indexes and claims on numbers.
 // The storyboard (built or hand-written): how many diagram overlays share the screen, layer timing against
-// the scene end (FIT_PAD), timers that never finish, held overlays that blink, pinned overlays that cross a
+// the scene end (FIT_PAD), timers that never finish, grow-driven overlays cut before they finish, held overlays that blink, pinned overlays that cross a
 // change of picture, layered shots that jump at the cut, and whether it is stale. The episode pages that load
 // the storyboard (video/, video-<voice>/): overlay kinds, plate pinning and layer code in their engine copy,
 // plates and sprites in story.config.js. Also lists review times for the motion scenes (for the page's
@@ -22,6 +22,9 @@ export const FIT_PAD = 0.3;
 export const TOLERANCE = 0.006;
 // A layer path walked in less than this reads as a jump (fitMotion folds t to zero length when t starts too late).
 export const MIN_MOVE = 0.3;
+// Default grow time (s) of the kinds that build up over `grow` (scenes.js). fitMotion never trims grow, so a
+// grow longer than the overlay is cut mid-way (water meter l03: a 1.8 s reveal on a 1.2 s chunk).
+export const GROW = { tape: 1.2, frost: 2, compare: 0.9, reveal: 1.6 };
 // The same overlay (kind, place, text) ending and restarting less than this apart blinks off (a hold written with at: 0).
 export const BLINK = 0.1;
 // Camera moves of scenes.js MOVES: zoom [from, to] and pan offsets [[x, y] at the start, [x, y] at the end] in
@@ -335,6 +338,12 @@ export function checkStoryboard(sb, maxOverlays) {
       return errors.push(`overlay ${i + 1} (${o.kind}): start and end must be numbers with start < end; an out-of-range at_chunk or until_chunk writes null (a null start draws it from 0 s, a null end never)`);
     }
     live.push(o);
+    if (Object.hasOwn(GROW, o.kind)) {
+      const g = o.grow ?? GROW[o.kind];
+      if (fin(g) && g > o.end - o.start + TOLERANCE) {
+        warnings.push(`overlay at ${secs(o.start)}: ${o.kind} grows for ${secs(g)} but is on screen ${secs(o.end - o.start)}, so the cut comes before it finishes; shorten grow or start it earlier (fitMotion does not trim grow)`);
+      }
+    }
     if (!TIME_KINDS.includes(o.kind)) return;
     const span = o.end - o.start;
     if (o.dur == null) warnings.push(`overlay at ${secs(o.start)}: ${o.kind} has no dur, so it runs the whole ${secs(span)} and never shows its end state`);
