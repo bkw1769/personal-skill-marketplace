@@ -46,9 +46,9 @@ The patterns come from 99 Shorts with 1M+ views on a Korean explainer channel. S
 4. **Render.**
    - Copy `assets/renderer/` once to `src/shorts/_engine/thumbnail/`.
    - Serve the project with the dev server (`--serve src,assets --save-dir src/shorts/out`).
-   - Open `/src/shorts/_engine/thumbnail/index.html?spec=/src/shorts/episodes/<id>/thumbnail.json&name=<id>-thumbnail`.
+   - Open `/src/shorts/_engine/thumbnail/index.html?spec=/src/shorts/episodes/<id>/thumbnail.json&name=<id>/<id>-thumbnail`.
    - Look at both the full image and the 180 px tile. If the headline or mark is unclear at tile size, fix the spec and reload.
-   - Save with the button, or `await __saveThumb()` in the console. The file is `src/shorts/out/<id>-thumbnail.png`.
+   - Save with the button, or `await __saveThumb()` in the console. With `&name=<id>/<id>-thumbnail` the file is `src/shorts/out/<id>/<id>-thumbnail.png`, next to the episode's video (the dev server creates the folder).
 
 5. **Look at the PNG** (open the image, not just the exit code): subject clear, mark on the right spot, words readable, nothing in the bottom 20%.
 

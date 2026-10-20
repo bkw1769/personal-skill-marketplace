@@ -39,7 +39,7 @@ drawThumbnail(big.getContext('2d'), spec, im);
 const tile = document.getElementById('tile').getContext('2d');
 tile.imageSmoothingQuality = 'high';
 tile.drawImage(big, 0, 0, 180, 320);
-const name = (q.get('name') || 'thumbnail').replace(/[^a-z0-9._-]/gi, '-') + '.png';
+const name = (q.get('name') || 'thumbnail').replace(/[^a-z0-9._/-]/gi, '-') + '.png'; // may hold folders: <id>/<id>-thumbnail
 window.__saveThumb = async () => {
   const blob = await new Promise((r) => big.toBlob(r, 'image/png'));
   const res = await fetch('/save?name=' + encodeURIComponent(name), { method: 'POST', body: blob });
