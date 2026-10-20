@@ -51,7 +51,7 @@ const kind = (required, more = {}) => ({
 });
 
 /**
- * Overlay kinds drawn by src/shorts/_engine/video/js/scenes.js, as of 2026-10-20.
+ * Overlay kinds drawn by src/shorts/_engine/video/js/scenes.js, as of 2026-10-21.
  * required: fields the kind needs besides start/end (the builder writes those from at/at_chunk/until);
  * coords: scalar x/y fractions; points: [x, y] fields; boxes: [x, y, w, h] fields; paths: polyline lists
  * (all frame fractions, or plate fractions with plate:true); shows: text fields drawn on screen;
@@ -76,6 +76,8 @@ export const KINDS = {
   buckle: kind([], { coords: ['x', 'y'], shows: ['skin', 'flesh'], numbers: true, motion: true }),
   frost: kind(['box'], { boxes: ['box'], points: ['from'], motion: true, pin: true }),
   compare: kind(['items'], { coords: ['x', 'y'], numbers: true, motion: true }),
+  reveal: kind(['image'], { points: ['from'], motion: true, pin: true }),
+  stages: kind(['rows'], { coords: ['x', 'y'], shows: ['title'], numbers: true, motion: true }),
 };
 export const TIME_KINDS = Object.keys(KINDS).filter((k) => KINDS[k].time);
 export const MOTION_KINDS = Object.keys(KINDS).filter((k) => KINDS[k].motion);
@@ -110,13 +112,15 @@ const LAYER_RULES = [
 
 /**
  * Text an overlay puts on screen, for the claims check. A timer shows its count (`to`, default 10, plus
- * unit, default 초); compare shows each item's label and text (never its value).
+ * unit, default 초); compare shows each item's label and text (never its value); stages shows its title
+ * and each row's name and text.
  * @param {any} o an overlay with a known kind
  * @returns {string[]}
  */
 export function shownText(o) {
   if (o.kind === 'timer') return [`${o.to ?? 10}${o.unit ?? '초'}`];
   if (o.kind === 'compare') return (Array.isArray(o.items) ? o.items : []).flatMap((it) => (isObj(it) ? [it.label, it.text] : [])).filter(str);
+  if (o.kind === 'stages') return [o.title, ...(Array.isArray(o.rows) ? o.rows : []).flatMap((r) => (isObj(r) ? [r.name, r.text] : []))].filter(str);
   return KINDS[o.kind].shows.map((f) => o[f]).filter(str);
 }
 
@@ -157,7 +161,7 @@ function checkShot(s, k, at, chunks, ctx, errors, warnings) {
   s.layers.forEach((L, j) => checkLayer(L, `${at} layer ${j + 1}`, ctx, errors));
 }
 
-function checkOverlay(o, at, chunks, errors, warnings) {
+function checkOverlay(o, at, chunks, ctx, errors, warnings) {
   if (!isObj(o)) return errors.push(`${at}: must be an object`);
   if (!Object.hasOwn(KINDS, o.kind)) return errors.push(`${at}: unknown kind "${o.kind}"; the engine skips it silently`);
   const spec = KINDS[o.kind];
@@ -189,6 +193,13 @@ function checkOverlay(o, at, chunks, errors, warnings) {
     } else if (o.min !== undefined && !(fin(o.min) && items.every((it) => it.value > o.min))) {
       errors.push(`${at}: min ${o.min} must be below every value (bar height is (value - min) / (max - min))`);
     }
+  }
+  if (o.kind === 'stages' && o.rows !== undefined && !(Array.isArray(o.rows) && o.rows.length >= 2 && o.rows.every((r) => isObj(r) && str(r.name) && str(r.text)))) {
+    errors.push(`${at}: rows must be 2 or more {name, text} with text in both`);
+  }
+  if (o.kind === 'reveal' && o.image !== undefined) {
+    if (!str(o.image)) errors.push(`${at}: image must be a plate name (art/<image>.png)`);
+    else if (!ctx.hasImage(o.image)) errors.push(`${at}: art/${o.image}.png not found`);
   }
   if (o.kind === 'timer') {
     if (o.plate && o.to) errors.push(`${at}: a timer with "to" must not be plate:true; onFrame reads "to" as a point and the frame fails`);
@@ -231,7 +242,7 @@ export function checkScript(script, ctx) {
     else shots.forEach((s, k) => checkShot(s, k, `${id} shot ${k + 1}`, chunks, ctx, errors, warnings));
     const overlays = line.overlays ?? [];
     if (!Array.isArray(overlays)) errors.push(`${id}: overlays must be a list`);
-    else overlays.forEach((o, k) => checkOverlay(o, `${id} overlay ${k + 1}`, chunks, errors, warnings));
+    else overlays.forEach((o, k) => checkOverlay(o, `${id} overlay ${k + 1}`, chunks, ctx, errors, warnings));
   });
   return { errors, warnings };
 }
@@ -252,7 +263,7 @@ export function checkHandWritten(sb, base, ctx) {
     if (isObj(sc)) checkShot(sc, 0, `${base} scene ${str(sc.id) ? sc.id : k + 1}`, 0, ctx, errors, warnings);
   });
   sb.overlays.forEach((o, k) => {
-    if (isObj(o)) checkOverlay(o, `${base} overlay ${k + 1}`, 0, errors, warnings);
+    if (isObj(o)) checkOverlay(o, `${base} overlay ${k + 1}`, 0, ctx, errors, warnings);
   });
   return { errors, warnings };
 }
@@ -509,7 +520,7 @@ export function configSprites(src) {
 
 /**
  * What a script and a storyboard ask of the episode page: overlay kinds (known ones), whether any
- * overlay is plate:true, whether any shot has layers, and every shot image.
+ * overlay is plate:true, whether any shot has layers, and every shot image (reveal images included).
  * @param {any} script parsed script.json, or null to leave it out
  * @param {any} sb a storyboard with scenes and overlays lists, or null
  * @returns {{kinds: Set<string>, plate: boolean, layers: boolean, images: Set<string>}}
@@ -524,6 +535,8 @@ export function usage(script, sb) {
   const overlay = (o) => {
     if (!isObj(o)) return;
     if (Object.hasOwn(KINDS, o.kind)) use.kinds.add(o.kind);
+    // A reveal draws a second plate, so the page must load it like a shot image.
+    if (o.kind === 'reveal' && str(o.image)) use.images.add(o.image);
     if (o.plate) use.plate = true;
   };
   const lines = isObj(script) && Array.isArray(script.lines) ? script.lines.filter(isObj) : [];

@@ -350,6 +350,47 @@ Bar colours default to `#4fa8ff` (first) and `#bfe3ff` (others).
 
 The texts appear once the bars are 85% grown. Bars are scaled so the largest value is full height. `min` exaggerates the difference (min 80 draws 100 vs 109 as 20 : 29); use it only when no axis or values are drawn and the text states the real change. Use `min: 0` when heights must read exactly. `min` must be below every value; `min` equal to the largest value divides by zero (the checker rejects both). Equal values draw equal bars. The panel fades in over a fixed 0.2 s, so a repeat with `grow: 0.01` still fades in. Trace does not read `items[].text`: put the claim on the overlay and check it by hand.
 
+## reveal
+
+A second still of the same composition fades in over the shot under the same camera, spreading as a soft disc from a point until it covers the frame. Use it for a change of state that should look like the picture itself changing (freezing, rusting, lights coming on) rather than lines drawn on top. Added 2026-10-21 for the water meter: the user found the frost veins over the meter odd and asked for a frozen picture instead.
+
+| Field | Default | Unit | Meaning |
+|---|---|---|---|
+| `image` | required | plate name | The second still. It must be an EDIT of the shot's plate (same framing and size) or the two will not line up. The page's `plates` must list it (the checker reports a missing one). |
+| `from` | frame centre | [x, y] | Where the change starts. With `plate: true` it is a plate point (the meter centre). |
+| `grow` | 1.6 | s | Time until the disc covers the whole frame (ease in-out). |
+| `feather` | 0.25 | frame width fraction | Width of the soft edge. 0.3 reads as spreading, not as a hard circle. |
+
+```json
+{ "kind": "reveal", "image": "box-frozen", "plate": true, "from": [0.576, 0.498], "grow": 1.8, "feather": 0.3, "at_chunk": 1, "until": "end" }
+```
+
+Make the second still with `references/art-for-layers.md` section 2 (an EDIT that names every fixed element and changes only the state). To keep the changed state on the next line, make that line's shot the second still itself (water meter l04 uses `box-frozen` as its shot), not a repeated reveal. Pin it (`plate: true`) so `from` stays on its spot; the second still always follows the shot's camera.
+
+## stages
+
+A ladder card for graded levels (forecast stages, warning levels): one row per level with a name pill whose colour deepens with the level and the condition beside it. Rows slide in one after another. Added 2026-10-21 for Seoul's 4-stage freeze forecast.
+
+| Field | Default | Unit | Meaning |
+|---|---|---|---|
+| `rows` | required | [{name, text, color?}] | 2 or more levels, mildest first. Default pill colours: `#bfe3ff`, `#7cc0ff`, `#3d8bff`, `#1f4fd8` (the 5th and later reuse the last). |
+| `title` | none | text | Small heading above the rows (what the levels are measured by). |
+| `x` | 0.5 | frame fraction | Card centre. |
+| `y` | 0.2 | frame fraction | Top of the rows area. With a title and 4 rows the card ends near y 0.57, above the caption band. |
+| `w` | 0.84 | frame width fraction | Row width. |
+| `rh` / `gap` | 128 / 22 | px | Row height and gap. |
+| `step` | 0.35 | s | Delay between rows. |
+| `size` | 50 | px | Condition text size. |
+
+```json
+{ "kind": "stages", "title": "일 최저기온 기준", "x": 0.5, "y": 0.2,
+  "rows": [{ "name": "관심", "text": "영하 5도 위" }, { "name": "주의", "text": "영하 5~10도" },
+           { "name": "경계", "text": "영하 10~15도, 2일 이상" }, { "name": "심각", "text": "영하 15도 아래, 2일 이상" }],
+  "at": 0.2, "until": "end", "claims": ["c-forecast-stages"] }
+```
+
+Frame-anchored card (no `plate`). Trace does not read `rows`: put the claim on the overlay and check every row against the claim's text and caveat by hand (the water meter's 관심 boundary is written 초과 in 2023-24 and 이상 in 2025, so the row says 영하 5도 위).
+
 ## dim_bg
 
 Lays a 45% black veil over the whole frame (plate and layers, not captions), leaving the picture at 55% brightness, fading in over 0.2 s, so a card reads.

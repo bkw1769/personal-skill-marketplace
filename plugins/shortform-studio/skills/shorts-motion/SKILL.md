@@ -44,7 +44,7 @@ Commands run from the project root.
 1. **Pick the motion beats.**
    - Read the script beat by beat. Motion goes on principle lines and number lines: where the caption states a mechanism, a length, a time, an amount or a change.
    - One motion beat every 15-20 s is plenty: 3-5 in a 60-80 s short. Crosswalk (72.05 s in the soft-m take, 79.74 s in professor-m) has l04, l05, the l06 signal bar, l12 and l13, plus the l08 digit; the water meter (67.53 s) has l03, l04, l10.
-   - A beat is something the eye follows: `arrow-flow`, `tape`, `timer`, `signal-bar`, `pulse-path`, `squeeze`, `buckle`, `frost`, `compare`, sprite layers. Pop-in cards are light: `number`, `keyword`, `label`, `dim`, `xmark`, `check`, `ring`. When adjacent lines both want motion, give one of them only a light overlay, and tell the user.
+   - A beat is something the eye follows: `arrow-flow`, `tape`, `timer`, `signal-bar`, `pulse-path`, `squeeze`, `buckle`, `frost`, `compare`, `reveal`, `stages`, sprite layers. Pop-in cards are light: `number`, `keyword`, `label`, `dim`, `xmark`, `check`, `ring`. When adjacent lines both want motion, give one of them only a light overlay, and tell the user.
    - Hook, transitions and outro keep camera moves. Motion everywhere stops meaning anything, and every beat costs review time.
    - Write the plan as `line -> what moves -> what the caption says` and show it to the user before making any art.
 
@@ -56,7 +56,8 @@ Commands run from the project root.
    | a time or duration | `timer`, or `signal-bar` when no timer is on screen |
    | an amount | `number` (counts up), `compare` for before/after |
    | flow or direction | `arrow-flow`, `pulse-path` |
-   | spreading, freezing, a state change | `frost`, or a new kind |
+   | spreading, freezing, a state change | `reveal` (a second, changed still fading in), `frost` (veins drawn on top), or a new kind |
+   | graded levels (forecast stages, warning levels) | `stages` |
    | pressure, constriction | `squeeze` |
    | "this part" | `ring`, `label` with a pointer |
    | a myth / the right answer | `xmark` / `check` |

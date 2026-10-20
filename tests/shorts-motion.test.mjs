@@ -48,6 +48,8 @@ const EVERY_KIND = [
   { kind: 'frost', plate: true, box: [0.29, 0.24, 0.59, 0.43], from: [0.576, 0.498], grow: 2.4 },
   { kind: 'compare', x: 0.5, y: 0.37, min: 80, items: [{ label: '물', value: 100 }, { label: '얼음', value: 109, text: '+9%' }], claims: ['c-9'] },
   { kind: 'compare', items: [{ label: '물', value: 1 }, { label: '얼음', value: 2 }] },
+  { kind: 'reveal', image: 'box', plate: true, from: [0.576, 0.498], grow: 1.8, feather: 0.3 },
+  { kind: 'stages', title: '일 최저기온', rows: [{ name: '관심', text: '영하 5도 위' }, { name: '주의', text: '영하 5~10도' }], claims: ['c-stages'] },
 ];
 const goodScript = (o = {}) => ({
   schema: SCRIPT_SCHEMA,
@@ -148,13 +150,13 @@ describe('kinds', () => {
   test('the table covers every engine kind', () => {
     assert.deepEqual(Object.keys(KINDS), [
       'keyword', 'number', 'label', 'arrow-flow', 'dim', 'xmark', 'check', 'dim_bg', 'tape', 'timer',
-      'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare',
+      'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare', 'reveal', 'stages',
     ]);
     assert.deepEqual(TIME_KINDS, ['timer', 'signal-bar']);
-    assert.deepEqual(MOTION_KINDS, ['arrow-flow', 'tape', 'timer', 'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare']);
-    assert.deepEqual(PIN_KINDS, ['label', 'arrow-flow', 'dim', 'tape', 'pulse-path', 'squeeze', 'ring', 'frost']);
-    assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].numbers), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'timer', 'squeeze', 'buckle', 'compare']);
-    assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].shows.length), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'squeeze', 'buckle']);
+    assert.deepEqual(MOTION_KINDS, ['arrow-flow', 'tape', 'timer', 'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare', 'reveal', 'stages']);
+    assert.deepEqual(PIN_KINDS, ['label', 'arrow-flow', 'dim', 'tape', 'pulse-path', 'squeeze', 'ring', 'frost', 'reveal']);
+    assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].numbers), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'timer', 'squeeze', 'buckle', 'compare', 'stages']);
+    assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].shows.length), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'squeeze', 'buckle', 'stages']);
     assert.deepEqual(KINDS.buckle.shows, ['skin', 'flesh']);
     assert.deepEqual(KINDS.label.required, ['x', 'y', 'text']);
     assert.deepEqual(KINDS.dim_bg, { required: [], coords: [], points: [], boxes: [], paths: [], shows: [], numbers: false, time: false, motion: false, pin: false });
@@ -176,6 +178,36 @@ describe('kinds', () => {
     assert.deepEqual(shownText({ kind: 'keyword', text: '동파' }), ['동파']);
     assert.deepEqual(shownText({ kind: 'buckle', skin: '피부', flesh: '' }), ['피부']);
     assert.deepEqual(shownText({ kind: 'ring', text: 'not drawn' }), []);
+    assert.deepEqual(shownText({ kind: 'stages', title: '기준', rows: [null, { name: '관심', text: '영하 5도 위' }, { name: '주의' }] }), ['기준', '관심', '영하 5도 위', '주의']);
+    assert.deepEqual(shownText({ kind: 'stages', rows: 'x' }), []);
+  });
+  test('reveal and stages fields', () => {
+    const rows = [{ name: '관심', text: '영하 5도 위' }, { name: '주의', text: '영하 5~10도' }];
+    let r = checkScript(line({ overlays: [
+      { kind: 'reveal', image: 'box', plate: true, from: [0.5, 0.5], grow: 1.8 },
+      { kind: 'stages', rows, title: '일 최저기온', claims: ['c-stages'] },
+    ] }), ctx());
+    assert.deepEqual(r, { errors: [], warnings: [] });
+    r = checkScript(line({ overlays: [
+      { kind: 'reveal', image: 'box-frozen', plate: true },
+      { kind: 'reveal', image: '', plate: true },
+      { kind: 'reveal', plate: true },
+      { kind: 'reveal', image: 'box' },
+      { kind: 'stages', rows: [rows[0]] },
+      { kind: 'stages', rows: [rows[0], { name: '주의' }] },
+      { kind: 'stages', rows },
+    ] }), ctx());
+    assert.deepEqual(r.errors, [
+      'l01 overlay 1: art/box-frozen.png not found',
+      'l01 overlay 2: image must be a plate name (art/<image>.png)',
+      'l01 overlay 3: reveal needs image',
+      'l01 overlay 5: rows must be 2 or more {name, text} with text in both',
+      'l01 overlay 6: rows must be 2 or more {name, text} with text in both',
+    ]);
+    assert.ok(r.warnings.some((w) => w.startsWith('l01 overlay 4: reveal points at the picture')));
+    assert.ok(r.warnings.some((w) => w.startsWith('l01 overlay 7: shows "관심 / 영하 5도 위 / 주의 / 영하 5~10도" with no claims') && w.endsWith('check it against facts.json by hand')));
+    const u = usage(line({ overlays: [{ kind: 'reveal', image: 'box-frozen' }, { kind: 'reveal' }] }), null);
+    assert.ok(u.images.has('box-frozen'));
   });
 });
 
@@ -342,7 +374,7 @@ describe('checkScript', () => {
   test('frame-anchored overlays that point at the picture', () => {
     const fields = {
       label: { x: 0.5, y: 0.3, text: '효소' }, 'arrow-flow': { from: [0.1, 0.5], to: [0.9, 0.5] }, dim: { from: [0.1, 0.5], to: [0.9, 0.5] },
-      tape: TAPE, 'pulse-path': { paths: [[[0.1, 0.5], [0.9, 0.5]]] }, squeeze: { x: 0.5, y: 0.5 }, ring: { x: 0.5, y: 0.5 }, frost: { box: [0.1, 0.1, 0.5, 0.5] },
+      tape: TAPE, 'pulse-path': { paths: [[[0.1, 0.5], [0.9, 0.5]]] }, squeeze: { x: 0.5, y: 0.5 }, ring: { x: 0.5, y: 0.5 }, frost: { box: [0.1, 0.1, 0.5, 0.5] }, reveal: { image: 'box' },
     };
     const frame = checkScript(line({ overlays: PIN_KINDS.map((k) => ({ kind: k, ...fields[k] })) }), ctx());
     assert.deepEqual(frame.errors, []);
@@ -832,7 +864,7 @@ describe('episode page sources', () => {
     assert.deepEqual([...u.kinds], Object.keys(KINDS));
     assert.equal(u.plate, true);
     assert.equal(u.layers, true);
-    assert.deepEqual([...u.images], ['top-empty', 'signal', 'box', 'extra']);
+    assert.deepEqual([...u.images], ['top-empty', 'box', 'signal', 'extra']); // box first: l04's reveal image
     assert.deepEqual(usage(null, null), { kinds: new Set(), plate: false, layers: false, images: new Set() });
     const v = usage({ lines: [null, { shots: 'x', overlays: 'y' }, { shots: [7, { image: '', layers: [{}] }], overlays: [{ kind: 'ring' }] }] }, null);
     assert.deepEqual(v, { kinds: new Set(['ring']), plate: false, layers: true, images: new Set() });
