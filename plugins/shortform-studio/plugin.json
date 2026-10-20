@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "shortform-studio",
-  "version": "0.2.0",
-  "description": "Skills for informational YouTube shorts: topic scoring, source and claim ledgers with a checker that traces every on-screen number, and thumbnails designed from patterns of 1M+ view explainer Shorts.",
+  "version": "0.4.0",
+  "description": "Skills for informational YouTube shorts: topic scoring, source and claim ledgers with a checker that traces every on-screen number, thumbnails designed from patterns of 1M+ view explainer Shorts, and upload sheets for YouTube Shorts, TikTok and Instagram Reels generated from one publish.json, and code motion graphics for the stills (sprite layers walking over an empty plate, animated diagram overlays pinned to the picture) with a checker for overlay limits, timing and engine copies.",
   "author": {
     "name": "bkw1769"
   },
@@ -11,7 +11,7 @@
     "com.openai": {
       "interface": {
         "displayName": "숏폼 스튜디오",
-        "shortDescription": "정보형 쇼츠 자료 조사·사실 검증 스킬",
+        "shortDescription": "정보형 쇼츠 자료 조사·사실 검증·썸네일·업로드 정보·모션 그래픽 스킬",
         "longDescription": "정보형 유튜브 쇼츠 제작용 스킬 모음입니다. 주제 점수, 출처 장부와 사실 장부, 화면에 나오는 모든 숫자를 출처까지 추적하는 검사기를 포함합니다.",
         "developerName": "bkw1769",
         "category": "Productivity",
@@ -23,7 +23,9 @@
           "아파트 결로 주제로 쇼츠 자료 조사해줘.",
           "이 쇼츠 대본 숫자 출처 검사해줘.",
           "설명란에 넣을 출처 목록 만들어줘.",
-          "이 쇼츠 썸네일 만들어줘."
+          "이 쇼츠 썸네일 만들어줘.",
+          "이 쇼츠 유튜브·틱톡·인스타 업로드 정보 만들어줘.",
+          "이 쇼츠에 모션 그래픽 넣어줘."
         ]
       }
     }

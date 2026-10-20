@@ -1,0 +1,3 @@
+interface:
+  display_name: "쇼츠 모션 그래픽"
+  short_description: "정보형 쇼츠의 정지 이미지에 걸어가는 인형 레이어와 도식 애니메이션을 코드로 입혀 움직이는 영상으로 만듭니다"
