@@ -377,7 +377,8 @@ export function trace(facts, storyboard, publish, thumbnail = null) {
  * @param {any} sources parsed sources.json
  * @param {any} facts parsed facts.json
  * @param {string[]|null} claimIds claims to cite; null = every claim that is not rejected
- * @param {{lang?: 'ko'|'en'}} [opt]
+ * @param {{lang?: 'ko'|'en', urls?: boolean}} [opt] urls: false leaves the web addresses out (Shorts and Reels
+ *   descriptions do not make links clickable; keep the addresses in the episode's sources.txt)
  * @returns {string}
  */
 export function cite(sources, facts, claimIds, opt = {}) {
@@ -391,8 +392,8 @@ export function cite(sources, facts, claimIds, opt = {}) {
   const lines = order.map((id) => {
     const s = byId.get(id);
     const date = s.published || s.accessed;
-    const url = String(s.url).replace(/[^\x00-\x7f]+/gu, encodeURIComponent);
-    return opt.lang === 'en' ? `- ${s.publisher}, "${s.title}" (${date}) ${url}` : `- ${s.publisher}, 「${s.title}」 (${date}) ${url}`;
+    const url = opt.urls === false ? '' : ` ${String(s.url).replace(/[^\x00-\x7f]+/gu, encodeURIComponent)}`;
+    return opt.lang === 'en' ? `- ${s.publisher}, "${s.title}" (${date})${url}` : `- ${s.publisher}, 「${s.title}」 (${date})${url}`;
   });
   return [opt.lang === 'en' ? 'Sources' : '출처', ...lines].join('\n');
 }
@@ -439,7 +440,7 @@ export const USAGE = `usage: facts.mjs <init|check|trace|cite> <episode-dir> [op
 options: --storyboard <file> (default storyboard.json, then storyboard.estimate.json)
          --publish <file> (default publish.json)  --thumbnail <file> (default thumbnail.json)
          --today YYYY-MM-DD  --max-age <years>
-         --lang ko|en  --out <file>`;
+         --lang ko|en  --urls on|off (cite; off for Shorts, Reels and TikTok)  --out <file>`;
 
 /**
  * Command-line entry point.
@@ -454,6 +455,7 @@ export function main(argv, io) {
     return 2;
   }
   if (opts.lang !== undefined && !['ko', 'en'].includes(opts.lang)) { io.err('error: --lang must be ko or en'); return 2; }
+  if (opts.urls !== undefined && !['on', 'off'].includes(opts.urls)) { io.err('error: --urls must be on or off'); return 2; }
   if (opts.today !== undefined && !validDay(opts.today)) { io.err('error: --today must be YYYY-MM-DD'); return 2; }
   const maxAge = opts['max-age'] === undefined ? undefined : Number(opts['max-age']);
   if (maxAge !== undefined && !(maxAge >= 0)) { io.err('error: --max-age must be a number of years'); return 2; }
@@ -508,7 +510,7 @@ export function main(argv, io) {
     return errors.length ? 1 : 0;
   }
   if (errors.length) return 1;
-  const text = cite(sources, facts, used, { lang: opts.lang });
+  const text = cite(sources, facts, used, { lang: opts.lang, urls: opts.urls !== 'off' });
   if (opts.out) {
     fs.writeFileSync(opts.out, `${text}\n`);
     io.out(`Wrote ${opts.out}`);

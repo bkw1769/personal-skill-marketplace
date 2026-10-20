@@ -87,7 +87,7 @@ prints the sources of the claims used on screen, in order of first use (`--lang 
 
 ## Script reference
 
-`facts.mjs <init|check|trace|cite> <episode-dir>`; options `--storyboard <file>` (default `storyboard.json`, then `storyboard.estimate.json`), `--publish <file>` (default `publish.json`), `--today YYYY-MM-DD`, `--max-age <years>` (default 3), `--lang ko|en`, `--out <file>`. Exit 0 = no errors, 1 = errors or unreadable files, 2 = usage. Node 22.8+, no dependencies.
+`facts.mjs <init|check|trace|cite> <episode-dir>`; options `--storyboard <file>` (default `storyboard.json`, then `storyboard.estimate.json`), `--publish <file>` (default `publish.json`), `--today YYYY-MM-DD`, `--max-age <years>` (default 3), `--lang ko|en`, `--urls on|off` (cite: `off` leaves the web addresses out, for Shorts, Reels and TikTok text where links are not clickable; shorts-publish uses this), `--out <file>`. Exit 0 = no errors, 1 = errors or unreadable files, 2 = usage. Node 22.8+, no dependencies.
 
 ## Report to the user
 

@@ -344,6 +344,7 @@ describe('cite and templates', () => {
     assert.equal(cite(l.sources, l.facts, ['c2', 'missing']), '출처\n- 연합뉴스, 「기사」 (2026-10-18) https://example.go.kr/a\n- 국토교통부, 「하자 판정 현황」 (2025-10) https://example.go.kr/a');
     assert.equal(cite(l.sources, l.facts, null, { lang: 'en' }), 'Sources\n- 국토교통부, "하자 판정 현황" (2025-10) https://example.go.kr/a\n- 연합뉴스, "기사" (2026-10-18) https://example.go.kr/a');
     assert.equal(cite({}, {}, null), '출처');
+    assert.equal(cite(l.sources, l.facts, ['c2'], { urls: false }), '출처\n- 연합뉴스, 「기사」 (2026-10-18)\n- 국토교통부, 「하자 판정 현황」 (2025-10)');
   });
   test('cite percent-encodes non-ASCII in URLs and leaves existing escapes alone', () => {
     const l = ledgers([src({ url: 'https://www.law.go.kr/법령/건축법시행령/제46조?a=%20&b=ㆍ' })]);
@@ -414,6 +415,12 @@ describe('cli', () => {
     assert.equal(main(['cite', d, '--today', TODAY, '--storyboard', path.join(d, 'storyboard.estimate.json'), '--publish', path.join(d, 'publish.json'), '--lang', 'en', '--out', out], o.io), 0);
     assert.deepEqual(o.out, [`Wrote ${out}`]);
     assert.match(fs.readFileSync(out, 'utf8'), /^Sources\n- 국토교통부/);
+    o = io();
+    assert.equal(main(['cite', d, '--today', TODAY, '--storyboard', path.join(d, 'storyboard.estimate.json'), '--urls', 'off'], o.io), 0);
+    assert.doesNotMatch(o.out[0], /https?:/);
+    o = io();
+    assert.equal(main(['cite', d, '--urls', 'no'], o.io), 2);
+    assert.deepEqual(o.err, ['error: --urls must be on or off']);
   });
   test('bad files and non-list ledgers', () => {
     const d = tmp();
