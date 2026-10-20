@@ -50,6 +50,7 @@ const EVERY_KIND = [
   { kind: 'compare', items: [{ label: '물', value: 1 }, { label: '얼음', value: 2 }] },
   { kind: 'reveal', image: 'box', plate: true, from: [0.576, 0.498], grow: 1.8, feather: 0.3 },
   { kind: 'stages', title: '일 최저기온', rows: [{ name: '관심', text: '영하 5도 위' }, { name: '주의', text: '영하 5~10도' }], claims: ['c-stages'] },
+  { kind: 'stamp', text: '상상 장면', x: 0.05, y: 0.085 },
 ];
 const goodScript = (o = {}) => ({
   schema: SCRIPT_SCHEMA,
@@ -150,13 +151,13 @@ describe('kinds', () => {
   test('the table covers every engine kind', () => {
     assert.deepEqual(Object.keys(KINDS), [
       'keyword', 'number', 'label', 'arrow-flow', 'dim', 'xmark', 'check', 'dim_bg', 'tape', 'timer',
-      'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare', 'reveal', 'stages',
+      'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare', 'reveal', 'stages', 'stamp',
     ]);
     assert.deepEqual(TIME_KINDS, ['timer', 'signal-bar']);
     assert.deepEqual(MOTION_KINDS, ['arrow-flow', 'tape', 'timer', 'signal-bar', 'pulse-path', 'squeeze', 'ring', 'buckle', 'frost', 'compare', 'reveal', 'stages']);
     assert.deepEqual(PIN_KINDS, ['label', 'arrow-flow', 'dim', 'tape', 'pulse-path', 'squeeze', 'ring', 'frost', 'reveal']);
     assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].numbers), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'timer', 'squeeze', 'buckle', 'compare', 'stages']);
-    assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].shows.length), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'squeeze', 'buckle', 'stages']);
+    assert.deepEqual(Object.keys(KINDS).filter((k) => KINDS[k].shows.length), ['keyword', 'number', 'label', 'arrow-flow', 'dim', 'tape', 'squeeze', 'buckle', 'stages', 'stamp']);
     assert.deepEqual(KINDS.buckle.shows, ['skin', 'flesh']);
     assert.deepEqual(KINDS.label.required, ['x', 'y', 'text']);
     assert.deepEqual(KINDS.dim_bg, { required: [], coords: [], points: [], boxes: [], paths: [], shows: [], numbers: false, time: false, motion: false, pin: false });
@@ -180,6 +181,35 @@ describe('kinds', () => {
     assert.deepEqual(shownText({ kind: 'ring', text: 'not drawn' }), []);
     assert.deepEqual(shownText({ kind: 'stages', title: '기준', rows: [null, { name: '관심', text: '영하 5도 위' }, { name: '주의' }] }), ['기준', '관심', '영하 5도 위', '주의']);
     assert.deepEqual(shownText({ kind: 'stages', rows: 'x' }), []);
+  });
+  test('imagined lines: stamp, no digits, extreme as a question', () => {
+    const stamp = { kind: 'stamp', at: 0, until: 'end' };
+    const ok = checkScript(goodScript({ lines: [
+      { id: 'l03', beat: 'imagine', imagined: true, chunks: [{ text: '없애고 이어 붙이면?' }], overlays: [stamp] },
+      { id: 'l06', beat: 'imagine-extreme', imagined: true, say: '이대로 계속 버틴다면?', chunks: [{ text: '이대로 버틴다면?' }], overlays: [{ kind: 'stamp' }] },
+      { id: 'l07', beat: 'problem', imagined: false, chunks: chunks(1) },
+    ] }), ctx());
+    assert.deepEqual(ok, { errors: [], warnings: [] });
+    const bad = checkScript(goodScript({ lines: [
+      { id: 'a', imagined: 'yes', chunks: chunks(1) },
+      { id: 'b', imagined: true, chunks: [{ text: '30cm 늘어나면' }, null], overlays: [{ kind: 'number', text: '12톤', static: true }, 5] },
+      { id: 'c', beat: 'imagine-extreme', imagined: true, say: '다리가 무너집니다.', chunks: [{ text: '가' }, { text: '나' }], overlays: [{ kind: 'stamp', at_chunk: 1 }, { kind: 'frosty' }] },
+      { id: 'd', beat: 'imagine-extreme', chunks: chunks(1) },
+      { id: 'e', imagined: true, chunks: 'x', overlays: [{ kind: 'stamp', at: 0.5 }] },
+      { id: 'f', imagined: true, chunks: [{ text: '가' }], overlays: [{ kind: 'stamp', until: 1 }] },
+      { id: 'g', beat: 'imagine-extreme', imagined: true, chunks: [{ text: '가' }], overlays: [stamp] },
+      { id: 'h', imagined: true, chunks: [{ text: '가' }] },
+    ] }), ctx());
+    const whole = 'the stamp should cover the whole imagined line (at 0, until "end")';
+    const ask = 'the extreme imagined line should be asked as a question ("이대로 계속 버틴다면?"); it asserts nothing';
+    assert.deepEqual(bad.errors.filter((e) => !e.includes('unknown kind') && !e.includes('must be an object') && !e.includes('until_chunk')), [
+      'a: imagined must be true or false',
+      'b: an imagined line needs a stamp overlay ("상상 장면") so the picture is not taken for something that happened',
+      'b: an imagined line shows numbers (30cm 늘어나면 / 12톤); no number may sit on a picture that did not happen',
+      'd: beat imagine-extreme needs "imagined": true (a stamp, no numbers)',
+      'h: an imagined line needs a stamp overlay ("상상 장면") so the picture is not taken for something that happened',
+    ]);
+    assert.deepEqual(bad.warnings.filter((w) => !w.includes('no claims')), [`c: ${whole}`, `c: ${ask}`, `e: ${whole}`, `f: ${whole}`, `g: ${ask}`]);
   });
   test('reveal and stages fields', () => {
     const rows = [{ name: '관심', text: '영하 5도 위' }, { name: '주의', text: '영하 5~10도' }];
@@ -570,6 +600,7 @@ describe('onScreen', () => {
     const H = { kind: 'tape', start: 2, end: 4 };
     assert.deepEqual(onScreen([F, G, H, { ...H }]), [{ start: 0, end: 2, on: [F, G] }, { start: 2, end: 4, on: [H, { ...H }] }]);
     assert.deepEqual(onScreen([]), []);
+    assert.deepEqual(onScreen([{ kind: 'stamp', start: 0, end: 3 }, { kind: 'dim_bg', start: 0, end: 3 }]), []);
   });
   test('dim_bg never splits a span', () => {
     const A = { kind: 'tape', start: 0, end: 4 };

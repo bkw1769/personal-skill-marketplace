@@ -391,7 +391,23 @@ A ladder card for graded levels (forecast stages, warning levels): one row per l
 
 Frame-anchored card (no `plate`). Trace does not read `rows`: put the claim on the overlay and check every row against the claim's text and caveat by hand (the water meter's 관심 boundary is written 초과 in 2023-24 and 이상 in 2025, so the row says 영하 5도 위).
 
-## dim_bg
+## stamp
+
+A small rounded badge in the top-left corner that marks an imagined picture: the doubt "fixed" and the extreme shot of the four-step story (shorts-research `references/story-structure.md`, design rule 14). Added 2026-10-21.
+
+| Field | Default | Unit | Meaning |
+|---|---|---|---|
+| `text` | 상상 장면 | text | Badge text. Keep it short and never a number. |
+| `x`, `y` | 0.05, 0.085 | frame fraction | Top-left corner of the badge. |
+| `size` | 44 | px | Text size. |
+| `color` | dark 72% | CSS colour | Badge fill; the outline is the channel yellow. |
+
+```json
+{ "kind": "stamp", "at": 0, "until": "end" }
+```
+
+Frame-anchored, fades in over 0.2 s. Put it on every line marked `"imagined": true`, covering the whole line; the checker reports an imagined line without one and warns when it starts late or ends early. It is not a diagram: like `dim_bg` it does not count toward `--max-overlays`, so an imagined line can still carry two diagrams.
+
 
 Lays a 45% black veil over the whole frame (plate and layers, not captions), leaving the picture at 55% brightness, fading in over 0.2 s, so a card reads.
 

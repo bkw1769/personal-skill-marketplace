@@ -2,7 +2,8 @@
 // Check the motion graphics of an informational short in the portrait shorts engine (src/shorts/_engine).
 // script.json: overlay kinds and their required fields (the engine table in KINDS), frame and plate
 // fractions, run times the engine divides by, counted texts that draw NaN, frame-anchored overlays that point
-// at the picture, sprite layers against the sprites manifest, chunk indexes and claims on numbers.
+// at the picture, sprite layers against the sprites manifest, chunk indexes, claims on numbers, and imagined
+// lines (story-structure: a stamp, no digits, the extreme one asked as a question).
 // The storyboard (built or hand-written): how many diagram overlays share the screen, layer timing against
 // the scene end (FIT_PAD), timers that never finish, grow-driven overlays cut before they finish, held overlays that blink, pinned overlays that cross a
 // change of picture, layered shots that jump at the cut, and whether it is stale. The episode pages that load
@@ -81,6 +82,7 @@ export const KINDS = {
   compare: kind(['items'], { coords: ['x', 'y'], numbers: true, motion: true }),
   reveal: kind(['image'], { points: ['from'], motion: true, pin: true }),
   stages: kind(['rows'], { coords: ['x', 'y'], shows: ['title'], numbers: true, motion: true }),
+  stamp: kind([], { coords: ['x', 'y'], shows: ['text'] }),
 };
 export const TIME_KINDS = Object.keys(KINDS).filter((k) => KINDS[k].time);
 export const MOTION_KINDS = Object.keys(KINDS).filter((k) => KINDS[k].motion);
@@ -246,8 +248,38 @@ export function checkScript(script, ctx) {
     const overlays = line.overlays ?? [];
     if (!Array.isArray(overlays)) errors.push(`${id}: overlays must be a list`);
     else overlays.forEach((o, k) => checkOverlay(o, `${id} overlay ${k + 1}`, chunks, ctx, errors, warnings));
+    checkImagined(line, id, errors, warnings);
   });
   return { errors, warnings };
+}
+
+/**
+ * Story rules for an imagined line (shorts-research references/story-structure.md): `imagined: true` lines
+ * (the doubt "fixed", the extreme picture) carry a stamp for their whole length and show no digits; the
+ * `imagine-extreme` beat must be imagined and should be asked as a question.
+ * @param {any} line a script line (an object)
+ * @param {string} id
+ * @param {string[]} errors
+ * @param {string[]} warnings
+ */
+function checkImagined(line, id, errors, warnings) {
+  if (line.beat === 'imagine-extreme' && line.imagined !== true) errors.push(`${id}: beat imagine-extreme needs "imagined": true (a stamp, no numbers)`);
+  if (line.imagined === undefined) return;
+  if (typeof line.imagined !== 'boolean') return errors.push(`${id}: imagined must be true or false`);
+  if (!line.imagined) return;
+  const overlays = (Array.isArray(line.overlays) ? line.overlays : []).filter(isObj);
+  const stamp = overlays.find((o) => o.kind === 'stamp');
+  if (!stamp) errors.push(`${id}: an imagined line needs a stamp overlay ("상상 장면") so the picture is not taken for something that happened`);
+  else if ((stamp.at ?? 0) > 0 || (stamp.at_chunk ?? 0) > 0 || (stamp.until !== undefined && stamp.until !== 'end')) {
+    warnings.push(`${id}: the stamp should cover the whole imagined line (at 0, until "end")`);
+  }
+  const texts = (Array.isArray(line.chunks) ? line.chunks : []).map((c) => (isObj(c) ? c.text : null)).filter(str);
+  for (const o of overlays) if (Object.hasOwn(KINDS, o.kind)) texts.push(...shownText(o));
+  const digits = texts.filter((s) => DIGIT.test(s));
+  if (digits.length) errors.push(`${id}: an imagined line shows numbers (${digits.join(' / ')}); no number may sit on a picture that did not happen`);
+  if (line.beat === 'imagine-extreme' && !(str(line.say) && /\?\s*$/.test(line.say))) {
+    warnings.push(`${id}: the extreme imagined line should be asked as a question ("이대로 계속 버틴다면?"); it asserts nothing`);
+  }
 }
 
 /**
@@ -279,7 +311,8 @@ export function checkHandWritten(sb, base, ctx) {
  * @returns {{start: number, end: number, on: any[]}[]} in time order
  */
 export function onScreen(overlays) {
-  const live = overlays.filter((o) => isObj(o) && o.kind !== 'dim_bg' && fin(o.start) && fin(o.end) && o.start < o.end);
+  // dim_bg and stamp are not diagrams: a veil and a corner badge do not crowd the picture.
+  const live = overlays.filter((o) => isObj(o) && o.kind !== 'dim_bg' && o.kind !== 'stamp' && fin(o.start) && fin(o.end) && o.start < o.end);
   const cuts = [...new Set(live.flatMap((o) => [o.start, o.end]))].sort((a, b) => a - b);
   const spans = [];
   for (let k = 0; k + 1 < cuts.length; k++) {

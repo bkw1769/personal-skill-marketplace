@@ -26,6 +26,8 @@ These ledgers are about **whether a statement is true**. Whether we may use a pi
 
 Score candidates with `references/topic-scoring.md` (five criteria, 0-2 each) and write `topic.md`: the object, the twist line ("X는 Y가 아닙니다"), the score with one reason per criterion, and the questions research must answer. Prefer things viewers see every day (apartment, bathroom, parking garage, subway) over distant megaprojects. If the user already named a topic, still write the twist and questions.
 
+Decide the story shape here. The channel default for objects that look removable or annoying is four steps: question, the doubt "fixed", the problems that causes (ending in one imagined, extreme shot), the real reason (`references/story-structure.md`). Write the four steps in `topic.md`; they decide what research must prove (what really breaks without it, and whether a version without it exists). Objects that only raise "what is this?" keep the plain hook, explanation, twist order.
+
 A topic another channel already covered is fine; their script, wording and title are not. Research from scratch, and do not reuse their title phrasing.
 
 ### 2. Create the ledgers
