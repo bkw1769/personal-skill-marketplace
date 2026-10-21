@@ -88,3 +88,103 @@ def test_token_cap_scales_with_text_and_clamps() -> None:
     assert qa.token_cap("가" * 45, "ko") == 275  # 10 s expected -> 12.5*10*2+25
     assert qa.token_cap("a", "en") == 100
     assert qa.token_cap("word " * 1000, "en") == 1500
+
+
+def _burst(seconds: float) -> np.ndarray:
+    return speech_like(seconds, lead=0, tail=0)
+
+
+def _quiet(seconds: float) -> np.ndarray:
+    return np.zeros(int(seconds * RATE), np.float32)
+
+
+def test_phrase_and_edge_word_units() -> None:
+    assert qa.phrase_units("그리고 남북 길은, 서쪽에서 커집니다.", "ko") == [7, 8]
+    assert qa.phrase_units("..., !", "ko") == []
+    assert qa.edge_word_units("그런데 큰 줄기 중에", "ko") == (3, 2)
+    assert qa.edge_word_units("... !", "ko") == (0, 0)
+
+
+def test_segments_split_at_pauses() -> None:
+    assert qa.segments(np.array([3])) == [(3, 3)]
+    assert qa.segments(np.array([1, 2, 5, 6, 30, 31])) == [(1, 6), (30, 31)]
+
+
+def test_filler_after_the_line_fails() -> None:
+    audio = np.concatenate([_quiet(0.2), _burst(14 / 5), _quiet(0.4), _burst(0.25), _quiet(0.3)])
+    report = qa.check(audio, RATE, KO, "ko")
+    assert any(item.startswith("filler: a 0.2") and "after the line" in item for item in report.failures)
+    assert qa.check(audio, RATE, KO, "ko", allow_fillers=True).ok
+
+
+def test_filler_before_the_line_fails() -> None:
+    audio = np.concatenate([_quiet(0.2), _burst(0.15), _quiet(0.4), _burst(14 / 5), _quiet(0.3)])
+    report = qa.check(audio, RATE, KO, "ko")
+    assert any("before the line" in item for item in report.failures)
+
+
+@pytest.mark.parametrize(
+    ("parts", "text"),
+    [
+        # A pause at the comma: two segments for two phrases.
+        ([_burst(1.2), _quiet(0.45), _burst(1.5)], "옛날 옛적에, 작은 마을이 있었어요"),
+        # A natural pause after a short opening word, long enough for that word.
+        ([_burst(0.44), _quiet(0.4), _burst(2.2)], "그런데 굵은 호스는 손을 세게 밀어냅니다"),
+        # A breath or click shorter than any word.
+        ([_burst(2.8), _quiet(0.4), _burst(0.06)], KO),
+        # An edge segment longer than any filler.
+        ([_burst(1.0), _quiet(0.5), _burst(1.8)], KO),
+        # No units in the text: nothing to compare with.
+        ([_burst(0.3), _quiet(0.5), _burst(0.3)], "..."),
+    ],
+)
+def test_no_filler(parts: list[np.ndarray], text: str) -> None:
+    audio = np.concatenate([_quiet(0.2), *parts, _quiet(0.3)])
+    assert not any("filler" in item for item in qa.check(audio, RATE, text, "ko").failures)
+
+
+def test_voice_profile_measures_pitch_and_brightness() -> None:
+    profile = qa.voice_profile(speech_like(2.0), RATE)
+    assert profile is not None
+    assert profile["f0"] == pytest.approx(220, rel=0.03)
+    assert profile["centroid"] == pytest.approx(220, rel=0.15)
+    low = qa.voice_profile(speech_like(2.0, freq=150), RATE)
+    assert low is not None and low["f0"] == pytest.approx(150, rel=0.03)
+
+
+@pytest.mark.parametrize(
+    "audio",
+    [
+        np.zeros(RATE, np.float32),  # silent
+        np.full(100, 0.5, np.float32),  # shorter than one frame
+        np.random.default_rng(0).standard_normal(RATE).astype(np.float32) * 0.3,  # noise: no pitched frame
+    ],
+)
+def test_voice_profile_none(audio: np.ndarray) -> None:
+    assert qa.voice_profile(audio, RATE) is None
+
+
+def test_drift_medians_need_enough_lines() -> None:
+    lines = [{"f0": 160.0, "centroid": 2200.0}] * (qa.DRIFT_MIN_LINES - 1)
+    assert qa.drift_medians(lines) is None
+    medians = qa.drift_medians(lines + [{"f0": 100.0, "centroid": 1000.0}])
+    assert medians == {"f0": 160.0, "centroid": 2200.0}
+
+
+@pytest.mark.parametrize(
+    ("profile", "expected"),
+    [
+        ({"f0": 131.0, "centroid": 1743.0}, (131 / 160 - 1, 1743 / 2200 - 1)),  # lower and darker
+        ({"f0": 200.0, "centroid": 2700.0}, (200 / 160 - 1, 2700 / 2200 - 1)),  # higher and brighter
+        ({"f0": 131.0, "centroid": 2150.0}, None),  # only the pitch moved
+        ({"f0": 158.0, "centroid": 1700.0}, None),  # only the brightness moved
+        ({"f0": 131.0, "centroid": 2700.0}, None),  # opposite directions
+    ],
+)
+def test_drift_of(profile: dict[str, float], expected: tuple[float, float] | None) -> None:
+    found = qa.drift_of(profile, {"f0": 160.0, "centroid": 2200.0})
+    if expected is None:
+        assert found is None
+    else:
+        assert found == pytest.approx(expected)
+

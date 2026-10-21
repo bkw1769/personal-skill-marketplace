@@ -1,7 +1,12 @@
-"""Model-free checks on one generated line: clipping, cut-off, pace, silences.
+"""Model-free checks on one generated line: clipping, cut-off, pace, silences, fillers.
 
 These catch the usual Qwen3-TTS failures (skipped words, rambling, truncated
-endings) cheaply. They do not replace listening or an ASR round trip.
+endings, an added "예" or "음" before or after the line) cheaply. They do not
+replace listening or an ASR round trip.
+
+:func:`voice_profile` and :func:`drift_of` compare a line with the other lines of
+the same voice: a clone sometimes reads one line lower, darker and slower than
+the rest (a casual "~죠" ending, a short line), which the per-line checks pass.
 """
 
 from __future__ import annotations
@@ -23,6 +28,21 @@ MAX_GAP_SECONDS = 1.5
 MAX_LEAD_SECONDS = 1.0
 CLIP_LEVEL = 0.99
 CUTOFF_RATIO = 0.1
+# A filler ("예", "음", "으흥") is a short burst cut off from the line by a pause.
+FILLER_GAP_SECONDS = 0.25  # pauses at least this long split the line into sound segments
+FILLER_MIN_SECONDS = 0.1  # shorter bursts are breaths or clicks, not words
+FILLER_MAX_SECONDS = 0.7  # an edge segment shorter than this may be a filler
+PHRASE_BREAK = re.compile(r"[,.?!;:…·]+")
+# Voice drift: a line whose pitch AND brightness both sit more than DRIFT_RATIO
+# from the medians of its voice, in the same direction, sounds like another take
+# of the voice (hallway-hydrant l05 2026-10-21: pitch -17%, brightness -22%).
+DRIFT_RATIO = 0.15
+DRIFT_MIN_LINES = 5  # fewer lines of a voice give no reliable median
+PITCH_RANGE = (70.0, 400.0)  # Hz searched for the speaking pitch
+PITCH_FRAME_SECONDS = 0.04
+PITCH_HOP_SECONDS = 0.01
+PITCH_LOUD_RATIO = 0.3  # frames above 30% of the loudest frame's RMS are measured
+PITCH_CLARITY = 0.5  # autocorrelation peak / energy needed to count a frame as pitched
 
 
 @dataclass
@@ -67,7 +87,88 @@ def frame_rms(audio: np.ndarray, sample_rate: int) -> np.ndarray:
     return np.sqrt(np.mean(frames**2, axis=1))
 
 
-def check(audio: np.ndarray, sample_rate: int, text: str, language: str) -> Report:
+def phrase_units(text: str, language: str) -> list[int]:
+    """Pace units of each phrase, splitting the text at punctuation.
+
+    Args:
+        text: Line text.
+        language: ``ko`` or ``en``.
+
+    Returns:
+        Units per phrase, phrases without units left out.
+    """
+    counts = (text_units(part, language) for part in PHRASE_BREAK.split(text))
+    return [count for count in counts if count]
+
+
+def edge_word_units(text: str, language: str) -> tuple[int, int]:
+    """Pace units of the first and the last word that have any.
+
+    Args:
+        text: Line text.
+        language: ``ko`` or ``en``.
+
+    Returns:
+        ``(first, last)`` units; ``(0, 0)`` when no word has units.
+    """
+    counts = [count for count in (text_units(word, language) for word in text.split()) if count]
+    return (counts[0], counts[-1]) if counts else (0, 0)
+
+
+def segments(voiced: np.ndarray) -> list[tuple[int, int]]:
+    """Group voiced frame indices into runs split by pauses of FILLER_GAP_SECONDS or more.
+
+    Args:
+        voiced: Sorted indices of voiced frames (at least one).
+
+    Returns:
+        ``(first, last)`` frame index of each run.
+    """
+    split = max(1, int(round(FILLER_GAP_SECONDS / FRAME_SECONDS)))
+    runs: list[tuple[int, int]] = []
+    start = previous = int(voiced[0])
+    for index in voiced[1:]:
+        index = int(index)
+        if index - previous > split:
+            runs.append((start, previous))
+            start = index
+        previous = index
+    runs.append((start, previous))
+    return runs
+
+
+def filler_failures(voiced: np.ndarray, text: str, language: str) -> list[str]:
+    """Find a short sound before or after the line that its text cannot account for.
+
+    The line splits into more sound segments than the text has phrases, and the
+    first or last segment (0.1-0.7 s) is too short even for the first or last
+    word of the text at the fastest allowed pace: an added filler, not a word.
+    A natural pause after a short opening word ("그런데, ...") is long enough
+    for that word and passes.
+
+    Args:
+        voiced: Sorted indices of voiced frames (at least one).
+        text: The text that was spoken.
+        language: ``ko`` or ``en``.
+
+    Returns:
+        Failure messages (empty when none).
+    """
+    runs = segments(voiced)
+    if len(runs) <= max(1, len(phrase_units(text, language))):
+        return []
+    fastest = PACE_LIMITS[language][1]
+    first_word, last_word = edge_word_units(text, language)
+    found = []
+    for where, (first, last), units in (("before", runs[0], first_word), ("after", runs[-1], last_word)):
+        seconds = (last - first + 1) * FRAME_SECONDS
+        if FILLER_MIN_SECONDS <= seconds < FILLER_MAX_SECONDS and seconds < units / fastest:
+            found.append(f"filler: a {seconds:.2f}s sound {where} the line that the text does not have (예, 음); "
+                         "set \"fillers\": true on the line if it is wanted")
+    return found
+
+
+def check(audio: np.ndarray, sample_rate: int, text: str, language: str, *, allow_fillers: bool = False) -> Report:
     """Check one generated line against its text.
 
     Args:
@@ -75,6 +176,7 @@ def check(audio: np.ndarray, sample_rate: int, text: str, language: str) -> Repo
         sample_rate: Sample rate in Hz.
         text: The text that was spoken.
         language: ``ko`` or ``en``.
+        allow_fillers: Skip the filler check (the line is meant to have one).
 
     Returns:
         Measurements plus failures (retake) and warnings (listen).
@@ -104,12 +206,86 @@ def check(audio: np.ndarray, sample_rate: int, text: str, language: str) -> Repo
         report.failures.append(f"clipping: peak {peak:.3f}")
     if energy[-1] > energy.max() * CUTOFF_RATIO:
         report.failures.append("cut-off: audio ends while still speaking")
+    if not allow_fillers:
+        report.failures.extend(filler_failures(voiced, text, language))
     gaps = np.diff(voiced) * FRAME_SECONDS
     if gaps.size and gaps.max() > MAX_GAP_SECONDS:
         report.warnings.append(f"long pause {gaps.max():.1f}s inside the line; check for a skipped phrase")
     if first * FRAME_SECONDS > MAX_LEAD_SECONDS:
         report.warnings.append(f"leading silence {first * FRAME_SECONDS:.1f}s")
     return report
+
+
+def voice_profile(audio: np.ndarray, sample_rate: int) -> dict[str, float] | None:
+    """Measure how a line sounds: median speaking pitch and spectral centroid.
+
+    Pitch is the autocorrelation peak of each loud 40 ms frame within
+    ``PITCH_RANGE``; frames without a clear peak (noise, breaths) are skipped.
+    The centroid (brightness) is taken over the whole line.
+
+    Args:
+        audio: Mono samples.
+        sample_rate: Sample rate in Hz.
+
+    Returns:
+        ``{"f0": Hz, "centroid": Hz}``, or None for silence, audio shorter than
+        one frame, or audio without a pitched frame.
+    """
+    x = audio.astype(np.float64)
+    size = int(sample_rate * PITCH_FRAME_SECONDS)
+    if len(x) < size or np.max(np.abs(x)) <= 0:
+        return None
+    hop = int(sample_rate * PITCH_HOP_SECONDS)
+    frames = np.stack([x[start:start + size] for start in range(0, len(x) - size + 1, hop)])
+    rms = np.sqrt(np.mean(frames**2, axis=1))
+    loud = frames[rms >= rms.max() * PITCH_LOUD_RATIO]
+    loud = loud - loud.mean(axis=1, keepdims=True)
+    power = np.abs(np.fft.rfft(loud, n=2 * size, axis=1)) ** 2
+    corr = np.fft.irfft(power, axis=1)[:, :size]
+    low, high = int(sample_rate / PITCH_RANGE[1]), int(sample_rate / PITCH_RANGE[0])
+    lags = low + np.argmax(corr[:, low:high], axis=1)
+    clarity = corr[np.arange(len(corr)), lags] / np.maximum(corr[:, 0], 1e-12)
+    pitched = lags[clarity > PITCH_CLARITY]
+    if not pitched.size:
+        return None
+    magnitude = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+    freqs = np.fft.rfftfreq(len(x), 1 / sample_rate)
+    return {
+        "f0": round(float(np.median(sample_rate / pitched)), 1),
+        "centroid": round(float((magnitude * freqs).sum() / magnitude.sum()), 1),
+    }
+
+
+def drift_medians(profiles: list[dict[str, float]]) -> dict[str, float] | None:
+    """Median pitch and brightness of one voice's lines.
+
+    Args:
+        profiles: :func:`voice_profile` results of the lines of one voice.
+
+    Returns:
+        ``{"f0", "centroid"}`` medians, or None with fewer than ``DRIFT_MIN_LINES``.
+    """
+    if len(profiles) < DRIFT_MIN_LINES:
+        return None
+    return {key: float(np.median([p[key] for p in profiles])) for key in ("f0", "centroid")}
+
+
+def drift_of(profile: dict[str, float], medians: dict[str, float]) -> tuple[float, float] | None:
+    """How far a line's pitch and brightness sit from its voice's medians, if it drifts.
+
+    Args:
+        profile: The line's :func:`voice_profile`.
+        medians: :func:`drift_medians` of its voice.
+
+    Returns:
+        ``(pitch, brightness)`` as fractions (-0.17 = 17% lower) when both are
+        beyond ``DRIFT_RATIO`` in the same direction, else None.
+    """
+    pitch = profile["f0"] / medians["f0"] - 1
+    bright = profile["centroid"] / medians["centroid"] - 1
+    if abs(pitch) > DRIFT_RATIO and abs(bright) > DRIFT_RATIO and (pitch > 0) == (bright > 0):
+        return pitch, bright
+    return None
 
 
 def token_cap(text: str, language: str) -> int:

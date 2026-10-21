@@ -45,6 +45,14 @@ Spell every number the way it is read. Digits are the most common misreading, an
 
   Use the longer end for younger children. Edit `pause_after` in `lines.jsonl` and run `tts/bin/tts join` to rebuild without regenerating audio.
 
+## Fillers (음, 예, 으흥)
+
+Narration has no fillers unless the script asks for one. The model sometimes adds "예" or "음" after a line on its own; QA fails that line (`filler`) and retakes it. When a character should hesitate on purpose, write the filler in the text with its comma ("음, 그건 말이야.") and set `"fillers": true` on that line in `lines.jsonl`, so QA keeps it. Use it rarely, for dialogue, never for the explainer narrator.
+
+## One register for a narrator
+
+Keep every line of one narrator in the same sentence ending: statements in -ㅂ니다/-습니다, questions in -까요?. A casual ending (~죠, ~거든요, ~잖아요, ~네요) in the middle of formal narration makes the clone drop into another delivery: lower, darker and slower. hallway-hydrant l05 "금방 닿는 거리죠." read 18% lower in pitch, 21% darker and at 5.1 syllables/s against 6.2 for the rest; all four "~죠" takes were slow, while "금방 닿는 거리입니다." matched the other lines. Short lines (under about 20 syllables) drift more, because the model has little text to settle into the reference voice. `batch` measures this (`voice drift`, `qa-and-retakes.md`), and shorts-motion `check` warns about casual endings in a short's narration.
+
 ## Rhythm for children
 
 - **Sentence length.** Short sentences and simple words. A 6-10 year-old follows a sentence of about 10-20 Korean syllables comfortably.

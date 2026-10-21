@@ -4,6 +4,14 @@ Input is JSON Lines, one object per spoken line::
 
     {"id": "s01-001", "voice": "narrator-ko", "text": "옛날 옛적에...", "pause_after": 0.6, "speaker": "narrator"}
 
+``fillers: true`` allows a filler sound ("음", "예") on that line; by default QA
+retakes a line that has one.
+
+After generating, every line's pitch and brightness are compared with the other
+lines of its voice (:func:`qa.drift_of`). A line generated in this run that
+drifts is retaken with new seeds and the take closest to the voice is kept; a
+line that still drifts (or a cached one) gets a ``voice drift`` warning.
+
 Output folder: ``<id>.wav`` per line, ``manifest.json`` (what produced each file
 and its QA result), and after joining ``full.wav`` + ``timeline.json`` with the
 real start/end of every line for subtitles and video timing.
@@ -27,6 +35,7 @@ SCHEMA = "fairytale-tts-batch/1"
 LINE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 DEFAULT_PAUSE = 0.6
 RETAKE_SEED_STEP = 1000
+DRIFT_WARNING = "voice drift"
 
 
 @dataclass(frozen=True)
@@ -38,6 +47,7 @@ class Line:
     text: str
     pause_after: float = DEFAULT_PAUSE
     speaker: str = ""
+    fillers: bool = False
 
 
 def read_lines(path: Path) -> list[Line]:
@@ -70,6 +80,7 @@ def read_lines(path: Path) -> list[Line]:
             text=str(item["text"]).strip(),
             pause_after=float(item.get("pause_after", DEFAULT_PAUSE)),
             speaker=str(item.get("speaker", "")),
+            fillers=item.get("fillers", False) is True,
         )
         if not LINE_ID.match(line.id):
             raise ValueError(f"{path.name}:{number}: invalid id '{line.id}'")
@@ -125,11 +136,12 @@ def generate(
     *,
     seed: int = 1,
     retakes: int = 2,
+    drift_retakes: int = 3,
     only: set[str] | None = None,
     force: bool = False,
     log: Callable[[str], None] = print,
 ) -> dict[str, Any]:
-    """Generate every changed line, retaking QA failures with new seeds.
+    """Generate every changed line, retaking QA failures and voice drift with new seeds.
 
     Args:
         lines: Script lines.
@@ -137,6 +149,7 @@ def generate(
         voices_root: Folder of frozen voices.
         seed: Base seed; retake ``n`` uses ``seed + n * 1000``.
         retakes: Extra attempts after a failed check.
+        drift_retakes: Extra attempts for a new line whose voice drifts from the others.
         only: When given, regenerate just these ids (implies force for them).
         force: Regenerate even when the cached key matches.
         log: Progress output.
@@ -157,6 +170,14 @@ def generate(
     manifest["model"] = {"repo": spec.repo, "revision": spec.revision}
     loaded: dict[str, tuple[voices.Voice, Path]] = {}
     model = None
+    fresh: set[str] = set()
+
+    def get_model() -> Any:
+        nonlocal model
+        if model is None:
+            model = engine.load(spec)
+        return model
+
     for line in lines:
         if line.voice not in loaded:
             loaded[line.voice] = voices.load(voices_root, line.voice)
@@ -167,15 +188,118 @@ def generate(
         wanted = only is None or line.id in only
         if not wanted or (not force and only is None and cached.get("key") == key and wav.is_file()):
             continue
-        if model is None:
-            model = engine.load(spec)
-        entry = _generate_line(model, line, voice, ref, wav, seed, retakes, log)
+        entry = _generate_line(get_model(), line, voice, ref, wav, seed, retakes, log)
         entry["key"] = key
         manifest["lines"][line.id] = entry
+        fresh.add(line.id)
         save_manifest(out_dir, manifest)
+    _fix_drift(get_model, lines, out_dir, manifest, loaded, fresh, drift_retakes, log)
     manifest["order"] = [line.id for line in lines]
     save_manifest(out_dir, manifest)
     return manifest
+
+
+def _profiles(lines: list[Line], out_dir: Path, manifest: dict[str, Any]) -> dict[str, list[str]]:
+    """Measure every generated line once (cached in its entry) and group ids by voice."""
+    groups: dict[str, list[str]] = {}
+    for line in lines:
+        entry = manifest["lines"].get(line.id)
+        wav = out_dir / f"{line.id}.wav"
+        if entry is None or not wav.is_file():
+            continue
+        if "profile" not in entry:
+            audio, rate = engine.read_wav(wav)
+            entry["profile"] = qa.voice_profile(audio, rate)
+        if entry["profile"]:
+            groups.setdefault(line.voice, []).append(line.id)
+    return groups
+
+
+def _fix_drift(
+    get_model: Callable[[], Any],
+    lines: list[Line],
+    out_dir: Path,
+    manifest: dict[str, Any],
+    loaded: dict[str, tuple[voices.Voice, Path]],
+    fresh: set[str],
+    drift_retakes: int,
+    log: Callable[[str], None],
+) -> None:
+    """Retake new lines that drift from their voice, then warn about every line that still does.
+
+    The medians are taken before any retake, so a retake is judged against the
+    same target. A retake must pass QA; the take with the smallest larger
+    deviation (pitch or brightness) is kept.
+    """
+    by_id = {line.id: line for line in lines}
+    for members in _profiles(lines, out_dir, manifest).values():
+        medians = qa.drift_medians([manifest["lines"][i]["profile"] for i in members])
+        for line_id in members:
+            entry = manifest["lines"][line_id]
+            entry["warnings"] = [w for w in entry.get("warnings", []) if not w.startswith(DRIFT_WARNING)]
+            found = medians and qa.drift_of(entry["profile"], medians)
+            if found and line_id in fresh and drift_retakes:
+                found = _retake_drift(get_model(), by_id[line_id], loaded, out_dir / f"{line_id}.wav", entry, medians,
+                                      drift_retakes, log)
+            if found:
+                pitch, bright = found
+                entry["warnings"].append(
+                    f"{DRIFT_WARNING}: pitch {pitch:+.0%}, brightness {bright:+.0%} against the other "
+                    f"{by_id[line_id].voice} lines; listen, rewrite a casual ending (~죠), or retake with --only {line_id} --seed N"
+                )
+                log(f"{line_id}: WARN {entry['warnings'][-1]}")
+
+
+def _retake_drift(
+    model: Any,
+    line: Line,
+    loaded: dict[str, tuple[voices.Voice, Path]],
+    wav: Path,
+    entry: dict[str, Any],
+    medians: dict[str, float],
+    drift_retakes: int,
+    log: Callable[[str], None],
+) -> tuple[float, float] | None:
+    """Try new seeds for a drifting line; keep the take closest to the voice. Returns its remaining drift."""
+    voice, ref = loaded[line.voice]
+
+    def distance(profile: dict[str, float]) -> float:
+        return max(abs(profile["f0"] / medians["f0"] - 1), abs(profile["centroid"] / medians["centroid"] - 1))
+
+    best = distance(entry["profile"])
+    last_seed = max(item["seed"] for item in entry["attempts"])
+    for attempt in range(1, drift_retakes + 1):
+        attempt_seed = last_seed + attempt * RETAKE_SEED_STEP
+        speech, report = _take(model, line, voice, ref, attempt_seed)
+        profile = qa.voice_profile(speech.audio, speech.sample_rate)
+        entry["attempts"].append({"seed": attempt_seed, "failures": report.failures, "profile": profile})
+        log(f"{line.id} [{line.voice}] seed {attempt_seed}: drift retake {attempt}, "
+            f"{'ok' if report.ok else 'failed'} pace {report.pace:.1f}")
+        if report.ok and profile and distance(profile) < best:
+            best = distance(profile)
+            engine.write_wav(wav, speech)
+            entry.update(seed=attempt_seed, seconds=round(speech.seconds, 3), pace=round(report.pace, 2),
+                         warnings=report.warnings, profile=profile)
+            if not qa.drift_of(profile, medians):
+                break
+    return qa.drift_of(entry["profile"], medians)
+
+
+def _take(model: Any, line: Line, voice: voices.Voice, ref: Path, seed: int) -> tuple[engine.Speech, qa.Report]:
+    """Synthesize one take of a line and run QA on it."""
+    speech = engine.synthesize(
+        model,
+        line.text,
+        language=language_name(voice.language),
+        seed=seed,
+        ref_audio=ref,
+        ref_text=voice.ref_text,
+        max_tokens=qa.token_cap(line.text, voice.language),
+    )
+    report = qa.check(speech.audio, speech.sample_rate, line.text, voice.language, allow_fillers=line.fillers)
+    if speech.capped:
+        report.failures.append("runaway: hit the token cap without stopping")
+    return speech, report
 
 
 def _generate_line(
@@ -191,18 +315,7 @@ def _generate_line(
     attempts: list[dict[str, Any]] = []
     for attempt in range(retakes + 1):
         attempt_seed = seed + attempt * RETAKE_SEED_STEP
-        speech = engine.synthesize(
-            model,
-            line.text,
-            language=language_name(voice.language),
-            seed=attempt_seed,
-            ref_audio=ref,
-            ref_text=voice.ref_text,
-            max_tokens=qa.token_cap(line.text, voice.language),
-        )
-        report = qa.check(speech.audio, speech.sample_rate, line.text, voice.language)
-        if speech.capped:
-            report.failures.append("runaway: hit the token cap without stopping")
+        speech, report = _take(model, line, voice, ref, attempt_seed)
         attempts.append({"seed": attempt_seed, "failures": report.failures})
         status = "ok" if report.ok else "failed"
         notes = "".join(f"\n  - {item}" for item in report.failures + report.warnings)

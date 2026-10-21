@@ -43,9 +43,9 @@ Whole script, line by line, with automatic QA and retakes, then joined with paus
 tts/bin/tts batch out/tts/story/lines.jsonl --out-dir out/tts/story
 ```
 
-`lines.jsonl` has one `{"id", "voice", "text", "pause_after", "speaker"}` object per line (`pause_after` and `speaker` optional). The output folder gets `<id>.wav`, `manifest.json` (seed, pace, QA result, attempts per line), `full.wav` and `timeline.json` (real start/end and speaker of each line). Unchanged lines are skipped on re-runs; `--only id1,id2` regenerates chosen lines; a line failing QA is retried with seed + 1000 up to `--retakes` times (default 2). `tts/bin/tts check <wav> --text ... --lang ko` runs the same QA on any file, and `tts/bin/tts join` rebuilds `full.wav` after edits.
+`lines.jsonl` has one `{"id", "voice", "text", "pause_after", "speaker", "fillers"}` object per line (`pause_after`, `speaker` and `fillers` optional; `"fillers": true` keeps a filler such as "음" that the text asks for). The output folder gets `<id>.wav`, `manifest.json` (seed, pace, QA result, attempts per line), `full.wav` and `timeline.json` (real start/end and speaker of each line). Unchanged lines are skipped on re-runs; `--only id1,id2` regenerates chosen lines; a line failing QA is retried with seed + 1000 up to `--retakes` times (default 2); a new line whose pitch and brightness both sit more than 15% from the other lines of its voice (`voice drift`) is retaken up to `--drift-retakes` times (default 3, 0 only warns) and the closest take is kept. `tts/bin/tts check <wav> --text ... --lang ko` runs the same QA on any file, and `tts/bin/tts join` rebuilds `full.wav` after edits.
 
-QA (model-free, `qa.py`): fails on silence, clipping, a cut-off ending, a runaway generation (token cap), or a pace outside 2.5-8.5 Hangul syllables/s (Korean) or 1.3-4.2 words/s (English); warns on pauses over 1.5 s inside a line and leading silence over 1 s. It does not replace listening.
+QA (model-free, `qa.py`): fails on silence, clipping, a cut-off ending, a runaway generation (token cap), a filler the text does not have ("예" or "음" cut off before or after the line by a pause; skipped with `"fillers": true` or `check --allow-fillers`), or a pace outside 2.5-8.5 Hangul syllables/s (Korean) or 1.3-4.2 words/s (English); warns on pauses over 1.5 s inside a line and leading silence over 1 s. After a batch, `voice_profile` (median pitch, spectral centroid) per line and `drift_of` against the voice's medians flag a line that sounds like another take of the voice. It does not replace listening.
 
 Emotion variant of a frozen voice (the clone model ignores instructions but copies the reference's delivery), then `pick` as usual:
 
@@ -81,6 +81,6 @@ Unit tests replace mlx, mlx-audio and huggingface_hub with fakes, so they need n
 | `src/fairytale_tts/voices.py` | Design takes, freeze, load and list frozen voices. |
 | `src/fairytale_tts/catalog.py` | Asset-catalog manifest per voice (labels, provenance, status), approve, index rebuild. |
 | `src/fairytale_tts/batch.py` | JSON Lines script -> per-line WAV with QA and retakes, manifest, join into `full.wav` + `timeline.json`. |
-| `src/fairytale_tts/qa.py` | Model-free checks (pace, cut-off, clipping, silences), trim and level matching. |
+| `src/fairytale_tts/qa.py` | Model-free checks (pace, cut-off, clipping, silences, fillers), voice drift across lines (pitch, brightness), trim and level matching. |
 | `src/fairytale_tts/cli.py` | `fairytale-tts` commands. |
 | `../assets/audio/voices/<id>/` | Frozen voice: `ref.wav` + `voice.json` + `manifest.json` (tracked); `candidates/` (ignored drafts). |

@@ -103,7 +103,7 @@ node <skill-dir>/scripts/narration-lines.mjs from-storyboard <project>/stories/<
 
 **Put every piece of dialogue on its own `[speaker]` line**, even when one voice reads everything. In that case, map all speakers to the same voice: `--voice narrator=narrator-ko --voice deer=narrator-ko`. This keeps lines short, keeps the speaker in `timeline.json` for captions and bubbles, and makes it easy to give the character its own voice later. The converter warns when quoted dialogue sits inside a narration paragraph.
 
-**Where to write the cleaned script.** Raw input from the user is usually messy. Write a cleaned TTS script next to the story, `<project>/stories/<id>/script-<lang>.txt`, and convert that. Leave the original as it is. Fix later problems in that script and re-convert; edit `lines.jsonl` directly only for quick `pause_after` tweaks.
+**Where to write the cleaned script.** Raw input from the user is usually messy. Write a cleaned TTS script next to the story, `<project>/stories/<id>/script-<lang>.txt`, and convert that. Leave the original as it is. Fix later problems in that script and re-convert; edit `lines.jsonl` directly only for quick `pause_after` tweaks and for `"fillers": true` on a line that should keep a written filler ("음, ...").
 
 **What the converter produces:**
 - One sentence per line, because the model skips or repeats words on long inputs.
@@ -140,6 +140,7 @@ tts/bin/tts batch <project>/out/tts/<id>-ko/lines.jsonl --out-dir <project>/out/
 - clipping
 - silence
 - runaway generation that hits the cap
+- a filler the text does not have ("예", "음" before or after the line); fillers are opt-in with `"fillers": true` on a line (`references/qa-and-retakes.md`)
 
 When a check fails, it retakes the line with a new seed, up to `--retakes` times (default 2).
 
@@ -166,7 +167,7 @@ Read the batch summary and `manifest.json`. Then work through `references/qa-and
   - Usually the text is the problem. Rewrite it: shorter, end punctuation, numbers spelled out. Then rerun `batch`; only changed lines regenerate.
   - If the text is fine, retry just those lines with a new seed: `--only id1,id2 --seed 7`.
 - **Warnings**, such as a long pause inside a line: listen to those lines first.
-- **Have the user listen to `full.wav`.** The automatic checks catch skipped or repeated words through pace, cut-off endings, clipping and silences. They do not hear mispronunciations or wrong emphasis.
+- **Have the user listen to `full.wav`.** The automatic checks catch skipped or repeated words through pace, cut-off endings, clipping, silences and added fillers. They do not hear mispronunciations or wrong emphasis.
 - **When the user names a bad line**, fix that line's text or retake it with `--only`, then rebuild with `tts/bin/tts join <lines> --out-dir <dir>`.
 
 ## 5. Hand off

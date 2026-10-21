@@ -46,6 +46,13 @@ def test_read_lines_defaults_pause(tmp_path: Path) -> None:
     assert [line.id for line in lines] == ["ko-001", "en-001"]
     assert lines[1].pause_after == batch.DEFAULT_PAUSE
     assert lines[0].speaker == "narrator" and lines[1].speaker == ""
+    assert not lines[0].fillers
+
+
+def test_read_lines_fillers_flag_is_opt_in(tmp_path: Path) -> None:
+    rows = [{"id": "a", "voice": "v", "text": "음, 그랬답니다.", "fillers": True},
+            {"id": "b", "voice": "v", "text": "그랬답니다.", "fillers": "yes"}]
+    assert [line.fillers for line in batch.read_lines(_script(tmp_path, rows))] == [True, False]
 
 
 @pytest.mark.parametrize(
@@ -179,3 +186,59 @@ def test_runaway_generation_fails_qa(setup: tuple[Fakes, Path, Path], tmp_path: 
     entry = batch.generate(lines, out, root, retakes=0, log=lambda _: None)["lines"]["ko-001"]
     assert entry["status"] == "failed" and any("runaway" in item for item in entry["failures"])
     assert fakes.model.calls[0]["max_tokens"] == batch.qa.token_cap(ROWS[0]["text"], "ko")
+
+
+DRIFT_ROWS = [{"id": f"d{n}", "voice": "narrator-ko", "text": f"복도 끝 집 {n}번에서 나와도 금방 닿습니다."} for n in range(5)]
+LOW = {"id": "d5", "voice": "narrator-ko", "text": "금방 닿는 거리죠."}
+
+
+def test_drifting_new_line_is_retaken_until_it_matches(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    fakes.model.low_texts = {LOW["text"]}
+    fakes.model.seed_pitch = {1001: 160.0, 2001: 220.0}  # closer but still low, then back on the voice
+    lines = batch.read_lines(_script(tmp_path, DRIFT_ROWS + [LOW]))
+    logs: list[str] = []
+    manifest = batch.generate(lines, out, root, drift_retakes=3, log=logs.append)
+    entry = manifest["lines"]["d5"]
+    assert entry["seed"] == 2001 and [a["seed"] for a in entry["attempts"]] == [1, 1001, 2001]
+    assert entry["profile"]["f0"] == pytest.approx(220, rel=0.03)
+    assert not any(w.startswith(batch.DRIFT_WARNING) for w in entry["warnings"])
+    assert sum("drift retake" in line for line in logs) == 2
+    assert fakes.files[str(out / "d5.wav")][0].size  # the kept take was written
+    assert manifest["lines"]["d0"]["profile"]["f0"] == pytest.approx(220, rel=0.03)
+
+
+def test_drifting_line_keeps_warning_when_no_retake_helps(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    fakes.model.low_texts = {LOW["text"]}
+    fakes.model.seed_pitch = {1001: 140.0}  # further off: not kept
+    fakes.model.bad_seeds = {2001}  # fails QA: not kept either
+    lines = batch.read_lines(_script(tmp_path, DRIFT_ROWS + [LOW]))
+    logs: list[str] = []
+    entry = batch.generate(lines, out, root, drift_retakes=2, log=logs.append)["lines"]["d5"]
+    assert entry["seed"] == 1 and len(entry["attempts"]) == 3
+    drift = [w for w in entry["warnings"] if w.startswith(batch.DRIFT_WARNING)]
+    assert len(drift) == 1 and "pitch -3" in drift[0] and "--only d5" in drift[0]
+    assert any("WARN voice drift" in line for line in logs)
+
+    calls = len(fakes.model.calls)
+    entry = batch.generate(lines, out, root, log=logs.append)["lines"]["d5"]  # cached: warn again, no retake
+    assert len(fakes.model.calls) == calls and len(fakes.loads) == 1
+    assert len([w for w in entry["warnings"] if w.startswith(batch.DRIFT_WARNING)]) == 1
+
+
+def test_drift_retakes_zero_only_warns(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    fakes.model.low_texts = {LOW["text"]}
+    lines = batch.read_lines(_script(tmp_path, DRIFT_ROWS + [LOW]))
+    entry = batch.generate(lines, out, root, drift_retakes=0, log=lambda _: None)["lines"]["d5"]
+    assert len(fakes.model.calls) == 6 and len(entry["attempts"]) == 1
+    assert any(w.startswith(batch.DRIFT_WARNING) for w in entry["warnings"])
+
+
+def test_drift_skips_lines_not_generated_yet(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    lines = batch.read_lines(_script(tmp_path, DRIFT_ROWS + [LOW]))
+    manifest = batch.generate(lines, out, root, only={"d0"}, log=lambda _: None)
+    assert list(manifest["lines"]) == ["d0"] and manifest["lines"]["d0"]["profile"]
+

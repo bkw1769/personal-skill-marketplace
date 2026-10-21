@@ -20,10 +20,11 @@ class FakeResult:
     token_count: int = 10
 
 
-def speech_like(seconds: float, rate: int = 24000, lead: float = 0.2, tail: float = 0.3) -> np.ndarray:
-    """Silence, a tone burst of ``seconds``, silence: passes every QA check."""
+def speech_like(seconds: float, rate: int = 24000, lead: float = 0.2, tail: float = 0.3,
+                freq: float = 220.0) -> np.ndarray:
+    """Silence, a tone burst of ``seconds`` at ``freq`` Hz, silence: passes every QA check."""
     t = np.arange(int(seconds * rate)) / rate
-    tone = (0.3 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    tone = (0.3 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
     return np.concatenate([np.zeros(int(lead * rate), np.float32), tone, np.zeros(int(tail * rate), np.float32)])
 
 
@@ -33,12 +34,16 @@ class FakeModel:
 
     With ``realistic`` the audio length follows the text (5 syllables/s in
     Korean, 2.5 words/s in English); ``bad_seeds`` produce a cut-off ending.
+    A text in ``low_texts`` is read as a lower, darker 150 Hz tone (voice
+    drift) unless ``seed_pitch`` gives that seed another pitch.
     """
 
     chunks: int = 1
     realistic: bool = False
     bad_seeds: set[int] = field(default_factory=set)
     runaway_seeds: set[int] = field(default_factory=set)
+    low_texts: set[str] = field(default_factory=set)
+    seed_pitch: dict[int, float] = field(default_factory=dict)
     calls: list[dict[str, Any]] = field(default_factory=list)
     seed: int = 0
 
@@ -49,7 +54,8 @@ class FakeModel:
 
             korean = kwargs.get("lang_code") == "korean"
             units = text_units(text, "ko" if korean else "en")
-            audio = speech_like(units / (5.0 if korean else 2.5))
+            freq = self.seed_pitch.get(self.seed, 150.0) if text in self.low_texts else 220.0
+            audio = speech_like(units / (5.0 if korean else 2.5), freq=freq)
             if self.seed in self.bad_seeds:
                 audio = audio[: -int(0.3 * 24000)]
             tokens = kwargs.get("max_tokens", 4096) if self.seed in self.runaway_seeds else 10

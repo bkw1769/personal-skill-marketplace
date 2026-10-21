@@ -150,6 +150,17 @@ def test_check_prints_warnings(fakes: Fakes, tmp_path: Path, capsys: pytest.Capt
     assert "WARN leading silence" in capsys.readouterr().out
 
 
+def test_check_fails_a_filler_unless_allowed(fakes: Fakes, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from .conftest import speech_like
+
+    audio = np.concatenate([speech_like(2.0, tail=0.4), speech_like(0.25, lead=0)])
+    fakes.files[str(tmp_path / "f.wav")] = (audio, 24000)
+    args = ("check", str(tmp_path / "f.wav"), "--text", "옛날 옛적에 마을이 있었어요", "--lang", "ko")
+    assert _run(tmp_path, *args) == 1
+    assert "FAIL filler" in capsys.readouterr().out
+    assert _run(tmp_path, *args, "--allow-fillers") == 0
+
+
 def test_pick_trims_reference_and_warns(fakes: Fakes, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     from .conftest import speech_like
 

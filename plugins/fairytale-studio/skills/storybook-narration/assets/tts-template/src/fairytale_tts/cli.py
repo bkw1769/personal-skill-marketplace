@@ -230,7 +230,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
     only = {item.strip() for item in args.only.split(",") if item.strip()} if args.only else None
     out_dir = Path(args.out_dir)
     manifest = batch.generate(
-        lines, out_dir, args.root, seed=args.seed, retakes=args.retakes, only=only, force=args.force
+        lines, out_dir, args.root, seed=args.seed, retakes=args.retakes,
+        drift_retakes=args.drift_retakes, only=only, force=args.force
     )
     failed = sorted(i for i, entry in manifest["lines"].items() if entry["status"] != "ok")
     if not args.no_join:
@@ -256,7 +257,7 @@ def cmd_join(args: argparse.Namespace) -> int:
 def cmd_check(args: argparse.Namespace) -> int:
     """Run QA checks on any WAV against its text."""
     audio, rate = engine.read_wav(Path(args.wav))
-    report = qa.check(audio, rate, args.text, args.lang)
+    report = qa.check(audio, rate, args.text, args.lang, allow_fillers=args.allow_fillers)
     print(
         f"{args.wav}: {report.seconds:.2f}s (voiced {report.voiced_seconds:.2f}s), pace {report.pace:.1f}, "
         f"peak {report.peak:.2f}, RMS {report.rms_dbfs:.1f} dBFS"
@@ -328,6 +329,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--out-dir", required=True)
     run.add_argument("--seed", type=int, default=1)
     run.add_argument("--retakes", type=int, default=2, help="extra attempts after a failed check")
+    run.add_argument("--drift-retakes", type=int, default=3,
+                     help="extra attempts for a new line that sounds unlike the other lines of its voice (0: warn only)")
     run.add_argument("--only", help="comma-separated ids to regenerate")
     run.add_argument("--force", action="store_true", help="regenerate unchanged lines too")
     run.add_argument("--no-join", action="store_true", help="skip full.wav and timeline.json")
@@ -338,10 +341,11 @@ def build_parser() -> argparse.ArgumentParser:
     join.add_argument("--out-dir", required=True)
     join.set_defaults(func=cmd_join)
 
-    check = sub.add_parser("check", help="QA one WAV: pace, cut-off, clipping, silences")
+    check = sub.add_parser("check", help="QA one WAV: pace, cut-off, clipping, silences, fillers")
     check.add_argument("wav")
     check.add_argument("--text", required=True)
     check.add_argument("--lang", required=True, choices=["ko", "en"])
+    check.add_argument("--allow-fillers", action="store_true", help="do not fail a filler sound (예, 음) before or after the line")
     check.set_defaults(func=cmd_check)
     return parser
 
