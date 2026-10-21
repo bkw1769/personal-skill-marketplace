@@ -10,7 +10,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/shortform-studio/skills/shorts-motion/scripts/motion.mjs');
 const T = await import(SCRIPT);
 const {
-  KINDS, TIME_KINDS, MOTION_KINDS, PIN_KINDS, SCRIPT_SCHEMA, MAX_OVERLAYS, FIT_PAD, MIN_MOVE, GROW, BLINK, CAMERA, MOVES, STILLS, BANDS, TIMED, USAGE,
+  KINDS, TIME_KINDS, MOTION_KINDS, PIN_KINDS, SCRIPT_SCHEMA, MAX_OVERLAYS, FIT_PAD, MIN_MOVE, MIN_SHOT, GROW, BLINK, CAMERA, MOVES, STILLS, BANDS, TIMED, USAGE,
   shownText, checkScript, checkHandWritten, onScreen, checkStoryboard, builtFrom, captureName, stills, camera, toFrame, bandsHit, pngSize,
   spriteNames, engineKinds, configPlates, configSprites, usage, parseArgs, main, pacing, PACING,
 } = T;
@@ -75,8 +75,8 @@ const goodSb = () => ({
   scenes: [
     sbScene({ id: 'l04-1', motion: 'push-in', zoom: [1, 1.05], layers: [{ sprite: 'walker-navy', t: [0.3, 3.7] }, { sprite: 'walker-elder' }] }),
     sbScene({ id: 'l05-1', start: 4, end: 8, motion: 'pull-out', zoom: [1.12, 1.04], layers: [{ sprite: 'walker-navy', t: [0.3, 3.705] }] }),
-    sbScene({ id: 'l06-1', start: 8, end: 9, image: 'signal' }),
-    sbScene({ id: 'l07-1', start: 9, end: 12, image: 'box' }),
+    sbScene({ id: 'l06-1', start: 8, end: 9.3, image: 'signal' }),
+    sbScene({ id: 'l07-1', start: 9.3, end: 12, image: 'box' }),
   ],
   captions: [],
   overlays: [
@@ -206,11 +206,21 @@ describe('kinds', () => {
     ]);
     assert.deepEqual(bad.warnings.filter((w) => !w.includes('no claims')), [`c: ${ask}`, `g: ${ask}`]);
   });
+  test('sentences keep the question mark and drop quoted notices', () => {
+    assert.deepEqual(T.sentences('안내문에는 "미리 확인하세요."라고 적혀 있습니다. 왜일까요?'), [
+      { body: '안내문에는  라고 적혀 있습니다', question: false }, { body: '왜일까요', question: true },
+    ]);
+    assert.deepEqual(T.sentences('“주의하세요” 「찾아보세요」 『멈추세요』 끝.'), [{ body: '끝', question: false }]);
+    assert.deepEqual(T.sentences(' . 가!'), [{ body: '가', question: false }]);
+    assert.deepEqual(T.sentences('...'), []);
+    assert.deepEqual(T.sentences(''), []);
+  });
   test('tone: no commands to the viewer in narration or captions', () => {
     const ok = checkScript(goodScript({ lines: [
       { id: 'l16', say: '함 문에 붙은 사용법도, 미리 읽어 보는 건 어떨까요?', chunks: [{ text: '미리 읽어 보는 건 어떨까요?' }] },
       { id: 'l17', say: '할머니가 계세요 그런데', chunks: 'x' },
       { id: 'l18', chunks: [null, { text: '밸브를 왼쪽으로 돌립니다.' }] },
+      { id: 'l19', say: '안내문에는 "미리 확인하세요."라고 적혀 있습니다. 이게 가장 중요.', chunks: [{ text: '"미리 확인하세요"' }] },
     ] }), ctx());
     assert.deepEqual(ok, { errors: [], warnings: [] });
     const bad = checkScript(goodScript({ lines: [
@@ -219,28 +229,76 @@ describe('kinds', () => {
       { id: 'c', say: 7, chunks: [{ text: '다음 신호를 기다려 주세요, ' }] },
       { id: 'd', say: '119에 바로 신고하십시오\n그리고', chunks: chunks(1) },
       { id: 'e', say: '손을 떼라. 그리고 피해라', chunks: chunks(1) },
+      { id: 'f', say: '먼저 밸브를 잠그세요, 그다음 물을 뺍니다.', chunks: chunks(1) },
+      { id: 'g', say: '절대 만지지 마라.', chunks: chunks(1) },
     ] }), ctx());
     assert.deepEqual(bad.errors, []);
     const tip = 'orders the viewer about; suggest instead ("~해 보는 건 어떨까요?")';
+    const why = 'ends casually (-요/-죠); the narrator voice reads it lower and slower than the -니다 lines (end with -니다)';
     assert.deepEqual(bad.warnings.filter((w) => !w.includes('no claims')), [
-      `a: "함 문에 붙은 사용법도, 미리 읽어 두시고요" ${tip}`,
+      `a: "미리 읽어 두시고요" ${tip}`,
       `b: "오늘 한번 찾아보세요" ${tip}`,
+      `b: "꼭이요" ${why}`,
       `c: "다음 신호를 기다려 주세요" ${tip}`,
       `d: "119에 바로 신고하십시오" ${tip}`,
       `e: "그리고 피해라" ${tip}`,
+      `f: "먼저 밸브를 잠그세요" ${tip}`,
+      `g: "절대 만지지 마라" ${tip}`,
     ]);
   });
-  test('register: casual endings in the narration', () => {
+  test('register: casual endings and casual questions in the narration', () => {
     const r = checkScript(goodScript({ lines: [
       { id: 'a', say: '복도 끝 집에서 나와도, 금방 닿는 거리죠.', chunks: [{ text: '금방 닿는 거리죠' }] },
       { id: 'b', say: '이건 비밀이거든요! 그래서 그렇습니다.', chunks: chunks(1) },
       { id: 'c', say: '금방 닿는 거리입니다. 알고 계셨나요?', chunks: [{ text: '거리죠' }] },
       { id: 'd', chunks: chunks(1) },
+      { id: 'e', say: '계량기 함은 마른 헌 옷으로 꽉 채우고요.', chunks: chunks(1) },
+      { id: 'f', say: '신경이 시키는 거예요.', chunks: chunks(1) },
+      { id: 'g', say: '우투수는 좌타자한테 약할까?', chunks: chunks(1) },
+      { id: 'h', say: '이대로 계속 버틴다면?', chunks: chunks(1) },
+      { id: 'i', say: '정말 그럴까요? 그렇습니다. 지금 확인할 수 있습니까?', chunks: chunks(1) },
+      { id: 'j', say: '돌 수 없다면요?', chunks: chunks(1) },
+      { id: 'k', say: '엘리베이터 거울, 왜 있는지 아세요?', chunks: chunks(1) },
     ] }), ctx());
-    const why = 'ends casually; the narrator voice reads it lower and slower than the -니다 lines (end with -니다 or -까요?)';
+    const why = 'ends casually (-요/-죠); the narrator voice reads it lower and slower than the -니다 lines (end with -니다)';
+    const ask = 'is a casual question; the narrator voice reads it lower and slower than the -니다 lines (ask with -까요? or -습니까?)';
     assert.deepEqual(r.warnings.filter((w) => !w.includes('no claims')), [
       `a: "복도 끝 집에서 나와도, 금방 닿는 거리죠" ${why}`,
       `b: "이건 비밀이거든요" ${why}`,
+      `c: "알고 계셨나요?" ${ask}`,
+      `e: "계량기 함은 마른 헌 옷으로 꽉 채우고요" ${why}`,
+      `f: "신경이 시키는 거예요" ${why}`,
+      `g: "우투수는 좌타자한테 약할까?" ${ask}`,
+      `j: "돌 수 없다면요?" ${ask}`,
+      `k: "엘리베이터 거울, 왜 있는지 아세요?" ${ask}`,
+    ]);
+  });
+  test('tone: the closing suggestion is not repeated on the next line', () => {
+    const r = checkScript(goodScript({ lines: [
+      { id: 'x', say: '미리 읽어 보는 건 어떨까요?', chunks: chunks(1) },
+      { id: 'y', say: '그래서, 한번 찾아보는 건 어떨까요?', chunks: chunks(1) },
+      null,
+      { say: '버튼을 눌러 보는 건 어떨까요?', chunks: chunks(1) },
+      { id: 'v', say: '다시 확인해 보는 건 어떨까요?', chunks: chunks(1) },
+      { id: 'w', say: '그렇습니다.', chunks: chunks(1) },
+      { id: 'u', say: '정말 어떨까요? 그렇습니다.', chunks: chunks(1) },
+    ] }), ctx());
+    const vary = 'vary the second suggestion ("~해 보면 좋겠습니다")';
+    assert.deepEqual(r.warnings.filter((w) => w.includes('어떨까요?" right after')), [
+      `y: ends in "어떨까요?" right after x; ${vary}`,
+      `v: ends in "어떨까요?" right after line 4; ${vary}`,
+    ]);
+  });
+  test('shots follow the chunks in order', () => {
+    const r = checkScript(goodScript({ lines: [
+      { id: 'a', say: '가.', chunks: chunks(3), shots: [{ image: 'box' }, { image: 'box', from_chunk: 0 }] },
+      { id: 'b', say: '가.', chunks: chunks(3), shots: [{ image: 'box' }, { image: 'box', from_chunk: 2 }, { image: 'box', from_chunk: 1 }] },
+      { id: 'c', say: '가.', chunks: chunks(3), shots: [{ image: 'box' }, 'x', { image: 'box', from_chunk: 1 }, null] },
+      { id: 'd', say: '가.', chunks: chunks(3), shots: [{ image: 'box' }, { image: 'box', from_chunk: 1 }, { image: 'box', from_chunk: 2 }] },
+    ] }), ctx());
+    assert.deepEqual(r.errors.filter((e) => e.includes('previous shot')), [
+      "a shot 2: from_chunk 0 must be after the previous shot's start (chunk 0); shots follow the chunks in order",
+      "b shot 3: from_chunk 1 must be after the previous shot's start (chunk 2); shots follow the chunks in order",
     ]);
   });
   test('reveal and stages fields', () => {
@@ -714,7 +772,17 @@ describe('checkStoryboard', () => {
       `scene l05-1: layer 9 (walker-child) t [3.62, 3.62] walks its path in 0.00s (under 0.30s), ${jump}`,
       `scene l06-1: layer 1 (walker-navy) t [0, 0.1] walks its path in 0.10s (under 0.30s), ${jump}`,
     ]);
-    assert.deepEqual(warnings, []);
+    // Design rule 16: a picture under MIN_SHOT flashes (l07-1 at 1.8 s is fine).
+    assert.equal(MIN_SHOT, 1.3);
+    assert.deepEqual(warnings, [
+      'scene l06-1: on screen 0.20s, under 1.30s (design rule 16), so the picture flashes; merge it into the shot before (move its from_chunk later) or give the line more words',
+    ]);
+  });
+  test('a stamp left in a built storyboard is an error', () => {
+    const sb = { scenes: [sbScene({ id: 'l01-1', start: 0, end: 3, image: 'box' })], overlays: [{ start: 0, end: 3, kind: 'stamp', text: '상상 장면' }] };
+    assert.deepEqual(checkStoryboard(sb, 2).errors, [
+      'overlay 1: stamp (the "상상 장면" badge) was removed on 2026-10-21; take it out of script.json and rebuild the storyboard',
+    ]);
   });
   test('layered shots that jump at the cut', () => {
     const walkers = (...names) => names.map((sprite) => ({ sprite, path: [[0.5, 0.8], [0.5, 0.2]] }));
@@ -878,7 +946,7 @@ describe('stills', () => {
     assert.equal(captureName(59.99), '0m60_0s');
   });
   test('review times for scenes that move, and the scene after a layered one', () => {
-    assert.deepEqual(stills(goodSb()), [0.5, 2, 3.65, 4.1, 4.5, 6, 7.65, 8.1, 8.5, 8.65]);
+    assert.deepEqual(stills(goodSb()), [0.5, 2, 3.65, 4.1, 4.5, 6, 7.65, 8.1, 8.5, 8.65, 8.95]);
     assert.deepEqual(STILLS, { lead: 0.5, tail: 0.35, short: 1.2, after: 0.1 });
   });
   test('short scenes, overlap edges, motion diagrams and duplicates', () => {
@@ -1114,10 +1182,11 @@ describe('cli', () => {
       'error: hand.json overlay 3: unknown kind "frosty"; the engine skips it silently',
       `error: video-test/js/scenes.js has no "tape" overlay; ${COPY} or it draws nothing`,
       `error: video-test/js/scenes.js has no layerAt, so sprite layers draw nothing; ${COPY}`,
+      'warning: scene 3: on screen 0.60s, under 1.30s (design rule 16), so the picture flashes; merge it into the shot before (move its from_chunk later) or give the line more words',
       'warning: hand.json overlay 1: shows "30m" with no claims; numbers on screen need claims; facts.mjs trace will refuse it',
       'warning: hand.json overlay 2: shows "30초" with no claims; numbers on screen need claims; facts.mjs trace does not read this field, so check it against facts.json by hand',
     ]);
-    assert.deepEqual(o.out, ['7 error(s), 2 warning(s).']);
+    assert.deepEqual(o.out, ['7 error(s), 3 warning(s).']);
   });
   test('episode pages that load the storyboard', () => {
     const d = episode(sbScript());
@@ -1254,7 +1323,7 @@ describe('cli', () => {
     write(f, goodSb());
     let o = io();
     assert.equal(main(['stills', f], o.io), 0);
-    assert.deepEqual(o.out, ['[0.5,2,3.65,4.1,4.5,6,7.65,8.1,8.5,8.65]']);
+    assert.deepEqual(o.out, ['[0.5,2,3.65,4.1,4.5,6,7.65,8.1,8.5,8.65,8.95]']);
     assert.deepEqual(o.err, []);
     write(f, { scenes: [] });
     o = io();

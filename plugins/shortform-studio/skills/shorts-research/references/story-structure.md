@@ -41,8 +41,8 @@ The narration and the captions never give the viewer an order (user rule, 2026-1
 - Endings to avoid: -세요 (보세요, 주세요, 두세요, 마세요), -시고요, -십시오, -해라/-하라.
 - Endings to use: -는 건 어떨까요?, -면 좋겠습니다, -는 게 안전합니다, -해 볼까요?
 - Do not end two lines in a row with the same suggestion form ("어떨까요?" twice reads as a template).
-- Keep one register: statements end in -ㅂ니다/-습니다, questions in -까요?. A casual "~죠" or "~거든요" among them makes the narrator voice drift lower and slower (hallway-hydrant l05, 2026-10-21).
-- `motion.mjs check` (shorts-motion) warns about every line whose `say` or caption ends a sentence in a command, and every `say` with a casual ending. Rewrite it before recording.
+- Keep one register: statements end in -ㅂ니다/-습니다, questions in -까요? (or -습니까?; the imagined "fixed" line may end "...면?"). Any statement ending in -요 or -죠 (~죠, ~거든요, ~고요, ~예요, ~아요, ~니까요) and any casual question (~나요?, ~세요?, ~면요?, a bare ~까?) makes the narrator voice drift lower and slower (hallway-hydrant l05 "~죠", crosswalk l10 and parking l15 "~하고요", 2026-10-21).
+- `motion.mjs check` (shorts-motion) warns about every line whose `say` or caption ends a statement or clause in a command, every `say` with a casual ending or question, and two "어떨까요?" lines in a row. Rewrite them before recording.
 
 ## Which topics fit
 

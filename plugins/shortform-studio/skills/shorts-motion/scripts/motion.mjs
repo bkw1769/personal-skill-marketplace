@@ -24,17 +24,26 @@ export const FIT_PAD = 0.3;
 export const TOLERANCE = 0.006;
 // A layer path walked in less than this reads as a jump (fitMotion folds t to zero length when t starts too late).
 export const MIN_MOVE = 0.3;
+// Design rule 16: a picture stays at least this long; a shorter one reads as a flash.
+export const MIN_SHOT = 1.3;
 // Default grow time (s) of the kinds that build up over `grow` (scenes.js). fitMotion never trims grow, so a
 // grow longer than the overlay is cut mid-way (water meter l03: a 1.8 s reveal on a 1.2 s chunk).
 export const GROW = { tape: 1.2, frost: 2, compare: 0.9, reveal: 1.6 };
 // The same overlay (kind, place, text) ending and restarting less than this apart blinks off (a hold written with at: 0).
 export const BLINK = 0.1;
-// Sentence endings that order the viewer about (-세요, -주세요, -두시고요, -십시오, -해라). User rule 2026-10-21:
+// Sentence or clause endings that order the viewer about (-세요, -주세요, -두시고요, -십시오, -해라), checked on
+// statements only (an honorific question such as "궁금하세요?" is not an order). User rule 2026-10-21:
 // narration suggests ("미리 읽어 보는 건 어떨까요?"), it never commands ("미리 읽어 두시고요").
-export const COMMAND = /(?:세요|시고요|십시오|하라|해라)$/;
-// Casual endings among formal narration (-ㅂ니다). The narrator clone reads them lower, darker and slower
-// (hallway-hydrant l05 "거리죠", 2026-10-21: pitch -18%, brightness -21%; "거리입니다" matched).
-export const CASUAL = /(?:죠|거든요|잖아요|네요)$/;
+export const COMMAND = /(?:세요|시고요|십시오|하라|해라|마라)$/;
+// A spoken statement ending in -요 or -죠 (해요체: ~죠, ~거든요, ~잖아요, ~네요, ~고요, ~예요, ~아요, ~니까요) among
+// formal -ㅂ니다 narration. The narrator clone reads them lower, darker and slower (hallway-hydrant l05 "거리죠",
+// 2026-10-21: pitch -18%, brightness -21%; "거리입니다" matched; crosswalk l10 and parking l15 "-하고요" drifted).
+export const CASUAL = /(?:(?<![필중수주])요|죠)$/;
+// A spoken question must end in -까요?, -습니까? or the imagined "...면?" (story-structure.md); -나요?, -세요?,
+// -면요? and a bare -까? are casual.
+export const FORMAL_QUESTION = /(?:까요|니까|면)$/;
+// The closing suggestion ("~는 건 어떨까요?") is not repeated on two lines in a row.
+export const SUGGESTION = /어떨까요$/;
 // Camera moves of scenes.js MOVES: zoom [from, to] and pan offsets [[x, y] at the start, [x, y] at the end] in
 // frame fractions. Any other motion silently falls back to still.
 export const CAMERA = {
@@ -257,13 +266,24 @@ export function checkScript(script, ctx) {
     const chunks = Array.isArray(line.chunks) ? line.chunks.length : 0;
     const shots = line.shots ?? [];
     if (!Array.isArray(shots)) errors.push(`${id}: shots must be a list`);
-    else shots.forEach((s, k) => checkShot(s, k, `${id} shot ${k + 1}`, chunks, ctx, errors, warnings));
+    else {
+      shots.forEach((s, k) => checkShot(s, k, `${id} shot ${k + 1}`, chunks, ctx, errors, warnings));
+      // A later shot starts at a later chunk than the one before it; from_chunk 0 (or a step back) builds a
+      // shot that ends before it starts or flashes for a few frames.
+      shots.forEach((s, k) => {
+        const prev = k === 1 ? 0 : shots[k - 1]?.from_chunk;
+        if (k > 0 && isObj(s) && chunkOk(s.from_chunk, chunks) && Number.isInteger(prev) && s.from_chunk <= prev) {
+          errors.push(`${id} shot ${k + 1}: from_chunk ${s.from_chunk} must be after the previous shot's start (chunk ${prev}); shots follow the chunks in order`);
+        }
+      });
+    }
     const overlays = line.overlays ?? [];
     if (!Array.isArray(overlays)) errors.push(`${id}: overlays must be a list`);
     else overlays.forEach((o, k) => checkOverlay(o, `${id} overlay ${k + 1}`, chunks, ctx, errors, warnings));
     checkImagined(line, id, errors, warnings);
     checkTone(line, id, warnings);
   });
+  checkSuggestions(script.lines, warnings);
   return { errors, warnings };
 }
 
@@ -293,25 +313,59 @@ function checkImagined(line, id, errors, warnings) {
 }
 
 /**
+ * Split text into sentences, each with whether it ends in a question mark. Quoted spans ("...", “...”, 「...」)
+ * are dropped first: a quoted notice ("미리 확인하세요.") is not the narrator speaking.
+ * @param {string} text
+ * @returns {{body: string, question: boolean}[]} bodies without trailing punctuation, empty ones left out
+ */
+export function sentences(text) {
+  const unquoted = text.replace(/"[^"]*"|“[^”]*”|「[^」]*」|『[^』]*』/gu, ' ');
+  return (unquoted.match(/[^.!?\n]+[.!?]*/g) ?? [])
+    .map((s) => ({ body: s.replace(/[.!?]+$/, '').trim().replace(/[\s,'’)\]~…]+$/u, ''), question: /\?/.test(s) }))
+    .filter((s) => s.body);
+}
+
+/**
  * Tone rule (shorts-research references/story-structure.md): the narration (`say`) and the captions
- * (`chunks[].text`) never end a sentence in a command to the viewer; a call to action is a suggestion or a
- * question ("~해 보는 건 어떨까요?"). One warning per line, naming the first command sentence found. The spoken
- * text (`say`) also keeps the narrator's register: a casual ending (~죠, ~거든요, ~잖아요, ~네요) gets its own warning,
- * because the cloned voice drifts on it (storybook-narration references/script-writing.md, One register).
+ * (`chunks[].text`) never end a statement or a clause in a command to the viewer; a call to action is a suggestion
+ * or a question ("~해 보는 건 어떨까요?"). One warning per line, naming the first command found. The spoken text
+ * (`say`) also keeps the narrator's register (statements -ㅂ니다/-습니다, questions -까요?): a statement ending in
+ * -요/-죠 or a casual question (-나요?, -세요?, a bare -까?) gets its own warning, because the cloned voice drifts on
+ * it (storybook-narration references/script-writing.md, One register). A sentence already reported as a command is
+ * not reported again as casual.
  * @param {any} line a script line (an object)
  * @param {string} id
  * @param {string[]} warnings
  */
 function checkTone(line, id, warnings) {
   const texts = [line.say, ...(Array.isArray(line.chunks) ? line.chunks : []).map((c) => (isObj(c) ? c.text : null))].filter(str);
-  const sentences = texts.flatMap((t) => t.split(/[.!?\n]+/)).map((t) => t.trim().replace(/[\s,"'”’)\]~…]+$/u, ''));
-  const hit = sentences.find((t) => COMMAND.test(t));
+  const clauses = texts.flatMap(sentences).filter((s) => !s.question)
+    .flatMap((s) => s.body.split(',').map((c) => c.trim()).filter(Boolean));
+  const hit = clauses.find((t) => COMMAND.test(t));
   if (hit) warnings.push(`${id}: "${hit}" orders the viewer about; suggest instead ("~해 보는 건 어떨까요?")`);
-  const spoken = (str(line.say) ? line.say.split(/[.!?\n]+/) : []).map((t) => t.trim().replace(/[\s,"'”’)\]~…]+$/u, ''));
-  const casual = spoken.find((t) => CASUAL.test(t));
-  if (casual) {
-    warnings.push(`${id}: "${casual}" ends casually; the narrator voice reads it lower and slower than the -니다 lines (end with -니다 or -까요?)`);
-  }
+  const spoken = str(line.say) ? sentences(line.say).filter((s) => !(hit && s.body.endsWith(hit))) : [];
+  const casual = spoken.find((s) => (s.question ? !FORMAL_QUESTION.test(s.body) : CASUAL.test(s.body)));
+  if (!casual) return;
+  warnings.push(casual.question
+    ? `${id}: "${casual.body}?" is a casual question; the narrator voice reads it lower and slower than the -니다 lines (ask with -까요? or -습니까?)`
+    : `${id}: "${casual.body}" ends casually (-요/-죠); the narrator voice reads it lower and slower than the -니다 lines (end with -니다)`);
+}
+
+/**
+ * The closing suggestion is not repeated: two lines in a row whose spoken text ends in "어떨까요?" get a warning
+ * on the second (story-structure.md, Tone).
+ * @param {any[]} lines script lines
+ * @param {string[]} warnings
+ */
+function checkSuggestions(lines, warnings) {
+  let previous = null;
+  lines.forEach((line, i) => {
+    const last = isObj(line) && str(line.say) ? sentences(line.say).at(-1) : undefined;
+    const suggests = Boolean(last && last.question && SUGGESTION.test(last.body));
+    const id = isObj(line) && str(line.id) ? line.id : `line ${i + 1}`;
+    if (suggests && previous) warnings.push(`${id}: ends in "어떨까요?" right after ${previous}; vary the second suggestion ("~해 보면 좋겠습니다")`);
+    previous = suggests ? id : null;
+  });
 }
 
 /**
@@ -355,7 +409,9 @@ export function onScreen(overlays) {
 
 /**
  * Check a storyboard (storyboard/1, shorts profile) for motion problems: invalid scene or overlay times,
- * layers that walk their path in under MIN_MOVE or end too close to their scene end, consecutive layered
+ * scenes shorter than MIN_SHOT, a leftover stamp overlay (removed 2026-10-21; a built storyboard keeps whatever
+ * the script had when it was built), layers that walk their path in under MIN_MOVE or end too close to their
+ * scene end, consecutive layered
  * scenes on the same plate with the same framing and cast, timers and signal bars that never show their end
  * state, an overlay that ends and restarts at the same spot (a blink), a plate:true overlay on screen over
  * two pictures, too many overlays at once (unknown kinds are not drawn, so not counted) and two overlays
@@ -374,6 +430,9 @@ export function checkStoryboard(sb, maxOverlays) {
     if (!isObj(sc) || !fin(sc.start) || !fin(sc.end) || sc.start >= sc.end) return errors.push(`${name}: start and end must be numbers with start < end`);
     scenes.push({ sc, name });
     const len = sc.end - sc.start;
+    if (len < MIN_SHOT - TOLERANCE) {
+      warnings.push(`${name}: on screen ${secs(len)}, under ${secs(MIN_SHOT)} (design rule 16), so the picture flashes; merge it into the shot before (move its from_chunk later) or give the line more words`);
+    }
     (Array.isArray(sc.layers) ? sc.layers : []).forEach((L, j) => {
       if (!isObj(L) || !Array.isArray(L.t) || !fin(L.t[0]) || !fin(L.t[1])) return;
       const [t0, t1] = L.t;
@@ -398,6 +457,7 @@ export function checkStoryboard(sb, maxOverlays) {
   const live = [];
   sb.overlays.forEach((o, i) => {
     if (!isObj(o)) return errors.push(`overlay ${i + 1}: must be an object`);
+    if (o.kind === 'stamp') return errors.push(`overlay ${i + 1}: stamp (the "상상 장면" badge) was removed on 2026-10-21; take it out of script.json and rebuild the storyboard`);
     if (!fin(o.start) || !fin(o.end) || o.start >= o.end) {
       return errors.push(`overlay ${i + 1} (${o.kind}): start and end must be numbers with start < end; an out-of-range at_chunk or until_chunk writes null (a null start draws it from 0 s, a null end never)`);
     }
