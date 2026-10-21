@@ -82,7 +82,7 @@ A source that no claim cites is warned about: delete it or cite it.
 
 ## How trace reads numbers
 
-`trace` collects every item a viewer reads: `captions`, `bubbles` and `overlays` in the storyboard (their `text` and `label`), both at the top level and inside each `scenes[]` entry (reported as `scene <id> caption <n>`), then the publish.json `title` (string or list of lines), `description` (string or list) and `hashtags` (string or list). For each item:
+`trace` collects every item a viewer reads: `captions`, `bubbles` (their `text` and `label`) and `overlays` in the storyboard (every text the engine draws: `text`, `label`, `sub`, `skin`, `flesh`, a timer's final count `to` plus `unit`, `compare` item labels and texts, `stages` title, row names and row texts), both at the top level and inside each `scenes[]` entry (reported as `scene <id> caption <n>`), then the publish.json `title` (string or list of lines), `description` (string or list) and `hashtags` (string or list). For each item:
 
 1. Phrases in the item's `not_facts` are blanked (warning if a phrase is not in the text, and warning if the phrase is itself a number of the item's claims: trace it instead of hiding it).
 2. The `say` forms of the item's claims are blanked (they count as matched).

@@ -243,8 +243,7 @@ function checkOverlay(o, at, chunks, ctx, errors, warnings) {
   const strip = (s) => notFacts.reduce((acc, p) => acc.split(p).join(' '), s);
   const shown = shownText(o);
   if (!shown.some((s) => DIGIT.test(strip(s)))) return;
-  const traced = spec.shows.includes('text') && str(o.text) && DIGIT.test(strip(o.text));
-  warnings.push(`${at}: shows "${shown.join(' / ')}" with no claims; numbers on screen need claims; ${traced ? 'facts.mjs trace will refuse it' : 'facts.mjs trace does not read this field, so check it against facts.json by hand'}`);
+  warnings.push(`${at}: shows "${shown.join(' / ')}" with no claims; numbers on screen need claims; facts.mjs trace will refuse it`);
 }
 
 /**

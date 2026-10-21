@@ -130,7 +130,7 @@ Commands run from the project root.
    node <shorts-research-dir>/scripts/facts.mjs trace src/shorts/episodes/<id> --storyboard src/shorts/episodes/<id>/<storyboard file>
    ```
 
-   Trace reads only an overlay's `text` and `label`. Check a timer's `to`, a number's `sub`, `compare` item texts and `buckle` labels against `facts.json` by hand.
+   Trace reads every text an overlay draws: `text`, `label`, a number's `sub`, a timer's count, `compare` items, `stages` title and rows, `buckle` labels. An on-screen form that differs from the ledger ("1/3" for 0.33, "-87%" for an 87% drop) gets its own `numbers` entry with that `say`.
    - Where a plate point lands on the frame: `node <skill-dir>/scripts/motion.mjs frame <storyboard> <scene-id> <u,v> [<u,v>]...` prints its frame x, y at the scene start and end and flags the caption band, the bottom 20% and off-screen points.
 
 8. **Review stills of every motion scene.**

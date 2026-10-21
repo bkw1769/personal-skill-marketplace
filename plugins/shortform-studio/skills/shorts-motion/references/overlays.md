@@ -189,7 +189,7 @@ A stopwatch ring that fills while the seconds count from 0 to `to`.
   "at": 0.3, "until": "end", "claims": ["c-example-20m"] }
 ```
 
-The value is floored, so `to` shows only when the count is complete. Without an explicit `dur` the count never completes (the overlay ends first) and the timer never reaches `to`: it stops one or more short (a `to` of 100 over 1 s ends on 96). Time is compressed on purpose (27 s counted in about 3.3 s). Never `plate: true`. Trace does not read `to`: check it by hand.
+The value is floored, so `to` shows only when the count is complete. Without an explicit `dur` the count never completes (the overlay ends first) and the timer never reaches `to`: it stops one or more short (a `to` of 100 over 1 s ends on 96). Time is compressed on purpose (27 s counted in about 3.3 s). Never `plate: true`. Trace reads the final count (`to` plus `unit`), so put the claim on the overlay.
 
 ## signal-bar
 
@@ -348,7 +348,7 @@ Bar colours default to `#4fa8ff` (first) and `#bfe3ff` (others).
   "at_chunk": 1, "until": "end", "claims": ["c-water-expands-9pct"] }
 ```
 
-The texts appear once the bars are 85% grown. Bars are scaled so the largest value is full height. `min` exaggerates the difference (min 80 draws 100 vs 109 as 20 : 29); use it only when no axis or values are drawn and the text states the real change. Use `min: 0` when heights must read exactly. `min` must be below every value; `min` equal to the largest value divides by zero (the checker rejects both). Equal values draw equal bars. The panel fades in over a fixed 0.2 s, so a repeat with `grow: 0.01` still fades in. Trace does not read `items[].text`: put the claim on the overlay and check it by hand.
+The texts appear once the bars are 85% grown. Bars are scaled so the largest value is full height. `min` exaggerates the difference (min 80 draws 100 vs 109 as 20 : 29); use it only when no axis or values are drawn and the text states the real change. Use `min: 0` when heights must read exactly. `min` must be below every value; `min` equal to the largest value divides by zero (the checker rejects both). Equal values draw equal bars. The panel fades in over a fixed 0.2 s, so a repeat with `grow: 0.01` still fades in. Trace reads every item label and text: put the claim on the overlay.
 
 ## reveal
 
@@ -409,7 +409,7 @@ A ladder card for graded levels (forecast stages, warning levels): one row per l
   "at": 0.2, "until": "end", "claims": ["c-forecast-stages"] }
 ```
 
-Frame-anchored card (no `plate`). Trace does not read `rows`: put the claim on the overlay and check every row against the claim's text and caveat by hand (the water meter's 관심 boundary is written 초과 in 2023-24 and 이상 in 2025, so the row says 영하 5도 위).
+Frame-anchored card (no `plate`). Trace reads the title and every row: put the claim on the overlay, and still read each row against the claim's caveat (the water meter's 관심 boundary is written 초과 in 2023-24 and 이상 in 2025, so the row says 영하 5도 위).
 
 ## dim_bg
 
@@ -438,4 +438,4 @@ Most topics need one picture the menu cannot draw (frost and compare were added 
 7. **Checker.** Add the kind to the `KINDS` table in `<skill-dir>/scripts/motion.mjs`: `required` (fields besides start/end), `coords` (scalar x/y fractions), `points` ([x, y] fields), `boxes`, `paths`, `shows` (every text field the function draws), and the flags `numbers` (may show numbers that need claims; set it whenever `shows` is not empty or the kind prints a number from another field), `time` (means "time", so it may not share the screen with another time kind), `motion` (animates beyond a pop-in, so `stills` lists its scenes) and `pin` (points at the picture, so a frame-anchored one is warned about). If it divides by a new run-time field, add the field to `TIMED`. Add a case to `tests/shorts-motion.test.mjs` in the marketplace repo; the suite gates 100% line and branch coverage of `scripts/`, and the test must really exercise the new entry. If the project keeps a copy of this skill in `.claude/skills/shorts-motion/`, update it too. Add a section to this file.
 8. **Ship it to the episode.** Copy `src/shorts/_engine/video/js/` into `src/shorts/episodes/<id>/video/` and every `video-<voice>/` of that episode (SKILL.md step 5). Older episodes keep their copies; `motion.mjs check` reports a page whose copy lacks a kind it uses.
 9. **Review.** Capture the start, the middle and the end of the overlay, plus the same time twice to confirm the frame is identical. Record the new kind in the project's `docs/MEMORY.md` and `docs/DECISIONS.md`.
-10. **Numbers.** If the kind prints a number from a field other than `text` or `label`, trace will not see it. Put `claims` on the overlay and check it by hand, or print it through `text`.
+10. **Numbers.** Trace reads every text the engine draws (facts.mjs `overlayText`: text, label, sub, skin, flesh, a timer's count, compare items, stages title and rows). A new kind that prints a number from another field must be added there too, with a test.

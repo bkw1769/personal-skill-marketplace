@@ -242,6 +242,21 @@ export function checkLedgers(sources, facts, opt = {}) {
 }
 
 /**
+ * Every text an overlay draws on screen (scenes.js): its text, label, sub line, skin and flesh labels; a timer's
+ * final count (`to`, default 10, plus unit, default 초); compare item labels and texts; stages title, row names
+ * and row texts.
+ * @param {any} o an overlay object
+ * @returns {string[]}
+ */
+export function overlayText(o) {
+  if (o.kind === 'timer') return [`${o.to ?? 10}${o.unit ?? '초'}`];
+  const list = (v, fields) => (Array.isArray(v) ? v.filter(isObj).flatMap((it) => fields.map((f) => it[f])) : []);
+  if (o.kind === 'compare') return list(o.items, ['label', 'text']).filter(str);
+  if (o.kind === 'stages') return [o.title, ...list(o.rows, ['name', 'text'])].filter(str);
+  return [o.text, o.label, o.sub, o.skin, o.flesh].filter(str);
+}
+
+/**
  * Collect the on-screen text items that must be traced: storyboard captions, bubbles
  * and overlays (top level, then nested in scenes[]), then the publish title,
  * description and hashtags. Publish items share publish.not_facts (shared: true).
@@ -256,7 +271,7 @@ export function screenItems(storyboard, publish, thumbnail = null) {
     for (const kind of ['captions', 'bubbles', 'overlays']) {
       (Array.isArray(holder[kind]) ? holder[kind] : []).forEach((it, i) => {
         if (!isObj(it)) return;
-        const text = [it.text, it.label].filter(str).join(' ');
+        const text = (kind === 'overlays' ? overlayText(it) : [it.text, it.label].filter(str)).join(' / ');
         if (!text) return;
         const at = typeof it.start === 'number' ? ` @${it.start}s` : '';
         items.push({ where: `${prefix}${kind.slice(0, -1)} ${i}${at}`, text, claims: it.claims, notFacts: it.not_facts });

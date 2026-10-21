@@ -186,7 +186,7 @@ Why it works:
 - The bar heights come from `value`, but only `text` is printed: the viewer sees `+9%`, never `109`, which is arithmetic, not a claim.
 - `min: 80` sets the zero height, so the difference is visibly exaggerated (20 : 29). Acceptable only because no axis or values are drawn and the text states the real change.
 - The camera pulls out against l03's push-in on the same base still, so the repeated picture still moves differently.
-- Trace does not read `items[].text`; the claim sits on the overlay and was checked by hand.
+- The claim sits on the overlay; trace reads `items[].text` (since 2026-10-22).
 
 ## water-meter l10: flow arrow pinned through the pipe
 

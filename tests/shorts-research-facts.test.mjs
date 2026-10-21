@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/shortform-studio/skills/shorts-research/scripts/facts.mjs');
 const F = await import(SCRIPT);
-const { extractNumbers, matchesValue, sameNumber, blank, checkLedgers, screenItems, trace, cite, templates, parseArgs, main, SOURCES_SCHEMA, FACTS_SCHEMA, USAGE } = F;
+const { extractNumbers, matchesValue, sameNumber, blank, checkLedgers, screenItems, overlayText, trace, cite, templates, parseArgs, main, SOURCES_SCHEMA, FACTS_SCHEMA, USAGE } = F;
 
 const TODAY = '2026-10-19';
 const NOARCH = 'source molit: no archive_url (pages change; save a web.archive.org copy, or record the failed attempt in archive_failed)';
@@ -278,6 +278,29 @@ describe('screenItems and trace', () => {
     assert.ok(trace({ review: { by: 'x', on: '' }, claims: [null, { id: 'k', text: '6', numbers: 'no', status: 'verified' }] }, { captions: [{ text: '6개', claims: ['k'] }] }, null).errors[0].includes('"6개" is not a number'));
   });
 
+  test('overlayText reads every field an overlay draws', () => {
+    assert.deepEqual(overlayText({ kind: 'timer', to: 27 }), ['27초']);
+    assert.deepEqual(overlayText({ kind: 'timer', unit: '분' }), ['10분']);
+    assert.deepEqual(overlayText({ kind: 'compare', items: [{ label: '그대로', value: 1 }, null, { label: '매일 교체', value: 2, text: '-87%' }] }), ['그대로', '매일 교체', '-87%']);
+    assert.deepEqual(overlayText({ kind: 'compare', items: 'x' }), []);
+    assert.deepEqual(overlayText({ kind: 'stages', title: '일 최저기온', rows: [{ name: '관심', text: '영하 5도 위' }, { name: '주의' }] }), ['일 최저기온', '관심', '영하 5도 위', '주의']);
+    assert.deepEqual(overlayText({ kind: 'stages' }), []);
+    assert.deepEqual(overlayText({ kind: 'number', text: '36개', sub: '점 6×6' }), ['36개', '점 6×6']);
+    assert.deepEqual(overlayText({ kind: 'buckle', skin: '피부', flesh: '속살' }), ['피부', '속살']);
+    assert.deepEqual(overlayText({ kind: 'label', label: '수압' }), ['수압']);
+  });
+  test('trace refuses an unsourced number in an overlay field it did not read before', () => {
+    const facts = { claims: [{ id: 'c-87', text: '87% 적었다', numbers: [{ value: 87 }], sources: [{ id: 's', locator: 'p', excerpt: '87%' }], status: 'verified', as_of: '2026' }] };
+    const sb = { overlays: [
+      { start: 1, kind: 'compare', items: [{ label: '물', value: 1, text: '78%' }, { label: '얼음', value: 2 }], claims: ['c-87'] },
+      { start: 2, kind: 'stages', rows: [{ name: '관심', text: '999도' }, { name: '주의', text: '87%' }], claims: ['c-87'] },
+    ] };
+    const r = trace(facts, sb, null);
+    assert.deepEqual(r.errors.map((e) => e.replace(/ \(.*$/, '')), [
+      'overlay 0 @1s "물 / 78% / 얼음": "78%" is not a number of its claims',
+      'overlay 1 @2s "관심 / 999도 / 주의 / 87%": "999도" is not a number of its claims',
+    ]);
+  });
   test('screenItems reads captions nested in scenes and publish hashtags', () => {
     const items = screenItems({ scenes: [{ id: 's1', captions: [{ start: 2, text: '76cm', claims: ['c-tube'] }], overlays: [{ label: '2배' }] }, null, { bubbles: [{ text: '말' }] }] }, { hashtags: ['#1978년', '', '#건축'] });
     assert.deepEqual(items.map((i) => [i.where, i.text, i.claims]), [

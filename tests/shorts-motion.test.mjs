@@ -325,7 +325,7 @@ describe('kinds', () => {
       'l01 overlay 6: rows must be 2 or more {name, text} with text in both',
     ]);
     assert.ok(r.warnings.some((w) => w.startsWith('l01 overlay 4: reveal points at the picture')));
-    assert.ok(r.warnings.some((w) => w.startsWith('l01 overlay 7: shows "관심 / 영하 5도 위 / 주의 / 영하 5~10도" with no claims') && w.endsWith('check it against facts.json by hand')));
+    assert.ok(r.warnings.some((w) => w.startsWith('l01 overlay 7: shows "관심 / 영하 5도 위 / 주의 / 영하 5~10도" with no claims') && w.endsWith('facts.mjs trace will refuse it')));
     const u = usage(line({ overlays: [{ kind: 'reveal', image: 'box-frozen' }, { kind: 'reveal' }] }), null);
     assert.ok(u.images.has('box-frozen'));
   });
@@ -636,7 +636,7 @@ describe('checkScript', () => {
   });
   test('numbers on screen without claims', () => {
     const refuse = 'numbers on screen need claims; facts.mjs trace will refuse it';
-    const byHand = 'numbers on screen need claims; facts.mjs trace does not read this field, so check it against facts.json by hand';
+    const byHand = 'numbers on screen need claims; facts.mjs trace will refuse it';
     const r = checkScript(line({ overlays: [
       { kind: 'number', text: '2,046개' },
       { kind: 'number', text: '67%', sub: '2024년 기준', claims: [] },
@@ -1184,7 +1184,7 @@ describe('cli', () => {
       `error: video-test/js/scenes.js has no layerAt, so sprite layers draw nothing; ${COPY}`,
       'warning: scene 3: on screen 0.60s, under 1.30s (design rule 16), so the picture flashes; merge it into the shot before (move its from_chunk later) or give the line more words',
       'warning: hand.json overlay 1: shows "30m" with no claims; numbers on screen need claims; facts.mjs trace will refuse it',
-      'warning: hand.json overlay 2: shows "30초" with no claims; numbers on screen need claims; facts.mjs trace does not read this field, so check it against facts.json by hand',
+      'warning: hand.json overlay 2: shows "30초" with no claims; numbers on screen need claims; facts.mjs trace will refuse it',
     ]);
     assert.deepEqual(o.out, ['7 error(s), 3 warning(s).']);
   });

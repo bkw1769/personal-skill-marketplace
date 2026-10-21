@@ -63,7 +63,7 @@ Errors must be fixed. Warnings (no archive copy, no locator, stale figure, only 
 
 ### 6. Hand over to the script, then trace
 
-The script (storyboard captions, bubbles and overlays, at the top level or inside `scenes[]`; publish.json title, description and hashtags) lists the claim ids each item relies on:
+The script (storyboard captions, bubbles and overlays, at the top level or inside `scenes[]`; publish.json title, description and hashtags; thumbnail.json headline and caption) lists the claim ids each item relies on. For an overlay, trace reads every text the engine draws: `text`, `label`, a number's `sub`, a timer's final count, `compare` items, `stages` title and rows, `buckle` labels. Write the script for a short of about 61-75 s (TikTok Creator Rewards counts only videos over 1 min); lengthen a short one with another sourced claim from the ledger, never with filler:
 
 ```json
 { "start": 1.4, "end": 3.0, "text": "76cm 튜브가", "claims": ["c-tube-height"] }
@@ -85,7 +85,7 @@ Before publishing, the user reads the ledger. Record it in facts.json as `"revie
 node <skill-dir>/scripts/facts.mjs cite src/shorts/episodes/<id> --out src/shorts/episodes/<id>/sources.txt
 ```
 
-prints the sources of the claims used on screen, in order of first use (`--lang en` for an English heading; non-ASCII characters in URLs are percent-encoded so the links work on YouTube). The uploaded description is `publish.description`, then this list appended after it. Do not paste the list into `publish.description`: trace would read every date in it as an on-screen number.
+prints the sources of the claims used on screen, in order of first use (`--lang en` for an English heading; non-ASCII characters in URLs are percent-encoded). `sources.txt` keeps the web addresses for the record. The uploaded description of a Short is `publish.description` plus the same list **without** addresses (`--urls off`; links in Shorts, Reels and TikTok text are not clickable, user choice 2026-10-19), which shorts-publish writes for every platform. Do not paste the list into `publish.description`: trace would read every date in it as an on-screen number.
 
 ## Script reference
 
