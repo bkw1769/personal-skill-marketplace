@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "fairytale-studio",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Skills for producing illustrated storybook videos: art prompts, asset catalog, storyboard, sprite cutting, narration (Qwen3-TTS), canvas video and output checks.",
   "author": {
     "name": "bkw1769"

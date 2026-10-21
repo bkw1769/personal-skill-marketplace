@@ -12,10 +12,10 @@ A private-ready Codex plugin marketplace for bkw1769.
 | `fairytale-studio` | `sheet-to-sprites` | Cut transparent sprites out of hand-drawn sheets (pure Node PNG codec, paper removal, magenta key, paper-rim colour matching, contact sheet) and measure them (openings, colour positions, leftover magenta). |
 | `fairytale-studio` | `storybook-narration` | Korean/English narration with Qwen3-TTS 1.7B on MLX: design and freeze voices, script/storyboard to lint-checked lines, batch generation with QA and retakes, full.wav + timeline.json (portable tts/ template + line tool). |
 | `fairytale-studio` | `storybook-video` | Watercolor storybook video from storyboard + sprites (Canvas 2D + Web Audio template, recorded narration with ducking, collage helpers, frame-by-frame MP4 export, real-time recording with a pre-check, review stills, dev server) plus an MP4 probe and a picture/sound sync check. |
-| `shortform-studio` | `shorts-research` | Informational shorts: topic scoring, source ledger and claim ledger, and a checker that traces every on-screen number (captions, overlays, title, description, hashtags) to a claim and prints the description's source list (bundled checker + tests); the channel's four-step story (question, the doubt fixed, what breaks ending in one stamped imagined shot, the real reason) in references/story-structure.md. |
-| `shortform-studio` | `shorts-publish` | Upload sheets for YouTube Shorts, TikTok and Instagram Reels from one publish.json: traced source list without URLs, AI disclosure, platform-sized hashtags (YouTube all, TikTok and Instagram 5), cover frame, per-platform settings and a pre-upload checklist; refuses to overwrite hand-written sheets (bundled generator + tests). |
+| `shortform-studio` | `shorts-research` | Informational shorts: topic scoring, source ledger and claim ledger, and a checker that traces every on-screen number (captions, overlays, title, description, hashtags) to a claim and prints the description's source list (bundled checker + tests); the channel's four-step story (question, the doubt fixed, what breaks ending in one imagined shot asked as a question, the real reason) and the tone rules (suggest, never command; one formal register) in references/story-structure.md; trace reads every text an overlay draws (card rows, compare items, timer counts). |
+| `shortform-studio` | `shorts-publish` | Upload sheets for YouTube Shorts, TikTok and Instagram Reels from one publish.json: traced source list without URLs, the channel's disclosure line (AI notices go in the platform AI labels), platform-sized hashtags (YouTube all, TikTok and Instagram 5), cover frame, per-platform settings and a pre-upload checklist; reads the real length and size from the MP4 and stops on ledger errors, a video that does not match its storyboard and '<' '>' in YouTube text; refuses to overwrite hand-written sheets (bundled generator + tests). |
 | `shortform-studio` | `shorts-thumbnail` | 9:16 Shorts thumbnail from the episode's own art using patterns measured on 1M+ view explainer Shorts: spec checker (parts, text length, safe area, mark count; tested) and a browser renderer with a phone-grid preview; numbers traced by shorts-research. |
-| `shortform-studio` | `shorts-motion` | Code motion graphics for still-image shorts in the portrait engine: choosing motion beats, cut-out sprites walking over an empty plate, animated diagram overlays (tape, timer, signal bar, frost, compare bars, flow arrow, turning gears and more) pinned to the picture, per-voice timing, review stills; checker for kinds, fields, overlays on screen at once, blinking holds, layer timing and the episode's engine copy (bundled checker + tests). |
+| `shortform-studio` | `shorts-motion` | Code motion graphics for still-image shorts in the portrait engine: choosing motion beats, cut-out sprites walking over an empty plate, animated diagram overlays (tape, timer, signal bar, frost, compare bars, flow arrow, turning gears and more) pinned to the picture, per-voice timing, review stills; checker for kinds, fields, overlays on screen at once, blinking holds, layer timing, shots under 1.3 s, leftover stamps, commanding or casual narration and the episode's engine copy, plus a pacing report (bundled checker + tests). |
 
 The fairytale skills chain: art prompts → (image generation) → sheet-to-sprites → assets; story-storyboard → storybook-narration → storybook-video.
 
@@ -50,6 +50,7 @@ Authenticate with a GitHub account that can read the private repository, then:
 codex plugin marketplace add bkw1769/personal-skill-marketplace --ref main
 codex plugin add personal-tools@bkw1769-personal
 codex plugin add fairytale-studio@bkw1769-personal
+codex plugin add shortform-studio@bkw1769-personal
 ```
 
 For Claude Code, copy a skill folder into a project's `.claude/skills/` (or `~/.claude/skills/`); the SKILL.md format is the same.
@@ -81,8 +82,10 @@ For Git-backed installations, refresh the marketplace, then refresh the plugin:
 ```sh
 codex plugin marketplace upgrade bkw1769-personal
 codex plugin add personal-tools@bkw1769-personal
+codex plugin add fairytale-studio@bkw1769-personal
+codex plugin add shortform-studio@bkw1769-personal
 ```
 
-For the local SSD source, refresh the plugin directly with the second command. Start a new chat to use updated skills.
+For the local SSD source, refresh the plugins directly with the `codex plugin add` commands. Start a new chat to use updated skills.
 
 Reference: https://developers.openai.com/plugins/build/plugins
