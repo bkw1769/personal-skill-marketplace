@@ -46,9 +46,9 @@ Do not edit the sheets by hand: the next run would lose the edit. Change `publis
 
 | Field | Required | Use |
 |---|---|---|
-| `title` | yes | List; the first is used, the rest are listed as alternatives on YouTube. |
+| `title` | yes | List; the first is used, the rest are listed as alternatives on YouTube. No "<" or ">" (required, see below). |
 | `title_claims` | if the title has a number | Claims for the title (traced). |
-| `description` | yes | List of lines. The same lines go to all three platforms. |
+| `description` | yes | List of lines. The same lines go to all three platforms. No "<" or ">": write a menu path as "설정 → 배터리 → 충전", never "설정 > 배터리" (required, see below). |
 | `hashtags` | yes | Channel tag first. Put YouTube-only tags last; TikTok and Instagram take the first 5 others. |
 | `disclosure` | yes | AI picture and voice notice. |
 | `made_for_kids` | yes | YouTube audience setting. |
@@ -65,6 +65,7 @@ node <skill-dir>/scripts/upload.mjs src/shorts/episodes/<id> --out src/shorts/ou
 ```
 
 - `--video` and `--thumbnail` default to `<id>.mp4` and `<id>-thumbnail.png` next to the upload folder.
+- **Required for YouTube: no angle brackets.** YouTube refuses "<" and ">" in the title, description and tags, so the upload fails on them (user rule, 2026-10-21). The script stops with an error when the YouTube title, description (summary, source list, closing lines, hashtags) or `tags` contain one. Fix it where it comes from: `publish.json`, or a source title in `research/sources.json` (cite copies titles into the source list). Use "→" for menu paths and words or 「」 for quotes; corner brackets 「」 and quotes are fine.
 - **Exit 1** means nothing was written. Fix the errors it prints: an untraced number, a missing title or description, a length over a platform limit, a video over 3 minutes, a hand-written sheet in the way.
 - **Numbers trace cannot read** (stage card rows, compare labels, timer counts, a number's sub line, buckle labels) get an unchecked box in every sheet and a table "직접 대조할 화면 숫자" in `youtube.md`. Read each against `research/facts.json` with the user; a row without claims is marked **없음**.
 - **Warnings** still write the sheets. They become unchecked boxes in the checklist: no fact review, a single-source claim, a missing video file, no cover frame.

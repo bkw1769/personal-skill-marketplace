@@ -205,6 +205,15 @@ describe('build', () => {
     assert.doesNotMatch(r.files['tiktok.md'], /틱톡 수익화/);
     assert.match(yt, /설명\n\n출처\n- 법제처, 「시행규칙」 \(2026-04-01\)\n\nAI로 만들었습니다\.\n```/);
   });
+  test('youtube refuses angle brackets in title, description and tags', () => {
+    const msg = (w) => `youtube: ${w} contains "<" or ">", which YouTube does not allow; write "→" or words instead (publish.json, or a source title in research/sources.json)`;
+    let r = build(input({ publish: publish({ title: ['노란 블록은 장식이 아닙니다', '<30cm> 비밀'], title_claims: ['c-size'], description: ['한 장은 30cm입니다 (설정 > 배터리).'], tags: ['a<b'] }), storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
+    assert.deepEqual(r.errors, [msg('title'), msg('description'), msg('tags')]);
+    r = build(input({ sources: { sources: [{ ...sources().sources[0], title: '시행규칙 <별표 1>' }, sources().sources[1]] }, storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
+    assert.deepEqual(r.errors, [msg('description')]);
+    r = build(input({ publish: publish({ description: ['한 장은 30cm입니다 (설정 → 배터리).', '41%만 제대로 깔렸습니다.'] }), storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
+    assert.deepEqual(r.errors, []);
+  });
   test('errors: channel schema, empty publish, limits', () => {
     let r = build(input({ publish: { hashtags: [] }, channel: { schema: 'x' }, storyboard: { duration: 200, captions: [] } }));
     assert.deepEqual(r.errors, [

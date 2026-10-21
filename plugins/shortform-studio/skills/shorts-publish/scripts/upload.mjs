@@ -171,6 +171,10 @@ export function build(input) {
   const len = (s) => [...s].length;
   if (len(title) > LIMITS.youtube.title) errors.push(`youtube: title is ${len(title)} characters (max ${LIMITS.youtube.title})`);
   if (len(ytDesc) > LIMITS.youtube.description) errors.push(`youtube: description is ${len(ytDesc)} characters (max ${LIMITS.youtube.description})`);
+  // YouTube refuses "<" and ">" in titles, descriptions and tags (the upload form reports invalid characters).
+  for (const [what, text] of [['title', titles.join('\n')], ['description', ytDesc], ['tags', lines(publish.tags).join(', ')]]) {
+    if (/[<>]/.test(text)) errors.push(`youtube: ${what} contains "<" or ">", which YouTube does not allow; write "→" or words instead (publish.json, or a source title in research/sources.json)`);
+  }
   if (ytTags.length > LIMITS.youtube.hashtags) errors.push(`youtube: ${ytTags.length} hashtags; over ${LIMITS.youtube.hashtags} YouTube ignores them all`);
   if (len(ttCap) > LIMITS.tiktok.caption) errors.push(`tiktok: caption is ${len(ttCap)} characters (max ${LIMITS.tiktok.caption})`);
   if (len(igCap) > LIMITS.instagram.caption) errors.push(`instagram: caption is ${len(igCap)} characters (max ${LIMITS.instagram.caption})`);

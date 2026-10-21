@@ -9,6 +9,7 @@ Checked on 2026-10-20. Most numbers come from secondary guides, not the platform
 | Description / caption | 5,000 characters | 4,000 characters (some guides say 2,200) | 2,200 characters |
 | Hashtags | first 3 show above the title; over 15 and all are ignored | 3-5 recommended | max 5 per post since Dec 2025 (caption and first comment together) |
 | Links in text | not clickable in Shorts descriptions (since 2023-08-31) | not clickable | not clickable |
+| Forbidden characters | "<" and ">" in title, description and tags (the upload refuses them; checked as an error) | none known | none known |
 | AI notice | "altered or synthetic content" only for realistic people, places or events | AI-generated content toggle; C2PA content credentials are read and labelled automatically | "AI info" label in advanced settings; Meta reads C2PA and IPTC metadata and labels automatically |
 | Cover | custom Shorts thumbnail only for Partner Program channels (since 2026-07); otherwise pick a frame in the mobile app | upload an image or pick a frame | upload from camera roll or pick a frame; the profile grid shows the middle 3:4 |
 | Monetisation note | YPP: 1,000 subscribers + 10M Shorts views in 90 days | Creator Rewards: personal account, 19+ in Korea, 10,000 followers, 100,000 views in 30 days, videos over 1 min | no general Reels payout in Korea |
