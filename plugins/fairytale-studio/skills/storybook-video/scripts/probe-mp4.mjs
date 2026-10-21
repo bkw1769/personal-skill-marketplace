@@ -206,17 +206,32 @@ export function check(info, want) {
 export function main(argv, io) {
   const want = {};
   let file, json = false;
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--expect-duration') want.duration = Number(argv[++i]);
-    else if (a === '--tolerance') want.tolerance = Number(argv[++i]);
-    else if (a === '--expect-size') want.size = argv[++i];
-    else if (a === '--require-audio') want.audio = true;
-    else if (a === '--json') json = true;
-    else file = a;
+  const usage = 'Usage: node probe-mp4.mjs <file.mp4> [--expect-duration s] [--tolerance s] [--expect-size WxH] [--require-audio] [--json]';
+  // A check option with a bad value (a placeholder left in, "abc") must fail, not quietly pass every check.
+  const seconds = (flag, v) => {
+    const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${flag} needs a number of seconds, got ${v === undefined ? 'nothing' : JSON.stringify(v)}`);
+    return n;
+  };
+  try {
+    for (let i = 0; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === '--expect-duration') want.duration = seconds(a, argv[++i]);
+      else if (a === '--tolerance') want.tolerance = seconds(a, argv[++i]);
+      else if (a === '--expect-size') {
+        want.size = argv[++i];
+        if (!/^\d+x\d+$/.test(String(want.size))) throw new Error(`--expect-size needs WxH, got ${JSON.stringify(want.size)}`);
+      } else if (a === '--require-audio') want.audio = true;
+      else if (a === '--json') json = true;
+      else if (a.startsWith('--')) throw new Error(`unknown option ${a}`);
+      else file = a;
+    }
+  } catch (e) {
+    io.err(`error: ${/** @type {Error} */ (e).message}\n${usage}`);
+    return 2;
   }
   if (!file) {
-    io.err('Usage: node probe-mp4.mjs <file.mp4> [--expect-duration s] [--tolerance s] [--expect-size WxH] [--require-audio] [--json]');
+    io.err(usage);
     return 1;
   }
   let info;

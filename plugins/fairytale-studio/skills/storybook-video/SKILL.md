@@ -59,13 +59,14 @@ Send those files (named by time) and wait for an OK.
 
 **Make the video.** Two buttons, both saving `<saveName>.mp4` into the save folder. `saveName` may hold folders (`<id>/<id>` saves to `<save dir>/<id>/<id>.mp4`; up to three, created on save), which keeps each video's takes, review stills and upload files in one folder:
 
-- **정밀 저장** (`await __export()`): frame-by-frame. Every frame is drawn from its exact time and encoded with WebCodecs, the sound is rendered offline from the same events, and both are written into one MP4 (`js/mp4mux.js`). It does not depend on machine load or on the page being visible, picture and sound cannot drift, and it runs faster than real time (12 s of golden-axe in 5 s at load 40). Use it by default.
+- **정밀 저장** (`await __export()`): frame-by-frame. Every frame is drawn from its exact time and encoded with WebCodecs, the sound is rendered offline from the same events, and both are written into one MP4 (`js/mp4mux.js`). It does not depend on machine load or on the page being visible, picture and sound cannot drift, and it runs faster than real time (12 s of golden-axe in 5 s at load 40). Use it by default. It checks `saveName` before rendering (letters, digits, `. _ -`, up to three folders, the names `/save` accepts), and when the save itself fails it hands the rendered MP4 to the browser as a download (`window.__lastExport` keeps it) instead of throwing the encode away; the call then returns `saved: false` with the error.
 - **영상 저장** (real time, MediaRecorder): plays from 0 and records. Before starting it checks the machine (`/__load` on the dev server), that the audio actually started and that the audio clock runs at real speed, and refuses with the reason on the overlay when one fails (`__preflight` keeps the result; `__record(true)` forces it). Each of these spoiled a golden-axe take: a scripted click while the page was visible left the audio suspended; at load 25 the take ran at half speed; at load about 20 it passed the probe but ended 1 s out of sync. Press it with a real click.
 
 Then verify:
 
 ```bash
 node <skill-dir>/scripts/probe-mp4.mjs <save dir>/<saveName>.mp4 --expect-duration <storyboard duration> --tolerance 1 --expect-size 1920x1080 --require-audio
+# replace <storyboard duration> with the number: a value that is not a number, or an unknown option, exits 2
 ```
 
 The probe cannot see drift. Always check picture against sound in the saved file:

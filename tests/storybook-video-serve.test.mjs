@@ -178,6 +178,9 @@ describe('server', () => {
     assert.equal(fs.readFileSync(path.join(root, 'out', 'rec', 'review-13.0s.png'), 'utf8'), 'png');
     assert.ok(SAVE_NAME.test('a.JPG'));
     assert.equal(SAVE_NAME.test('a.gif'), false);
+    // The page template checks names before an export renders; it must accept exactly what /save accepts.
+    const page = fs.readFileSync(path.join(ROOT, 'plugins/fairytale-studio/skills/storybook-video/assets/template/js/main.js'), 'utf8');
+    assert.ok(page.includes(`const SAVE_NAME = ${SAVE_NAME};`), 'template main.js SAVE_NAME differs from serve.mjs');
   });
   test('POST /save rejects missing or unsafe names', async () => {
     for (const q of ['', '?name=', '?name=index.html', '?name=..%2Fx.mp4', '?name=.hidden.mp4', '?name=a%2F..%2Fx.mp4']) {

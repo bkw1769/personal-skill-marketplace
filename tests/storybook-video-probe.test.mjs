@@ -182,6 +182,22 @@ describe('cli', () => {
     r = io();
     assert.equal(main(['/nonexistent/x.mp4'], r.io), 1);
     assert.match(r.err[0], /^error: /);
+    // Bad check values fail instead of passing every check; unknown options are not taken as the file.
+    const good = tmpFile(plainMp4());
+    for (const [args, msg] of [
+      [['--expect-duration', '<storyboard duration>'], '--expect-duration needs a number of seconds, got "<storyboard duration>"'],
+      [['--expect-duration'], '--expect-duration needs a number of seconds, got nothing'],
+      [['--tolerance', '-1'], '--tolerance needs a number of seconds, got "-1"'],
+      [['--tolerance', ' '], '--tolerance needs a number of seconds, got " "'],
+      [['--expect-size', '1080'], '--expect-size needs WxH, got "1080"'],
+      [['--expect-fps', '30'], 'unknown option --expect-fps'],
+    ]) {
+      r = io();
+      assert.equal(main([good, ...args], r.io), 2, args.join(' '));
+      assert.equal(r.err[0].split('\n')[0], `error: ${msg}`);
+    }
+    r = io();
+    assert.notEqual(main([good, '--tolerance', '0', '--expect-duration', '2'], r.io), 2); // 0 is a valid tolerance
   });
   test('runs as a script', () => {
     const res = spawnSync(process.execPath, [SCRIPT, tmpFile(plainMp4()), '--expect-duration', '2'], { encoding: 'utf8' });

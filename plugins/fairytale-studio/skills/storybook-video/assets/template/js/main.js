@@ -276,6 +276,10 @@ main().catch((e) => {
  * WebCodecs, the sound is rendered offline from the same events, and both are written into one MP4.
  * Independent of machine load and of a hidden page; picture and sound cannot drift.
  */
+// Names the dev server accepts on POST /save (serve.mjs SAVE_NAME; tests/storybook-video-serve.test.mjs keeps
+// the two equal). Checked before an export renders, so a bad saveName fails at once, not after the encode.
+const SAVE_NAME = /^(?:[a-z0-9][a-z0-9._-]*\/){0,3}[a-z0-9][a-z0-9._-]*\.(mp4|webm|png|jpg)$/i;
+
 async function exportVideo(o = {}) {
   if (typeof VideoEncoder === 'undefined' || typeof AudioEncoder === 'undefined') {
     alert('이 브라우저는 정밀 저장(WebCodecs)을 지원하지 않습니다. 실시간 녹화를 쓰세요.');
@@ -283,6 +287,8 @@ async function exportVideo(o = {}) {
   }
   const fps = o.fps || 30, rate = 48000;
   const end = o.duration ?? DURATION;
+  const name = `${CONFIG.saveName || 'story'}${o.suffix ?? ''}.mp4`;
+  if (!SAVE_NAME.test(name)) throw new Error(`saveName "${name}" is not a name the dev server saves (letters, digits, . _ -; up to three folders); fix story.config.js before exporting`);
   pause();
   window.__frozen = true;
   const show = (text) => { $('rec').style.display = 'block'; $('rec').textContent = text; window.__exportStatus = text; };
@@ -353,11 +359,22 @@ async function exportVideo(o = {}) {
     show('정밀 저장 · 파일 쓰는 중');
     const parts = muxMp4({ width: W, height: H, timescale: 30000, avcC, samples: vs }, { sampleRate: rate, channels: 2, asc, bitrate: 192000, samples: as });
     const blob = new Blob(parts, { type: 'video/mp4' });
-    const name = `${CONFIG.saveName || 'story'}${o.suffix ?? ''}.mp4`;
-    const r = await fetch(`/save?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob });
-    if (!r.ok) throw new Error(`save failed (${r.status})`);
+    const result = { name, frames: vs.length, audioFrames: as.length, bytes: blob.size };
+    try {
+      const r = await fetch(`/save?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob });
+      if (!r.ok) throw new Error(`save failed (${r.status} ${await r.text().catch(() => '')})`);
+    } catch (e) {
+      // Keep the rendered video: hand it to the browser as a download instead of throwing it away.
+      window.__lastExport = { name, blob, error: String(e.message || e) };
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name.split('/').pop();
+      a.click();
+      document.title = 'downloaded ' + name;
+      return { ...result, saved: false, error: window.__lastExport.error };
+    }
     document.title = 'saved ' + name;
-    return { name, frames: vs.length, audioFrames: as.length, bytes: blob.size };
+    return { ...result, saved: true };
   } finally {
     window.__frozen = false;
     $('rec').style.display = 'none';
