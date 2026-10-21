@@ -367,6 +367,26 @@ A second still of the same composition fades in over the shot under the same cam
 
 Make the second still with `references/art-for-layers.md` section 2 (an EDIT that names every fixed element and changes only the state). To keep the changed state on the next line, make that line's shot the second still itself (water meter l04 uses `box-frozen` as its shot), not a repeated reveal. Pin it (`plate: true`) so `from` stays on its spot; the second still always follows the shot's camera.
 
+## spin
+
+A round part of the picture turning in place: a gear, a brake drum, a wheel. A disc is cut from the shot's own plate around `x`, `y` and redrawn rotated about its centre every frame, so the part itself turns instead of an arrow being drawn on it. Added 2026-10-21 for the escape descender: the user asked to see the governor's gears turn.
+
+| Field | Default | Unit | Meaning |
+|---|---|---|---|
+| `image` | required | plate name | The shot's plate (the disc is cut from it, so it lines up). The page's `plates` must list it (checked). |
+| `x`, `y` | required | frame fraction | Centre of the part. With `plate: true` (always, it points at the picture) a plate point. |
+| `r` | required | frame width fraction | Radius of the disc; with `plate: true` a plate-width fraction (0 < r <= 1, checked). Measure it to the outer edge of the teeth. |
+| `squash` | 1 | ry / rx | For a part seen at an angle (an ellipse on the plate): the disc becomes an ellipse and the rotation happens in its tilted plane. 0 < squash <= 1 (checked). A straight top-down or frontal plate needs none. |
+| `speed` | 0.5 | turns per second | Negative turns counter-clockwise. Not 0 (checked). |
+| `grow` | 0.6 | s | Spin-up time; the part speeds up evenly to `speed` and then keeps turning. |
+
+```json
+{ "kind": "spin", "image": "governor-top", "plate": true, "x": 0.33, "y": 0.45, "r": 0.21, "speed": -0.25, "at": 0.2, "until": "end" },
+{ "kind": "spin", "image": "governor-top", "plate": true, "x": 0.7, "y": 0.45, "r": 0.2, "speed": 0.9, "at": 0.2, "until": "end" }
+```
+
+Meshing gears turn opposite ways, and the speeds keep the tooth ratio: a small gear with a third of the big gear's teeth turns three times as fast (rule 4, honest speeds). Spins draw in array order, so list a part that lies underneath first (the big gear under the drum): the later disc covers the overlap, where the earlier one rotated pixels of its neighbour. Use a plate where the part is a clean circle with nothing fixed on top of it in the middle (a bolt head turns along, a housing edge does not): generate a top-down or frontal still for it. Anything inside the disc turns, so keep `r` to the part. Silent. Pin it (`plate: true`), which also stops punch-in cuts on the line.
+
 ## stages
 
 A ladder card for graded levels (forecast stages, warning levels): one row per level with a name pill whose colour deepens with the level and the condition beside it. Rows slide in one after another. Added 2026-10-21 for Seoul's 4-stage freeze forecast.
@@ -391,23 +411,7 @@ A ladder card for graded levels (forecast stages, warning levels): one row per l
 
 Frame-anchored card (no `plate`). Trace does not read `rows`: put the claim on the overlay and check every row against the claim's text and caveat by hand (the water meter's 관심 boundary is written 초과 in 2023-24 and 이상 in 2025, so the row says 영하 5도 위).
 
-## stamp
-
-A small rounded badge in the top-left corner that marks an imagined picture: the doubt "fixed" and the extreme shot of the four-step story (shorts-research `references/story-structure.md`, design rule 14). Added 2026-10-21.
-
-| Field | Default | Unit | Meaning |
-|---|---|---|---|
-| `text` | 상상 장면 | text | Badge text. Keep it short and never a number. |
-| `x`, `y` | 0.05, 0.085 | frame fraction | Top-left corner of the badge. |
-| `size` | 44 | px | Text size. |
-| `color` | dark 72% | CSS colour | Badge fill; the outline is the channel yellow. |
-
-```json
-{ "kind": "stamp", "at": 0, "until": "end" }
-```
-
-Frame-anchored, fades in over 0.2 s. Put it on every line marked `"imagined": true`, covering the whole line; the checker reports an imagined line without one and warns when it starts late or ends early. It is not a diagram: like `dim_bg` it does not count toward `--max-overlays`, so an imagined line can still carry two diagrams.
-
+## dim_bg
 
 Lays a 45% black veil over the whole frame (plate and layers, not captions), leaving the picture at 55% brightness, fading in over 0.2 s, so a card reads.
 

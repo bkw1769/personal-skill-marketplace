@@ -139,7 +139,7 @@ For overlay-only motion, make one clean base still and let code draw the change.
 
 - Ask for the state *before* the change (no frost), evenly lit and centred, with clear edges where the overlay will clip or point.
 - Restyling an existing plate is also an EDIT that keeps the composition, so measured coordinates still fit (pruney-fingers soft wrinkles).
-- Dials and displays stay blank in every prompt (no digits). Code adds a digit when the line needs one (crosswalk l08 countdown `9`).
+- Dials and displays stay blank unless the number is part of what the picture shows: a route number on a sign or a digit the device really displays is painted in by the image model (next-but-one section, Signs and numbers inside the picture; design rule 15). A pure illustration digit that only counts along with the voice may still come from code (crosswalk l08 countdown `9`).
 
 ## Changed-state still (for reveal)
 
@@ -161,6 +161,36 @@ Do NOT draw cracks, broken glass, burst pipes, water spray, lines or arrows; the
 ```
 
 Run it with Codex directly (`codex exec ... -i art/<base>.png - < art/prompts/<name>.txt`, then `codex-image.mjs` on the log), because the episode's `run.sh` attaches the hero instead of the base. Before wiring it in, put the two stills side by side and check that the frame, pipes and door line up; then record the input in `sources.txt`.
+
+## Signs and numbers inside the picture
+
+When a sign, a shield, a plate or a device must show a number or a word, the image model paints it (design rule 15). Do this for every such sign before the episode's stills are approved, not afterwards.
+
+- **In the first generation** when the number is there for the whole shot: write it into the shot prompt and change the shared `rules` line from "no text anywhere" to "no text except <the number> on <the sign>".
+- **As an EDIT pair** when the number appears on cue (the caption says "50번" a second in): generate the blank shot first, then an EDIT of it that adds only the number, and swap with `reveal` (`"from"` = the sign's centre, `grow` about 0.45 s, `feather` about 0.05). Keep the numbered still as the shot of later lines that show the same sign.
+
+EDIT prompt (road-number-parity `prompts/sign-hero-50.txt`):
+
+```text
+Use your image generation tool to create ONE new image. Input image: the EDIT TARGET. Reproduce this exact
+image - same camera, same framing, same 1024x1536 portrait size, same miniature-diorama materials, lighting
+and tilt-shift look, every object in exactly the same place and shape - and change ONLY one thing: the route
+number is now painted on the route shield.
+The shield: <which one, where in the picture, its parts>. On its blue body, add the number "50" (the digits
+5, 0 in this order, nothing else) in thick off-white paint, the same warm off-white as the shield's own rim,
+in a bold rounded sans-serif road-sign typeface with even strokes, slightly raised like the rest of the
+handmade clay model, matte, lit softly from the upper left like the scene. The number is centred exactly in
+the middle of the blue body, both left-right and top-bottom (the blue area below the red top band), and fills
+about 60% of the blue body's width and about 55% of its height; equal blue margin on the left and right.
+Keep exactly as they are: <every other object in the shot>. Do not move, resize or redraw anything else.
+Apart from this one number there must be absolutely no other text, letters, numbers, logos or watermarks.
+```
+
+Check every result before using it:
+
+1. Open the PNG zoomed on the sign: every digit right, in order, centred with even margins, the same material and light as the rest. Regenerate otherwise; never fix a wrong digit with a code label on top.
+2. `magick compare -metric AE -fuzz 8% <blank>.png <numbered>.png <scratch-dir>/diff.png`: only the sign may light up. If the EDIT moved other things, the `reveal` would show them sliding; paste only the sign back onto the blank still with a soft mask (`magick <blank>.png \( <numbered>.png -crop <sign box> \) -geometry +x+y -composite`) or regenerate.
+3. Small signs (under about 80 px on the plate) come out mushy or misspelled. Frame the sign larger in the shot prompt, or zoom the camera onto it on that line (`zoom` up to about 1.6, confirm with `motion.mjs frame`).
 
 ## Pitfalls
 

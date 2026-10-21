@@ -126,7 +126,7 @@ Captions: `남은 초를 세는 숫자도` / `깜빡일 때부터 나옵니다`
 ```
 
 Why it works:
-- The art prompts forbid digits (displays are blank), so the panel gets its digit from code, exactly where and when the caption mentions it.
+- The `9` is an illustration that counts along with the voice, so it comes from code, exactly where and when the caption mentions it. A number that is part of the thing shown (a route number on a sign) is painted into the still instead (design rule 15, road-number-parity).
 - Pinned to the panel's plate position, so it stays on the panel during the push-in.
 - White like an LED, not the yellow accent of fact numbers, and static.
 - `9` is not a fact, so it goes in `not_facts` and trace passes.

@@ -3,7 +3,8 @@
 // script.json: overlay kinds and their required fields (the engine table in KINDS), frame and plate
 // fractions, run times the engine divides by, counted texts that draw NaN, frame-anchored overlays that point
 // at the picture, sprite layers against the sprites manifest, chunk indexes, claims on numbers, and imagined
-// lines (story-structure: a stamp, no digits, the extreme one asked as a question).
+// lines (story-structure: no badge, no digits, the extreme one asked as a question), and narration or captions
+// that order the viewer about (story-structure: suggest, never command), and casual endings (~죠) in the narration.
 // The storyboard (built or hand-written): how many diagram overlays share the screen, layer timing against
 // the scene end (FIT_PAD), timers that never finish, grow-driven overlays cut before they finish, held overlays that blink, pinned overlays that cross a
 // change of picture, layered shots that jump at the cut, and whether it is stale. The episode pages that load
@@ -28,6 +29,12 @@ export const MIN_MOVE = 0.3;
 export const GROW = { tape: 1.2, frost: 2, compare: 0.9, reveal: 1.6 };
 // The same overlay (kind, place, text) ending and restarting less than this apart blinks off (a hold written with at: 0).
 export const BLINK = 0.1;
+// Sentence endings that order the viewer about (-세요, -주세요, -두시고요, -십시오, -해라). User rule 2026-10-21:
+// narration suggests ("미리 읽어 보는 건 어떨까요?"), it never commands ("미리 읽어 두시고요").
+export const COMMAND = /(?:세요|시고요|십시오|하라|해라)$/;
+// Casual endings among formal narration (-ㅂ니다). The narrator clone reads them lower, darker and slower
+// (hallway-hydrant l05 "거리죠", 2026-10-21: pitch -18%, brightness -21%; "거리입니다" matched).
+export const CASUAL = /(?:죠|거든요|잖아요|네요)$/;
 // Camera moves of scenes.js MOVES: zoom [from, to] and pan offsets [[x, y] at the start, [x, y] at the end] in
 // frame fractions. Any other motion silently falls back to still.
 export const CAMERA = {
@@ -81,8 +88,8 @@ export const KINDS = {
   frost: kind(['box'], { boxes: ['box'], points: ['from'], motion: true, pin: true }),
   compare: kind(['items'], { coords: ['x', 'y'], numbers: true, motion: true }),
   reveal: kind(['image'], { points: ['from'], motion: true, pin: true }),
+  spin: kind(['image', 'x', 'y', 'r'], { coords: ['x', 'y'], motion: true, pin: true }),
   stages: kind(['rows'], { coords: ['x', 'y'], shows: ['title'], numbers: true, motion: true }),
-  stamp: kind([], { coords: ['x', 'y'], shows: ['text'] }),
 };
 export const TIME_KINDS = Object.keys(KINDS).filter((k) => KINDS[k].time);
 export const MOTION_KINDS = Object.keys(KINDS).filter((k) => KINDS[k].motion);
@@ -168,6 +175,7 @@ function checkShot(s, k, at, chunks, ctx, errors, warnings) {
 
 function checkOverlay(o, at, chunks, ctx, errors, warnings) {
   if (!isObj(o)) return errors.push(`${at}: must be an object`);
+  if (o.kind === 'stamp') return errors.push(`${at}: stamp (the "상상 장면" badge) was removed on 2026-10-21 at the user's request; delete this overlay, the question in the words marks the picture as imagined`);
   if (!Object.hasOwn(KINDS, o.kind)) return errors.push(`${at}: unknown kind "${o.kind}"; the engine skips it silently`);
   const spec = KINDS[o.kind];
   const space = o.plate ? 'plate' : 'frame';
@@ -202,9 +210,14 @@ function checkOverlay(o, at, chunks, ctx, errors, warnings) {
   if (o.kind === 'stages' && o.rows !== undefined && !(Array.isArray(o.rows) && o.rows.length >= 2 && o.rows.every((r) => isObj(r) && str(r.name) && str(r.text)))) {
     errors.push(`${at}: rows must be 2 or more {name, text} with text in both`);
   }
-  if (o.kind === 'reveal' && o.image !== undefined) {
+  if ((o.kind === 'reveal' || o.kind === 'spin') && o.image !== undefined) {
     if (!str(o.image)) errors.push(`${at}: image must be a plate name (art/<image>.png)`);
     else if (!ctx.hasImage(o.image)) errors.push(`${at}: art/${o.image}.png not found`);
+  }
+  if (o.kind === 'spin') {
+    if (o.r !== undefined && !(fin(o.r) && o.r > 0 && o.r <= 1)) errors.push(`${at}: r must be a ${space}-width fraction above 0 and up to 1`);
+    if (o.squash !== undefined && !(fin(o.squash) && o.squash > 0 && o.squash <= 1)) errors.push(`${at}: squash must be above 0 and up to 1 (ry / rx of a part seen at an angle)`);
+    if (o.speed !== undefined && !(fin(o.speed) && o.speed !== 0)) errors.push(`${at}: speed must be a non-zero number of turns per second (negative turns counter-clockwise)`);
   }
   if (o.kind === 'timer') {
     if (o.plate && o.to) errors.push(`${at}: a timer with "to" must not be plate:true; onFrame reads "to" as a point and the frame fails`);
@@ -249,36 +262,55 @@ export function checkScript(script, ctx) {
     if (!Array.isArray(overlays)) errors.push(`${id}: overlays must be a list`);
     else overlays.forEach((o, k) => checkOverlay(o, `${id} overlay ${k + 1}`, chunks, ctx, errors, warnings));
     checkImagined(line, id, errors, warnings);
+    checkTone(line, id, warnings);
   });
   return { errors, warnings };
 }
 
 /**
  * Story rules for an imagined line (shorts-research references/story-structure.md): `imagined: true` lines
- * (the doubt "fixed", the extreme picture) carry a stamp for their whole length and show no digits; the
- * `imagine-extreme` beat must be imagined and should be asked as a question.
+ * (the doubt "fixed", the extreme picture) show no digits and no badge text (the user removed the "상상 장면"
+ * stamp on 2026-10-21: the question in the words marks the picture as imagined); the `imagine-extreme` beat
+ * must be imagined and should be asked as a question.
  * @param {any} line a script line (an object)
  * @param {string} id
  * @param {string[]} errors
  * @param {string[]} warnings
  */
 function checkImagined(line, id, errors, warnings) {
-  if (line.beat === 'imagine-extreme' && line.imagined !== true) errors.push(`${id}: beat imagine-extreme needs "imagined": true (a stamp, no numbers)`);
+  if (line.beat === 'imagine-extreme' && line.imagined !== true) errors.push(`${id}: beat imagine-extreme needs "imagined": true (no numbers on screen)`);
   if (line.imagined === undefined) return;
   if (typeof line.imagined !== 'boolean') return errors.push(`${id}: imagined must be true or false`);
   if (!line.imagined) return;
   const overlays = (Array.isArray(line.overlays) ? line.overlays : []).filter(isObj);
-  const stamp = overlays.find((o) => o.kind === 'stamp');
-  if (!stamp) errors.push(`${id}: an imagined line needs a stamp overlay ("상상 장면") so the picture is not taken for something that happened`);
-  else if ((stamp.at ?? 0) > 0 || (stamp.at_chunk ?? 0) > 0 || (stamp.until !== undefined && stamp.until !== 'end')) {
-    warnings.push(`${id}: the stamp should cover the whole imagined line (at 0, until "end")`);
-  }
   const texts = (Array.isArray(line.chunks) ? line.chunks : []).map((c) => (isObj(c) ? c.text : null)).filter(str);
   for (const o of overlays) if (Object.hasOwn(KINDS, o.kind)) texts.push(...shownText(o));
   const digits = texts.filter((s) => DIGIT.test(s));
   if (digits.length) errors.push(`${id}: an imagined line shows numbers (${digits.join(' / ')}); no number may sit on a picture that did not happen`);
   if (line.beat === 'imagine-extreme' && !(str(line.say) && /\?\s*$/.test(line.say))) {
     warnings.push(`${id}: the extreme imagined line should be asked as a question ("이대로 계속 버틴다면?"); it asserts nothing`);
+  }
+}
+
+/**
+ * Tone rule (shorts-research references/story-structure.md): the narration (`say`) and the captions
+ * (`chunks[].text`) never end a sentence in a command to the viewer; a call to action is a suggestion or a
+ * question ("~해 보는 건 어떨까요?"). One warning per line, naming the first command sentence found. The spoken
+ * text (`say`) also keeps the narrator's register: a casual ending (~죠, ~거든요, ~잖아요, ~네요) gets its own warning,
+ * because the cloned voice drifts on it (storybook-narration references/script-writing.md, One register).
+ * @param {any} line a script line (an object)
+ * @param {string} id
+ * @param {string[]} warnings
+ */
+function checkTone(line, id, warnings) {
+  const texts = [line.say, ...(Array.isArray(line.chunks) ? line.chunks : []).map((c) => (isObj(c) ? c.text : null))].filter(str);
+  const sentences = texts.flatMap((t) => t.split(/[.!?\n]+/)).map((t) => t.trim().replace(/[\s,"'”’)\]~…]+$/u, ''));
+  const hit = sentences.find((t) => COMMAND.test(t));
+  if (hit) warnings.push(`${id}: "${hit}" orders the viewer about; suggest instead ("~해 보는 건 어떨까요?")`);
+  const spoken = (str(line.say) ? line.say.split(/[.!?\n]+/) : []).map((t) => t.trim().replace(/[\s,"'”’)\]~…]+$/u, ''));
+  const casual = spoken.find((t) => CASUAL.test(t));
+  if (casual) {
+    warnings.push(`${id}: "${casual}" ends casually; the narrator voice reads it lower and slower than the -니다 lines (end with -니다 or -까요?)`);
   }
 }
 
@@ -311,8 +343,7 @@ export function checkHandWritten(sb, base, ctx) {
  * @returns {{start: number, end: number, on: any[]}[]} in time order
  */
 export function onScreen(overlays) {
-  // dim_bg and stamp are not diagrams: a veil and a corner badge do not crowd the picture.
-  const live = overlays.filter((o) => isObj(o) && o.kind !== 'dim_bg' && o.kind !== 'stamp' && fin(o.start) && fin(o.end) && o.start < o.end);
+  const live = overlays.filter((o) => isObj(o) && o.kind !== 'dim_bg' && fin(o.start) && fin(o.end) && o.start < o.end);
   const cuts = [...new Set(live.flatMap((o) => [o.start, o.end]))].sort((a, b) => a - b);
   const spans = [];
   for (let k = 0; k + 1 < cuts.length; k++) {
@@ -562,7 +593,7 @@ export function configSprites(src) {
 
 /**
  * What a script and a storyboard ask of the episode page: overlay kinds (known ones), whether any
- * overlay is plate:true, whether any shot has layers, and every shot image (reveal images included).
+ * overlay is plate:true, whether any shot has layers, and every shot image (reveal and spin images included).
  * @param {any} script parsed script.json, or null to leave it out
  * @param {any} sb a storyboard with scenes and overlays lists, or null
  * @returns {{kinds: Set<string>, plate: boolean, layers: boolean, images: Set<string>}}
@@ -577,8 +608,8 @@ export function usage(script, sb) {
   const overlay = (o) => {
     if (!isObj(o)) return;
     if (Object.hasOwn(KINDS, o.kind)) use.kinds.add(o.kind);
-    // A reveal draws a second plate, so the page must load it like a shot image.
-    if (o.kind === 'reveal' && str(o.image)) use.images.add(o.image);
+    // A reveal or spin draws a plate of its own, so the page must load it like a shot image.
+    if ((o.kind === 'reveal' || o.kind === 'spin') && str(o.image)) use.images.add(o.image);
     if (o.plate) use.plate = true;
   };
   const lines = isObj(script) && Array.isArray(script.lines) ? script.lines.filter(isObj) : [];
@@ -604,8 +635,8 @@ const POINT = /^(\d*\.?\d+),(\d*\.?\d+)$/;
  */
 export function parseArgs(argv) {
   const [cmd, target, ...rest] = argv;
-  if (!['check', 'stills', 'frame'].includes(cmd) || !str(target) || target.startsWith('--')) return null;
-  if (cmd === 'stills') return rest.length ? null : { cmd, target, opts: { sprites: [] } };
+  if (!['check', 'stills', 'frame', 'pacing'].includes(cmd) || !str(target) || target.startsWith('--')) return null;
+  if (cmd === 'stills' || cmd === 'pacing') return rest.length ? null : { cmd, target, opts: { sprites: [] } };
   if (cmd === 'frame') {
     const [scene, ...pts] = rest;
     const points = pts.map((p) => POINT.exec(p)).map((m) => (m ? [Number(m[1]), Number(m[2])] : null));
@@ -624,6 +655,34 @@ export function parseArgs(argv) {
     } else opts[flag.slice(2)] = value;
   }
   return { cmd, target, opts };
+}
+
+// A picture held longer than this (one image across consecutive scenes, punch-ins included) is a candidate
+// for a new picture where the narration moves on (design rule 16). Advice, not a rule: pacing never fails.
+export const PACING = { longHold: 7 };
+
+/**
+ * How often the picture changes: cuts (scenes) and holds (runs of consecutive scenes on the same image, so
+ * a chunk punch-in on the same still is a cut but not a new picture), with the holds longer than
+ * PACING.longHold. Scenes without an image or valid times are skipped.
+ * @param {{scenes: any[]}} sb a storyboard
+ * @returns {{cuts: number, holds: {image: string, start: number, end: number, ids: string[]}[], avgCut: number, avgHold: number, long: {image: string, start: number, end: number, ids: string[]}[]}}
+ */
+export function pacing(sb) {
+  const sc = sb.scenes.filter((s) => isObj(s) && str(s.image) && fin(s.start) && fin(s.end) && s.start < s.end);
+  const holds = [];
+  for (const s of sc) {
+    const last = holds[holds.length - 1];
+    if (last && last.image === s.image) { last.end = s.end; last.ids.push(String(s.id)); } else holds.push({ image: s.image, start: s.start, end: s.end, ids: [String(s.id)] });
+  }
+  const span = sc.length ? sc[sc.length - 1].end - sc[0].start : 0;
+  return {
+    cuts: sc.length,
+    holds,
+    avgCut: sc.length ? r2(span / sc.length) : 0,
+    avgHold: holds.length ? r2(span / holds.length) : 0,
+    long: holds.filter((h) => h.end - h.start > PACING.longHold),
+  };
 }
 
 function readJson(file) {
@@ -740,6 +799,22 @@ function runStills(file, io) {
   return 0;
 }
 
+function runPacing(file, io) {
+  let sb;
+  try {
+    sb = readStoryboard(file);
+  } catch (e) {
+    io.err(`error: ${e.message}`);
+    return 1;
+  }
+  const p = pacing(sb);
+  io.out(`${p.cuts} cuts (one every ${p.avgCut.toFixed(1)}s), ${p.holds.length} pictures (a new picture every ${p.avgHold.toFixed(1)}s)`);
+  for (const h of p.long) {
+    io.out(`  ${h.ids[0]}..${h.ids[h.ids.length - 1]}: ${h.image} held ${(h.end - h.start).toFixed(1)}s (${h.start.toFixed(1)}-${h.end.toFixed(1)}s); a new picture where the narration moves on?`);
+  }
+  return 0;
+}
+
 function runFrame(file, id, points, io) {
   let sc;
   let plate;
@@ -764,7 +839,8 @@ function runFrame(file, id, points, io) {
 
 export const USAGE = `usage: motion.mjs check <episode-dir> [--script <file>] [--storyboard <file>] [--sprites <sprites.json>]... [--max-overlays <n>]
        motion.mjs stills <storyboard.json>
-       motion.mjs frame <storyboard.json> <scene-id> <u,v> [<u,v>]...`;
+       motion.mjs frame <storyboard.json> <scene-id> <u,v> [<u,v>]...
+       motion.mjs pacing <storyboard.json>`;
 
 /**
  * Command-line entry point.
@@ -776,6 +852,7 @@ export function main(argv, io) {
   const args = parseArgs(argv);
   if (!args) { io.err(USAGE); return 2; }
   if (args.cmd === 'stills') return runStills(args.target, io);
+  if (args.cmd === 'pacing') return runPacing(args.target, io);
   if (args.cmd === 'frame') return runFrame(args.target, args.opts.scene, args.opts.points, io);
   return runCheck(args.target, args.opts, io);
 }
