@@ -9,20 +9,20 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = path.join(ROOT, 'plugins/shortform-studio/skills/shorts-publish/scripts/upload.mjs');
 const U = await import(SCRIPT);
-const { lines, mmss, pickHashtags, numberRows, handCheckRows, build, parseArgs, main, MARK, CHANNEL_SCHEMA, LIMITS, USAGE } = U;
+const { lines, mmss, pickHashtags, numberRows, mp4Info, moovInfo, build, parseArgs, main, MARK, CHANNEL_SCHEMA, LIMITS, USAGE } = U;
 
 const sources = () => ({
   schema: 'shorts-sources/1',
   sources: [
-    { id: 'law', type: 'law', publisher: '법제처', title: '시행규칙', url: 'https://law.go.kr/a', published: '2026-04-01' },
-    { id: 'news', type: 'news', publisher: '신문', title: '기사', url: 'https://news.example/a', published: '2025-01-02' },
+    { id: 'law', type: 'law', publisher: '법제처', title: '시행규칙', url: 'https://law.go.kr/a', published: '2026-04-01', accessed: '2026-10-19' },
+    { id: 'news', type: 'news', publisher: '신문', title: '기사', url: 'https://news.example/a', published: '2025-01-02', accessed: '2026-10-19' },
   ],
 });
 const facts = (o = {}) => ({
   schema: 'shorts-facts/1',
   claims: [
     { id: 'c-size', text: '한 장은 30cm', numbers: [{ value: 30, unit: 'cm' }], status: 'verified', sources: [{ id: 'law', locator: '별표 1', excerpt: '0.3미터' }] },
-    { id: 'c-survey', text: '41%', numbers: [{ value: 41 }], status: 'single-source', sources: [{ id: 'news', excerpt: '41%' }, { id: 'ghost', locator: 'p.2', excerpt: 'x' }] },
+    { id: 'c-survey', text: '41%', numbers: [{ value: 41 }], status: 'single-source', sources: [{ id: 'news', excerpt: '41%' }] },
   ],
   ...o,
 });
@@ -43,7 +43,7 @@ const publish = (o = {}) => ({
   title_claims: ['c-size'],
   description: ['한 장은 30cm입니다.', '41%만 제대로 깔렸습니다.'],
   hashtags: ['#궁금인간', '#점자블록', '#쇼츠', '#궁금인간', '#보행', '#도시', '#생활', '#안전'],
-  disclosure: 'AI로 만들었습니다.',
+  disclosure: '이 영상의 내용은 법령 원문과 공개 자료를 확인해 정리했습니다.',
   made_for_kids: false,
   cover: { at: 30.5, note: '점은 36개' },
   tags: ['점자블록', '보도'],
@@ -58,6 +58,11 @@ const input = (o = {}) => ({
 });
 const io = () => { const out = [], err = []; return { out, err, io: { out: (s) => out.push(s), err: (s) => err.push(s) } }; };
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'upload-'));
+const box = (type, body) => { const h = Buffer.alloc(8); h.writeUInt32BE(8 + body.length, 0); h.write(type, 4, 'latin1'); return Buffer.concat([h, body]); };
+const bigBox = (type, n) => { const h = Buffer.alloc(16); h.writeUInt32BE(1, 0); h.write(type, 4, 'latin1'); h.writeBigUInt64BE(BigInt(16 + n), 8); return Buffer.concat([h, Buffer.alloc(n)]); };
+const mvhd = (scale, dur) => { const b = Buffer.alloc(100); b.writeUInt32BE(scale, 12); b.writeUInt32BE(dur, 16); return box('mvhd', b); };
+const tkhd = (w, h) => { const b = Buffer.alloc(84); b.writeUInt32BE(w * 65536, 76); b.writeUInt32BE(h * 65536, 80); return box('tkhd', b); };
+const moov = (scale, dur, w, h) => box('moov', Buffer.concat([mvhd(scale, dur), box('trak', tkhd(w, h))]));
 const write = (d, f, v) => { fs.mkdirSync(path.dirname(path.join(d, f)), { recursive: true }); fs.writeFileSync(path.join(d, f), typeof v === 'string' ? v : JSON.stringify(v)); };
 const episode = (pub = publish()) => {
   const base = tmp();
@@ -83,7 +88,7 @@ describe('helpers', () => {
     const rows = numberRows(storyboard({ overlays: [{ text: '36개', claims: ['c-size'] }] }), facts(), sources());
     assert.deepEqual(rows, [
       { at: 27.8, text: '가로세로 30cm', claims: ['c-size'], basis: ['법제처 별표 1'] },
-      { at: 52.7, text: '41%', claims: ['c-survey'], basis: ['신문', 'ghost p.2'] },
+      { at: 52.7, text: '41%', claims: ['c-survey'], basis: ['신문'] },
       { at: 53, text: '30', claims: ['c-ghost'], basis: [] },
       { at: null, text: '36개', claims: ['c-size'], basis: ['법제처 별표 1'] },
     ]);
@@ -94,33 +99,28 @@ describe('helpers', () => {
     const r = build(input({ facts: facts({ claims: [{ ...facts().claims[0], sources: many.sources }] }), storyboard: { duration: 65, captions: [{ start: 2, text: '30cm', claims: ['c-size'] }] }, publish: publish({ description: ['한 장은 30cm입니다.'] }) }));
     assert.match(r.files['youtube.md'], /\| 30cm \| 0:02 \| s0 p0; s1 p1; s2 p2 외 2곳 \|/);
   });
-  test('handCheckRows lists numbers trace cannot read', () => {
-    const sb = { overlays: [
-      null,
-      { kind: 'stages', start: 21.35, title: '일 최저기온 기준', rows: [{ name: '관심', text: '영하 5도 위' }, null, { name: '주의' }], claims: ['c-stages'] },
-      { kind: 'compare', start: 14.48, items: [{ label: '물', value: 100 }, { label: '얼음', text: '+9%' }, 7] },
-      { kind: 'timer', start: 3, to: 27 },
-      { kind: 'timer', to: 36, unit: 's', claims: ['c-36'] },
-      { kind: 'timer' },
-      { kind: 'number', start: 5, text: '41%', sub: '공공병원 111곳 조사' },
-      { kind: 'buckle', skin: '피부 2층', flesh: '속살' },
-      { kind: 'keyword', text: '동파', sub: '겨울' },
-    ] };
-    assert.deepEqual(handCheckRows(sb), [
-      { at: 21.35, kind: 'stages', texts: ['관심 영하 5도 위'], claims: ['c-stages'] },
-      { at: 14.48, kind: 'compare', texts: ['+9%'], claims: [] },
-      { at: 3, kind: 'timer', texts: ['27초'], claims: [] },
-      { at: null, kind: 'timer', texts: ['36s'], claims: ['c-36'] },
-      { at: 5, kind: 'number', texts: ['공공병원 111곳 조사'], claims: [] },
-      { at: null, kind: 'buckle', texts: ['피부 2층'], claims: [] },
-    ]);
-    assert.deepEqual(handCheckRows({}), []);
-    const r = build(input({ storyboard: { duration: 65, captions: storyboard().captions.slice(0, 4), overlays: [sb.overlays[1], sb.overlays[3], sb.overlays[4]] } }));
-    assert.deepEqual(r.errors, []);
-    assert.match(r.files['youtube.md'], /- \[ \] 화면 숫자 3곳은 추적 검사가 읽지 못한다.*아래 "직접 대조할 화면 숫자" 표를/);
-    assert.match(r.files['youtube.md'], /\| 관심 영하 5도 위 \| 0:21 \| stages \| c-stages \|\n\| 27초 \| 0:03 \| timer \| \*\*없음\*\* \|\n\| 36s \| - \| timer \| c-36 \|/);
-    assert.match(r.files['tiktok.md'], /youtube\.md의 "직접 대조할 화면 숫자" 표를/);
-    assert.doesNotMatch(build(input({ storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) })).files['youtube.md'], /직접 대조/);
+  test('mp4Info reads the length and frame size from moov', () => {
+    const d = tmp();
+    const file = (name, ...boxes) => { const f = path.join(d, name); fs.writeFileSync(f, Buffer.concat(boxes)); return f; };
+    assert.deepEqual(mp4Info(file('real.mp4', box('ftyp', Buffer.alloc(8)), bigBox('mdat', 20), moov(30000, 1949000, 1080, 1920))), { seconds: 64.96666666666667, width: 1080, height: 1920 });
+    assert.equal(mp4Info(file('tail.mp4', box('ftyp', Buffer.alloc(8)), Buffer.from([0, 0, 0, 0, 0x6d, 0x64, 0x61, 0x74, 1, 2]))), null);
+    assert.equal(mp4Info(file('bad.mp4', Buffer.from([0, 0, 0, 4, 0x66, 0x72, 0x65, 0x65, 0, 0]))), null);
+    assert.equal(mp4Info(file('tiny.mp4', Buffer.from('v'))), null);
+  });
+  test('moovInfo: mvhd versions, tkhd, short and broken boxes', () => {
+    const v1 = Buffer.alloc(112);
+    v1[0] = 1;
+    v1.writeUInt32BE(1000, 20);
+    v1.writeBigUInt64BE(65000n, 24);
+    assert.deepEqual(moovInfo(Buffer.concat([box('mvhd', v1), box('trak', box('tkhd', Buffer.alloc(40)))])), { seconds: 65, width: 0, height: 0 });
+    const both = Buffer.concat([mvhd(1, 10), box('trak', tkhd(1080, 1920)), box('trak', tkhd(320, 240))]);
+    assert.deepEqual(moovInfo(both), { seconds: 10, width: 1080, height: 1920 });
+    assert.equal(moovInfo(mvhd(0, 10)), null); // no timescale
+    assert.equal(moovInfo(box('mvhd', Buffer.alloc(10))), null); // too short to read
+    const broken = Buffer.concat([mvhd(1, 5), Buffer.from([0, 0, 0, 2, 0x66, 0x72, 0x65, 0x65])]);
+    assert.deepEqual(moovInfo(broken), { seconds: 5, width: 0, height: 0 });
+    const over = Buffer.concat([mvhd(1, 6), Buffer.from([0, 0, 0, 99, 0x66, 0x72, 0x65, 0x65])]);
+    assert.deepEqual(moovInfo(over), { seconds: 6, width: 0, height: 0 });
   });
   test('parseArgs', () => {
     assert.deepEqual(parseArgs(['ep', '--out', 'o', '--force']), { dir: 'ep', opts: { out: 'o', force: true } });
@@ -140,7 +140,7 @@ describe('build', () => {
     const yt = r.files['youtube.md'];
     assert.ok(yt.startsWith(`${MARK}\n# 유튜브 업로드 정보: 점자블록 (궁금인간)`));
     assert.match(yt, /노란 블록은 장식이 아닙니다\n```\n\n다른 안: `30cm의 비밀`/);
-    assert.match(yt, /- 법제처, 「시행규칙」 \(2026-04-01\)\n- 신문, 「기사」 \(2025-01-02\)\n\nAI로 만들었습니다\.\n틀린 내용/);
+    assert.match(yt, /- 법제처, 「시행규칙」 \(2026-04-01\)\n- 신문, 「기사」 \(2025-01-02\)\n\n이 영상의 내용은 법령 원문과 공개 자료를 확인해 정리했습니다\.\n틀린 내용/);
     assert.doesNotMatch(yt, /https?:/);
     assert.match(yt, /#궁금인간 #점자블록 #쇼츠 #보행 #도시 #생활 #안전\n```/);
     assert.match(yt, /\*\*0:30 프레임\*\*\(점은 36개\)을 고른다\. 맞춤 썸네일이 열리면 `out\/tactile\/tactile-thumbnail\.png`를 쓴다/);
@@ -151,7 +151,7 @@ describe('build', () => {
     assert.match(yt, /- \[ \] \*\*사실 장부 검토 기록이 없다/);
     assert.match(yt, /- \[ \] `c-survey`는 출처가 하나뿐이다/);
     assert.match(yt, /주소는 `ep\/sources\.txt`에 있다/);
-    assert.match(yt, /\| 가로세로 30cm \| 0:27 \| 법제처 별표 1 \|\n\| 41% \| 0:52 \| 신문; ghost p\.2 \|/);
+    assert.match(yt, /\| 가로세로 30cm \| 0:27 \| 법제처 별표 1 \|\n\| 41% \| 0:52 \| 신문 \|/);
     assert.doesNotMatch(yt, /틱톡 수익화/);
     const tt = r.files['tiktok.md'];
     assert.match(tt, /```text\n노란 블록은 장식이 아닙니다\n\n한 장은 30cm입니다\./);
@@ -172,7 +172,7 @@ describe('build', () => {
       channel: null, videoExists: false, coverExists: false, urlsFile: null,
     }));
     assert.deepEqual(r.errors, []);
-    assert.deepEqual(r.warnings, ['publish: no disclosure line (AI picture and voice notice)', 'video not found: out/tactile/tactile.mp4']);
+    assert.deepEqual(r.warnings, ['publish: no disclosure line (how the content was made and checked)', 'video not found: out/tactile/tactile.mp4']);
     const yt = r.files['youtube.md'];
     assert.match(yt, /# 유튜브 업로드 정보: tactile\n/);
     assert.match(yt, /한 장 30cm\n```\n\n## 2/);
@@ -203,16 +203,46 @@ describe('build', () => {
     assert.doesNotMatch(yt, /첫 고정 댓글/);
     assert.doesNotMatch(yt, /화면에 나오는 숫자/);
     assert.doesNotMatch(r.files['tiktok.md'], /틱톡 수익화/);
-    assert.match(yt, /설명\n\n출처\n- 법제처, 「시행규칙」 \(2026-04-01\)\n\nAI로 만들었습니다\.\n```/);
+    assert.match(yt, /설명\n\n출처\n- 법제처, 「시행규칙」 \(2026-04-01\)\n\n이 영상의 내용은 법령 원문과 공개 자료를 확인해 정리했습니다\.\n```/);
   });
   test('youtube refuses angle brackets in title, description and tags', () => {
     const msg = (w) => `youtube: ${w} contains "<" or ">", which YouTube does not allow; write "→" or words instead (publish.json, or a source title in research/sources.json)`;
     let r = build(input({ publish: publish({ title: ['노란 블록은 장식이 아닙니다', '<30cm> 비밀'], title_claims: ['c-size'], description: ['한 장은 30cm입니다 (설정 > 배터리).'], tags: ['a<b'] }), storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
     assert.deepEqual(r.errors, [msg('title'), msg('description'), msg('tags')]);
-    r = build(input({ sources: { sources: [{ ...sources().sources[0], title: '시행규칙 <별표 1>' }, sources().sources[1]] }, storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
+    r = build(input({ sources: { ...sources(), sources: [{ ...sources().sources[0], title: '시행규칙 <별표 1>' }, sources().sources[1]] }, storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
     assert.deepEqual(r.errors, [msg('description')]);
     r = build(input({ publish: publish({ description: ['한 장은 30cm입니다 (설정 → 배터리).', '41%만 제대로 깔렸습니다.'] }), storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }) }));
     assert.deepEqual(r.errors, []);
+  });
+  test('ledger errors stop the sheets', () => {
+    const r = build(input({
+      sources: { ...sources(), sources: [{ ...sources().sources[0], accessed: undefined }, sources().sources[1]] },
+      facts: facts({ claims: [{ ...facts().claims[0], sources: [{ id: 'law', locator: '별표 1', excerpt: '0.3미터' }, { id: 'ghost', excerpt: 'x' }] }, facts().claims[1]] }),
+      storyboard: storyboard({ captions: storyboard().captions.slice(0, 4) }),
+    }));
+    assert.deepEqual(r.errors, ['source law: accessed must be a YYYY-MM-DD date', 'claim c-size: unknown source "ghost"']);
+  });
+  test('the video file: its own length and size, a take that does not match, no moov', () => {
+    const sb = storyboard({ captions: storyboard().captions.slice(0, 4) });
+    let r = build(input({ storyboard: sb, videoInfo: { seconds: 65.2, width: 720, height: 1280 }, storyboardFile: 'storyboard-soft-m.json' }));
+    assert.deepEqual(r.errors, []);
+    assert.match(r.files['youtube.md'], /\(65\.2초, 720x1280, 세로\)/);
+    assert.match(r.files['youtube.md'], /`storyboard-soft-m\.json`\. 이 파일을/);
+    r = build(input({ storyboard: sb, videoInfo: { seconds: 79.8, width: 0, height: 0 } }));
+    assert.deepEqual(r.errors, ['video is 79.8 s but storyboard.json is 65.0 s; it is another take or a stale export (export again, or pass --storyboard for that take)']);
+    assert.match(r.files['youtube.md'], /\(79\.8초, 1080x1920, 세로\)/);
+    r = build(input({ storyboard: { captions: sb.captions }, videoInfo: { seconds: 30, width: 1080, height: 1920 } }));
+    assert.deepEqual(r.errors, []);
+    assert.ok(!r.warnings.includes('storyboard: no duration; check the video length by hand'));
+    r = build(input({ storyboard: sb, videoInfo: null }));
+    assert.ok(r.warnings.includes('video: out/tactile/tactile.mp4 has no readable moov box; check its length by hand (probe-mp4.mjs)'));
+  });
+  test('tiktok length: 61 s target over the 1 min rule', () => {
+    const sheet = (sec) => build(input({ storyboard: storyboard({ duration: sec, captions: storyboard().captions.slice(0, 4) }) })).files['tiktok.md'];
+    assert.match(sheet(61), /- \[x\] 길이 61\.0초: 틱톡 수익화/);
+    assert.match(sheet(60.5), /- \[ \] 길이 60\.5초: 1분을 겨우 넘는다\. 61초 이상을 목표로 한다/);
+    assert.match(sheet(60), /- \[ \] 길이 60\.0초: 1분 이하라/);
+    assert.equal(LIMITS.rewardsTarget, 61);
   });
   test('errors: channel schema, empty publish, limits', () => {
     let r = build(input({ publish: { hashtags: [] }, channel: { schema: 'x' }, storyboard: { duration: 200, captions: [] } }));
@@ -251,7 +281,8 @@ describe('main', () => {
   test('writes the sheets, refuses hand-written ones, --force replaces them', () => {
     const { base, d, out } = episode();
     write(base, 'channel.json', { schema: CHANNEL_SCHEMA, name: '궁금인간' });
-    write(path.dirname(out), 'tactile.mp4', 'v');
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(path.join(path.dirname(out), 'tactile.mp4'), Buffer.concat([box('ftyp', Buffer.alloc(8)), moov(1000, 65030, 1080, 1920)]));
     let o = io();
     assert.equal(main([d, '--out', out, '--channel', path.join(base, 'channel.json')], o.io), 0);
     assert.match(o.out[0], /^Wrote .*youtube\.md, .*tiktok\.md, .*instagram\.md \(2 warning\(s\)\)\.$/);
@@ -283,6 +314,19 @@ describe('main', () => {
     assert.match(tt, /v\.mp4`/);
     assert.match(tt, /c\.png`를 올린다/);
     assert.match(tt, /sources\.txt`에 있다/);
+  });
+  test('a voice take uses its own storyboard; --storyboard picks one', () => {
+    const { base, d, out } = episode();
+    write(d, 'storyboard-soft-m.json', storyboard({ duration: 79.7, captions: storyboard().captions.slice(0, 4) }));
+    const mp4 = (name, sec) => { const f = path.join(base, name); fs.writeFileSync(f, Buffer.concat([box('ftyp', Buffer.alloc(8)), moov(1000, sec * 1000, 1080, 1920)])); return f; };
+    let o = io();
+    assert.equal(main([d, '--out', out, '--video', mp4('tactile-soft-m.mp4', 79.8)], o.io), 0);
+    assert.match(fs.readFileSync(path.join(out, 'youtube.md'), 'utf8'), /`storyboard-soft-m\.json`/);
+    o = io();
+    assert.equal(main([d, '--out', out, '--video', mp4('tactile-warm.mp4', 79.8)], o.io), 1); // no storyboard-warm.json: storyboard.json is 65 s
+    assert.match(o.err.join('\n'), /video is 79\.8 s but storyboard\.json is 65\.0 s/);
+    o = io();
+    assert.equal(main([d, '--out', out, '--video', path.join(base, 'tactile-warm.mp4'), '--storyboard', path.join(d, 'storyboard-soft-m.json')], o.io), 0);
   });
   test('bad files', () => {
     const { d, out } = episode();
