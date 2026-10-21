@@ -12,6 +12,11 @@ lines of its voice (:func:`qa.drift_of`). A line generated in this run that
 drifts is retaken with new seeds and the take closest to the voice is kept; a
 line that still drifts (or a cached one) gets a ``voice drift`` warning.
 
+A line is skipped when its text, voice, reference and model are unchanged. The
+seed it was recorded with is kept: a take picked with ``--only <id> --seed N``
+survives later plain runs (the default seed is only used for lines that need
+generating anyway); ``--force`` regenerates everything.
+
 Output folder: ``<id>.wav`` per line, ``manifest.json`` (what produced each file
 and its QA result), and after joining ``full.wav`` + ``timeline.json`` with the
 real start/end of every line for subtitles and video timing.
@@ -186,10 +191,11 @@ def generate(
         wav = out_dir / f"{line.id}.wav"
         cached = manifest["lines"].get(line.id, {})
         wanted = only is None or line.id in only
-        if not wanted or (not force and only is None and cached.get("key") == key and wav.is_file()):
+        if not wanted or (not force and only is None and wav.is_file() and _unchanged(cached, line, voice, ref, key)):
             continue
         entry = _generate_line(get_model(), line, voice, ref, wav, seed, retakes, log)
         entry["key"] = key
+        entry["base_seed"] = seed
         manifest["lines"][line.id] = entry
         fresh.add(line.id)
         save_manifest(out_dir, manifest)
@@ -199,13 +205,30 @@ def generate(
     return manifest
 
 
+def _unchanged(cached: dict[str, Any], line: Line, voice: voices.Voice, ref: Path, key: str) -> bool:
+    """Whether a cached take still matches the line, with this run's seed or the seed it was recorded with.
+
+    The recorded base seed is ``base_seed``; entries written before it existed
+    use their first attempt's seed, which is the base seed of the run that made them.
+    """
+    if cached.get("key") == key:
+        return True
+    attempts = cached.get("attempts") or [{}]
+    base = cached.get("base_seed", attempts[0].get("seed"))
+    return isinstance(base, int) and cached.get("key") == line_key(line, voice, ref, base)
+
+
 def _profiles(lines: list[Line], out_dir: Path, manifest: dict[str, Any]) -> dict[str, list[str]]:
-    """Measure every generated line once (cached in its entry) and group ids by voice."""
+    """Measure every passing line once (cached in its entry) and group ids by voice.
+
+    A line that failed QA (cut off, runaway) is left out: it would skew the
+    voice medians, and its retakes belong to the QA ladder, not to drift.
+    """
     groups: dict[str, list[str]] = {}
     for line in lines:
         entry = manifest["lines"].get(line.id)
         wav = out_dir / f"{line.id}.wav"
-        if entry is None or not wav.is_file():
+        if entry is None or not wav.is_file() or entry.get("status") != "ok":
             continue
         if "profile" not in entry:
             audio, rate = engine.read_wav(wav)

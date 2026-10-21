@@ -104,6 +104,36 @@ def test_generate_only_selected_ids(setup: tuple[Fakes, Path, Path], tmp_path: P
         batch.generate(lines, out, root, only={"nope"}, log=lambda _: None)
 
 
+def test_picked_seed_survives_a_plain_rerun(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    lines = batch.read_lines(_script(tmp_path, ROWS))
+    batch.generate(lines, out, root, log=lambda _: None)
+    batch.generate(lines, out, root, only={"en-001"}, seed=7, log=lambda _: None)
+    calls = len(fakes.model.calls)
+    manifest = batch.generate(lines, out, root, log=lambda _: None)  # plain run, default seed 1
+    assert len(fakes.model.calls) == calls  # the picked seed-7 take is kept
+    assert manifest["lines"]["en-001"]["seed"] == 7 and manifest["lines"]["en-001"]["base_seed"] == 7
+
+    # An entry written before base_seed existed falls back to its first attempt's seed.
+    del manifest["lines"]["en-001"]["base_seed"]
+    batch.save_manifest(out, manifest)
+    batch.generate(lines, out, root, log=lambda _: None)
+    assert len(fakes.model.calls) == calls
+
+    # With no seed on record at all, a key from another seed means regenerate.
+    manifest = batch.load_manifest(out)
+    manifest["lines"]["en-001"].pop("base_seed", None)
+    manifest["lines"]["en-001"]["attempts"] = []
+    batch.save_manifest(out, manifest)
+    batch.generate(lines, out, root, log=lambda _: None)
+    assert len(fakes.model.calls) == calls + 1 and fakes.model.calls[-1]["text"].startswith("Once")
+
+    # A changed text is regenerated with this run's seed.
+    edited = batch.read_lines(_script(tmp_path, [ROWS[0], {**ROWS[1], "text": "Once upon a time, again."}]))
+    manifest = batch.generate(edited, out, root, log=lambda _: None)
+    assert manifest["lines"]["en-001"]["seed"] == 1 and len(fakes.model.calls) == calls + 2
+
+
 def test_retakes_until_pass_then_gives_up(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
     fakes, root, out = setup
     lines = batch.read_lines(_script(tmp_path, ROWS[:1]))
@@ -225,6 +255,29 @@ def test_drifting_line_keeps_warning_when_no_retake_helps(setup: tuple[Fakes, Pa
     entry = batch.generate(lines, out, root, log=logs.append)["lines"]["d5"]  # cached: warn again, no retake
     assert len(fakes.model.calls) == calls and len(fakes.loads) == 1
     assert len([w for w in entry["warnings"] if w.startswith(batch.DRIFT_WARNING)]) == 1
+
+
+def test_failed_line_is_left_out_of_drift(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    fakes.model.low_texts = {LOW["text"]}
+    lines = batch.read_lines(_script(tmp_path, DRIFT_ROWS + [LOW]))
+    batch.generate(lines, out, root, only={r["id"] for r in DRIFT_ROWS}, log=lambda _: None)
+    fakes.model.bad_seeds = {1, 1001, 2001}  # the low line now fails QA on every QA retake
+    manifest = batch.generate(lines, out, root, drift_retakes=3, log=lambda _: None)
+    entry = manifest["lines"]["d5"]
+    assert entry["status"] == "failed" and len(entry["attempts"]) == 3  # no drift retake on a failed take
+    assert "profile" not in entry and not entry["warnings"]
+    assert manifest["lines"]["d0"]["profile"]["f0"] == pytest.approx(220, rel=0.03)
+
+
+def test_line_without_a_measurable_pitch_is_left_out_of_drift(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:
+    fakes, root, out = setup
+    lines = batch.read_lines(_script(tmp_path, DRIFT_ROWS))
+    manifest = batch.generate(lines, out, root, log=lambda _: None)
+    manifest["lines"]["d0"]["profile"] = {}  # a whispered take: no pitch found
+    batch.save_manifest(out, manifest)
+    manifest = batch.generate(lines, out, root, log=lambda _: None)
+    assert manifest["lines"]["d0"]["profile"] == {} and not manifest["lines"]["d0"]["warnings"]
 
 
 def test_drift_retakes_zero_only_warns(setup: tuple[Fakes, Path, Path], tmp_path: Path) -> None:

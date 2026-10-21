@@ -165,7 +165,7 @@ Read the batch summary and `manifest.json`. Then work through `references/qa-and
 
 - **Lines with `status: failed` after retakes:**
   - Usually the text is the problem. Rewrite it: shorter, end punctuation, numbers spelled out. Then rerun `batch`; only changed lines regenerate.
-  - If the text is fine, retry just those lines with a new seed: `--only id1,id2 --seed 7`.
+  - If the text is fine, retry just those lines with a new seed: `--only id1,id2 --seed 7`. The take keeps that seed: a later plain `batch` (default seed 1) leaves it alone while its text, voice and model are unchanged; only `--force` or a changed line re-records it.
 - **Warnings**, such as a long pause inside a line: listen to those lines first.
 - **Have the user listen to `full.wav`.** The automatic checks catch skipped or repeated words through pace, cut-off endings, clipping, silences and added fillers. They do not hear mispronunciations or wrong emphasis.
 - **When the user names a bad line**, fix that line's text or retake it with `--only`, then rebuild with `tts/bin/tts join <lines> --out-dir <dir>`.

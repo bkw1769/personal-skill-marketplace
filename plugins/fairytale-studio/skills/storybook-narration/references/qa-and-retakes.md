@@ -48,7 +48,7 @@ Try these in order, cheapest first:
    - Fix the text in `lines.jsonl`, or in the source script followed by re-converting.
    - Rerun `batch`; only lines whose text changed regenerate.
 2. **Split the line.** Two short sentences are safer than one long one. Give the parts new ids (`ko-014a`, `ko-014b`) and a short `pause_after` (0.2-0.35 s) between them.
-3. **Retake with another seed range:** `tts/bin/tts batch <lines> --out-dir <dir> --only ko-014 --seed 7`.
+3. **Retake with another seed range:** `tts/bin/tts batch <lines> --out-dir <dir> --only ko-014 --seed 7`. The manifest records the base seed (`base_seed`), so the picked take survives later plain runs; no hand-kept seed list is needed. A line that failed QA is left out of the voice-drift medians and gets no drift retake (its retakes belong to the QA ladder).
 4. **If one voice fails often across many lines**, its reference clip is the problem. Typical causes are a clip that is too short, ends abruptly, or carries a strong emotion. Re-design the voice with a calmer, 8-15 s sample line, `pick` again, and regenerate that voice's lines. Changing `ref.wav` changes the cache key, so they regenerate automatically.
 5. **If the model keeps mispronouncing a word**, respell it the way it is pronounced:
    - Korean: write the sound in Hangul with spaces where the pause belongs.
